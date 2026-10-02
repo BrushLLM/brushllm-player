@@ -1,0 +1,203 @@
+/* BrushLLMPlayer — 日本語 */
+
+
+"player.open-hint" = "メディアファイルを開いて再生を開始";
+"player.load-failed" = "このファイルを再生できませんでした";
+
+"controls.play" = "再生";
+"controls.pause" = "一時停止";
+"controls.mute" = "ミュート";
+"controls.unmute" = "ミュート解除";
+"controls.volume" = "音量";
+"controls.speed" = "再生速度";
+"controls.playlist" = "プレイリスト";
+"controls.video-settings" = "ビデオ設定";
+"controls.fullscreen" = "フルスクリーン切替";
+
+"panel.tracks.audio" = "音声";
+"panel.tracks.subtitle" = "字幕";
+"panel.tracks.off" = "オフ";
+"panel.tracks.none" = "トラックなし";
+
+"panel.playlist.title" = "プレイリスト";
+"panel.playlist.empty" = "プレイリストは空です";
+"panel.playlist.clear" = "クリア";
+"panel.playlist.shuffle" = "シャッフル";
+
+"loop.off" = "リピートなし";
+"loop.file" = "1 ファイルをリピート";
+"loop.playlist" = "プレイリストをリピート";
+
+"video.aspect" = "アスペクト比";
+"video.aspect.fit" = "ウィンドウに合わせる";
+"video.aspect.fill" = "ウィンドウを満たす";
+"video.aspect.stretch" = "ウィンドウに引き伸ばす";
+"video.hwdec" = "ハードウェアデコード";
+
+"settings.general" = "一般";
+"settings.general.language" = "言語";
+"settings.language.system" = "システムの言語";
+"settings.general.language-note" = "変更はインターフェースのほとんどにすぐ適用されます。";
+"settings.playback" = "再生";
+"settings.playback.volume" = "既定の音量";
+"settings.playback.muted" = "ミュートで起動";
+"settings.playback.loop" = "既定のリピートモード";
+"settings.video" = "ビデオ";
+"settings.video.hwdec" = "ハードウェアデコード (VideoToolbox)";
+"settings.video.hwdec.hint" = "H.264・H.265・AV1 のデコードを高速化します。";
+"settings.subtitle" = "字幕";
+
+"menu.open" = "開く…";
+"menu.playback" = "再生";
+"menu.play" = "再生";
+"menu.pause" = "一時停止";
+"menu.stop" = "停止";
+"menu.step-forward" = "5 秒進む";
+"menu.step-backward" = "5 秒戻る";
+"menu.mute" = "ミュート";
+"menu.volume-up" = "音量を上げる";
+"menu.volume-down" = "音量を下げる";
+"menu.next" = "次へ";
+"menu.previous" = "前へ";
+"menu.loop" = "リピート";
+"menu.video" = "ビデオ";
+"menu.audio" = "音声";
+"menu.subtitle" = "字幕";
+"menu.playlist" = "プレイリスト";
+
+/* M3 batch 1 */
+"settings.video.hwdec.note" = "すぐに適用されます。再生に問題がある場合はファイルを開き直してください。";
+"menu.next-chapter" = "次のチャプター";
+"menu.previous-chapter" = "前のチャプター";
+"panel.chapters" = "チャプター";
+"panel.chapters.none" = "チャプターなし";
+"menu.ab-loop" = "A-B リピート";
+"ab-loop.set-a" = "A 点を設定";
+"ab-loop.set-b" = "B 点を設定";
+"ab-loop.clear" = "A-B リピートを解除";
+"menu.frame-step" = "1 コマ進む";
+"menu.frame-back-step" = "1 コマ戻る";
+"menu.ontop" = "常に最前面";
+"menu.screenshot" = "スクリーンショット";
+"video.ontop" = "常に最前面";
+"video.sync" = "A/V 同期";
+"video.audio-delay" = "音声遅延";
+"video.video-delay" = "映像遅延";
+"video.delay-reset" = "リセット";
+
+/* M3 batch 2+ */
+"menu.open-url" = "URL を開く…";
+"menu.webdav" = "WebDAV を開く…";
+"menu.load-subtitle" = "字幕ファイルを読み込む…";
+"menu.start-recording" = "ファイルに録画…";
+"menu.stop-recording" = "録画を停止";
+"menu.bookmark-add" = "ブックマークを追加";
+"panel.url.hint" = "メディアの直リンクまたは m3u8/HLS アドレス";
+"panel.url.open" = "再生";
+"panel.cancel" = "キャンセル";
+"panel.subtitle.hint" = "字幕ファイルを選択";
+"panel.history" = "履歴";
+"panel.history.empty" = "再生履歴はまだありません";
+"panel.history.clear" = "履歴をクリア";
+"panel.bookmarks" = "ブックマーク";
+"panel.bookmarks.empty" = "ブックマークはまだありません";
+"webdav.add" = "サーバーを追加…";
+"webdav.select" = "サーバーを選択";
+"webdav.empty" = "WebDAV サーバーが設定されていません";
+"webdav.url" = "サーバー URL";
+"webdav.username" = "ユーザー名";
+"webdav.password" = "パスワード";
+"webdav.password-keychain" = "パスワードはキーチェーンに保存されます。";
+"webdav.connect" = "追加して接続";
+"webdav.retry" = "再試行";
+"webdav.empty-folder" = "空のフォルダ";
+"controls.pip" = "ミニウィンドウ";
+"subtitle.font-size" = "フォントサイズ";
+"subtitle.border-size" = "縁取りの太さ";
+"subtitle.position" = "縦位置";
+"subtitle.color" = "文字色";
+"subtitle.border-color" = "縁取りの色";
+"subtitle.live-hint" = "変更は現在再生中のファイルに適用されます。";
+
+"video.hdr" = "HDR 出力";
+
+"controls.equalizer" = "イコライザー";
+"eq.bass" = "低音";
+"eq.mid" = "中音";
+"eq.treble" = "高音";
+"eq.preset.flat" = "フラット";
+"eq.preset.pop" = "ポップ";
+"eq.preset.rock" = "ロック";
+"eq.preset.voice" = "ボーカル";
+
+
+"panel.delete" = "削除";
+"panel.bookmarks.clear" = "ブックマークをクリア";
+"controls.pip-exit" = "ミニウィンドウを終了";
+
+"menu.start-recording" = "録画を開始";
+"settings.storage" = "ストレージ";
+"settings.screenshot-dir" = "スクリーンショットの保存先";
+"settings.recording-dir" = "録画の保存先";
+"settings.choose" = "選択…";
+
+"player.iso-failed" = "ディスクイメージを開けませんでした";
+"player.iso-no-video" = "ディスクイメージに映像が見つかりません";
+
+"player.record-failed" = "録画に失敗しました：このストリームは直接コピーできません";
+"player.slow-load-hint" = "読み込み中… システム設定 → プライバシーとセキュリティのファイルアクセス権限を確認してください";
+
+"subtitle.auto-load" = "一致する字幕を自動読み込み";
+"subtitle.auto-load-hint" = "動画と同じフォルダから同名の字幕ファイルを読み込みます。大きなフォルダやクラウド同期フォルダでは時間がかかる場合があります。";
+
+/* Crop & Rotation */
+"video.rotate" = "回転";
+"video.crop" = "切り抜き";
+"video.crop.off" = "オフ";
+"video.crop.custom" = "カスタム";
+"video.crop.top" = "上";
+"video.crop.bottom" = "下";
+"video.crop.left" = "左";
+"video.crop.right" = "右";
+"controls.audio-effects" = "音声効果";
+
+/* Subtitle color names */
+"subtitle.color.white" = "白";
+"subtitle.color.yellow" = "黄色";
+"subtitle.color.violet" = "紫";
+"subtitle.color.mint" = "ミント";
+"subtitle.color.black" = "黒";
+"app.name" = "BrushLLM Player";
+
+/* Network */
+"controls.network" = "ネットワーク";
+"network.user-agent" = "User-Agent";
+"network.user-agent-reset" = "リセット";
+"network.user-agent-hint" = "すべてのネットワークリクエストに送信されます。ブラウザの UA ならほとんどの CDN を通過できます。";
+
+/* WebDAV structured fields */
+"webdav.title" = "タイトル";
+"webdav.scheme" = "プロトコル";
+"webdav.host" = "ホスト";
+"webdav.port" = "ポート";
+"webdav.path" = "パス";
+
+/* Network panel tabs & advanced */
+
+/* Network panel tabs */
+"network.tab.url" = "ストリーム URL";
+"network.tab.servers" = "メディアサーバー";
+"network.paste" = "クリップボードから貼り付け";
+"network.advanced" = "詳細設定";
+"webdav.connect-server" = "接続";
+"webdav.back" = "戻る";
+
+/* Network buffer settings */
+"network.readahead" = "先読み";
+"network.buffer" = "バッファ";
+"network.buffer-hint" = "デマクサースレッドは再生より先に読み込みます。大きい値は不安定なネットワークを滑らかにします。";
+
+/* Media servers (multi-protocol) */
+"media.empty" = "メディアサーバーが設定されていません";
+"webdav.share" = "共有名";
+"menu.media-servers" = "メディアサーバー…";

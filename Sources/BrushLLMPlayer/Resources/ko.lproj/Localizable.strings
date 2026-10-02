@@ -1,0 +1,203 @@
+/* BrushLLMPlayer — 한국어 */
+
+
+"player.open-hint" = "미디어 파일을 열어 재생을 시작하세요";
+"player.load-failed" = "이 파일을 재생할 수 없습니다";
+
+"controls.play" = "재생";
+"controls.pause" = "일시정지";
+"controls.mute" = "음소거";
+"controls.unmute" = "음소거 해제";
+"controls.volume" = "음량";
+"controls.speed" = "재생 속도";
+"controls.playlist" = "재생 목록";
+"controls.video-settings" = "비디오 설정";
+"controls.fullscreen" = "전체 화면 전환";
+
+"panel.tracks.audio" = "오디오";
+"panel.tracks.subtitle" = "자막";
+"panel.tracks.off" = "끄기";
+"panel.tracks.none" = "트랙 없음";
+
+"panel.playlist.title" = "재생 목록";
+"panel.playlist.empty" = "재생 목록이 비어 있습니다";
+"panel.playlist.clear" = "지우기";
+"panel.playlist.shuffle" = "무작위 재생";
+
+"loop.off" = "반복 안 함";
+"loop.file" = "파일 반복";
+"loop.playlist" = "목록 반복";
+
+"video.aspect" = "화면 비율";
+"video.aspect.fit" = "창에 맞추기";
+"video.aspect.fill" = "창 채우기";
+"video.aspect.stretch" = "창에 늘리기";
+"video.hwdec" = "하드웨어 디코딩";
+
+"settings.general" = "일반";
+"settings.general.language" = "언어";
+"settings.language.system" = "시스템 언어";
+"settings.general.language-note" = "변경 사항은 대부분의 인터페이스에 즉시 적용됩니다.";
+"settings.playback" = "재생";
+"settings.playback.volume" = "기본 음량";
+"settings.playback.muted" = "음소거 상태로 시작";
+"settings.playback.loop" = "기본 반복 모드";
+"settings.video" = "비디오";
+"settings.video.hwdec" = "하드웨어 디코딩 (VideoToolbox)";
+"settings.video.hwdec.hint" = "H.264, H.265, AV1 디코딩을 가속화합니다.";
+"settings.subtitle" = "자막";
+
+"menu.open" = "열기…";
+"menu.playback" = "재생";
+"menu.play" = "재생";
+"menu.pause" = "일시정지";
+"menu.stop" = "정지";
+"menu.step-forward" = "5초 앞으로";
+"menu.step-backward" = "5초 뒤로";
+"menu.mute" = "음소거";
+"menu.volume-up" = "음량 높이기";
+"menu.volume-down" = "음량 낮추기";
+"menu.next" = "다음";
+"menu.previous" = "이전";
+"menu.loop" = "반복";
+"menu.video" = "비디오";
+"menu.audio" = "오디오";
+"menu.subtitle" = "자막";
+"menu.playlist" = "재생 목록";
+
+/* M3 batch 1 */
+"settings.video.hwdec.note" = "즉시 적용됩니다. 재생에 문제가 있으면 파일을 다시 여세요.";
+"menu.next-chapter" = "다음 챕터";
+"menu.previous-chapter" = "이전 챕터";
+"panel.chapters" = "챕터";
+"panel.chapters.none" = "챕터 없음";
+"menu.ab-loop" = "A-B 반복";
+"ab-loop.set-a" = "A 지점 설정";
+"ab-loop.set-b" = "B 지점 설정";
+"ab-loop.clear" = "A-B 반복 해제";
+"menu.frame-step" = "한 프레임 앞으로";
+"menu.frame-back-step" = "한 프레임 뒤로";
+"menu.ontop" = "항상 맨 위";
+"menu.screenshot" = "스크린샷";
+"video.ontop" = "항상 맨 위";
+"video.sync" = "A/V 동기화";
+"video.audio-delay" = "오디오 지연";
+"video.video-delay" = "비디오 지연";
+"video.delay-reset" = "재설정";
+
+/* M3 batch 2+ */
+"menu.open-url" = "URL 열기…";
+"menu.webdav" = "WebDAV 열기…";
+"menu.load-subtitle" = "자막 파일 불러오기…";
+"menu.start-recording" = "파일로 녹화…";
+"menu.stop-recording" = "녹화 중지";
+"menu.bookmark-add" = "북마크 추가";
+"panel.url.hint" = "미디어 직접 링크 또는 m3u8/HLS 주소";
+"panel.url.open" = "재생";
+"panel.cancel" = "취소";
+"panel.subtitle.hint" = "자막 파일 선택";
+"panel.history" = "기록";
+"panel.history.empty" = "재생 기록이 아직 없습니다";
+"panel.history.clear" = "기록 지우기";
+"panel.bookmarks" = "북마크";
+"panel.bookmarks.empty" = "북마크가 아직 없습니다";
+"webdav.add" = "서버 추가…";
+"webdav.select" = "서버 선택";
+"webdav.empty" = "구성된 WebDAV 서버가 없습니다";
+"webdav.url" = "서버 URL";
+"webdav.username" = "사용자 이름";
+"webdav.password" = "비밀번호";
+"webdav.password-keychain" = "비밀번호는 키체인에 저장됩니다.";
+"webdav.connect" = "추가하고 연결";
+"webdav.retry" = "다시 시도";
+"webdav.empty-folder" = "빈 폴더";
+"controls.pip" = "미니 창";
+"subtitle.font-size" = "글자 크기";
+"subtitle.border-size" = "테두리 두께";
+"subtitle.position" = "세로 위치";
+"subtitle.color" = "글자 색";
+"subtitle.border-color" = "테두리 색";
+"subtitle.live-hint" = "변경 사항은 현재 재생 중인 파일에 적용됩니다.";
+
+"video.hdr" = "HDR 출력";
+
+"controls.equalizer" = "이퀄라이저";
+"eq.bass" = "저음";
+"eq.mid" = "중음";
+"eq.treble" = "고음";
+"eq.preset.flat" = "플랫";
+"eq.preset.pop" = "팝";
+"eq.preset.rock" = "록";
+"eq.preset.voice" = "보컬";
+
+
+"panel.delete" = "삭제";
+"panel.bookmarks.clear" = "북마크 지우기";
+"controls.pip-exit" = "미니 창 종료";
+
+"menu.start-recording" = "녹화 시작";
+"settings.storage" = "저장 위치";
+"settings.screenshot-dir" = "스크린샷 폴더";
+"settings.recording-dir" = "녹화 폴더";
+"settings.choose" = "선택…";
+
+"player.iso-failed" = "디스크 이미지를 열 수 없습니다";
+"player.iso-no-video" = "디스크 이미지에서 영상을 찾을 수 없습니다";
+
+"player.record-failed" = "녹화 실패: 이 스트림은 직접 복사할 수 없습니다";
+"player.slow-load-hint" = "불러오는 중… 시스템 설정 → 개인정보 보호 및 보안의 파일 접근 권한을 확인하세요";
+
+"subtitle.auto-load" = "일치하는 자막 자동 불러오기";
+"subtitle.auto-load-hint" = "비디오 폴더에서 같은 이름의 자막 파일을 불러옵니다. 크거나 클라우드 동기화된 폴더에서는 느릴 수 있습니다.";
+
+/* Crop & Rotation */
+"video.rotate" = "회전";
+"video.crop" = "자르기";
+"video.crop.off" = "끄기";
+"video.crop.custom" = "사용자 지정";
+"video.crop.top" = "위";
+"video.crop.bottom" = "아래";
+"video.crop.left" = "왼쪽";
+"video.crop.right" = "오른쪽";
+"controls.audio-effects" = "오디오 효과";
+
+/* Subtitle color names */
+"subtitle.color.white" = "흰색";
+"subtitle.color.yellow" = "노란색";
+"subtitle.color.violet" = "보라색";
+"subtitle.color.mint" = "민트";
+"subtitle.color.black" = "검은색";
+"app.name" = "BrushLLM Player";
+
+/* Network */
+"controls.network" = "네트워크";
+"network.user-agent" = "User-Agent";
+"network.user-agent-reset" = "재설정";
+"network.user-agent-hint" = "모든 네트워크 요청에 함께 전송됩니다. 브라우저 UA는 대부분의 CDN을 통과합니다.";
+
+/* WebDAV structured fields */
+"webdav.title" = "제목";
+"webdav.scheme" = "프로토콜";
+"webdav.host" = "호스트";
+"webdav.port" = "포트";
+"webdav.path" = "경로";
+
+/* Network panel tabs & advanced */
+
+/* Network panel tabs */
+"network.tab.url" = "스트림 URL";
+"network.tab.servers" = "미디어 서버";
+"network.paste" = "클립보드에서 붙여넣기";
+"network.advanced" = "고급 설정";
+"webdav.connect-server" = "연결";
+"webdav.back" = "뒤로";
+
+/* Network buffer settings */
+"network.readahead" = "미리 읽기";
+"network.buffer" = "버퍼";
+"network.buffer-hint" = "디먹서 스레드가 재생보다 앞서 읽습니다. 큰 값은 불안정한 네트워크를 부드럽게 합니다.";
+
+/* Media servers (multi-protocol) */
+"media.empty" = "미디어 서버가 구성되지 않았습니다";
+"webdav.share" = "공유 이름";
+"menu.media-servers" = "미디어 서버…";

@@ -1,0 +1,127 @@
+name: Build
+
+on:
+  push:
+    # Only release tags build — main pushes never spend Actions minutes.
+    tags: ["v*"]
+  workflow_dispatch:
+
+# One build at a time; a newer tag cancels the stale run.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: macOS ARM
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build app
+        # The runner's Xcode is complete, so the local toolchain shim is
+        # skipped automatically (build-app.sh checks xcode-select).
+        # One retry: SwiftPM fetches the MPVKit binary target over the
+        # network and a transient failure aborts the build.
+        run: |
+          ./scripts/build-app.sh release || (
+            echo "::warning::build failed, retrying once (likely a transient SwiftPM fetch failure)"
+            sleep 20
+            ./scripts/build-app.sh release
+          )
+
+      - name: Create dmg
+        run: |
+          set -e
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.1"  # workflow_dispatch: no tag
+          APP="build/BrushLLM Player.app"
+          DMG="build/BrushLLM.Player-$VERSION-arm64.dmg"
+          STAGING=$(mktemp -d)
+          cp -R "$APP" "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"
+          hdiutil create -volname "BrushLLM Player" -srcfolder "$STAGING" -ov -format UDZO "$DMG"
+          ls -lh "$DMG"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BrushLLM-Player-macos-arm64
+          if-no-files-found: error
+          path: build/*.dmg
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Compose release notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cat > /tmp/release-notes.md << EOF
+          An open-source cross-platform media player — plays virtually every format, streams from WebDAV / SMB / FTP / Emby / Jellyfin, and ships a 9-language UI. macOS gets the native Swift app; Windows gets the cross-platform Tauri app (bundling mpv).
+
+          ## Downloads
+
+          | File | System |
+          |---|---|
+          | \`BrushLLM.Player-${VERSION}-arm64.dmg\` | **macOS** — Apple Silicon (M-series) |
+          | \`BrushLLM.Player-${VERSION}-x64.exe\` | **Windows 10/11** — x64 (Intel/AMD) |
+          | \`BrushLLM.Player-${VERSION}-arm64.exe\` | **Windows 10/11** — ARM64 (Snapdragon) |
+
+          ## Features
+
+          - **Playback** — every mpv-supported format, hardware decoding (VideoToolbox on macOS), HDR output, A-B loop, speed control, frame stepping
+          - **Subtitles** — auto-load matching files, external subtitle loading, live styling (font, size, color, position)
+          - **Media servers** — WebDAV, SMB (native mount), FTP, Emby and Jellyfin (login, browse, direct-stream)
+          - **Network streams** — HTTP(S) direct links and m3u8/HLS with adjustable read-ahead buffer
+          - **Disc images** — ISO Blu-ray (largest title) and DVD (seamless multi-VOB via EDL)
+          - **Library** — playlist, chapters, history with resume, bookmarks
+          - **Tools** — screenshots, stream recording, equalizer, mini window
+          - **9-language UI** — English, Deutsch, Español, Français, Português (Brasil), 日本語， 简体中文， 繁體中文， 한국어
+
+          The Windows app (Tauri rewrite) currently covers playback, playback control and file opening; the remaining macOS features are being migrated.
+
+          ## Installation
+
+          - **macOS**: Open the \`.dmg\` and drag **BrushLLM Player** into *Applications*. The app is unsigned — on first launch, right-click the app and choose **Open**.
+          - **Windows**: Run the \`.exe\` matching your CPU. The installer opens with a **language selector** (9 languages) and bundles mpv — no extra downloads needed. SmartScreen may warn — choose *Run anyway*.
+
+          ## Notes
+
+          - Apps are unsigned — macOS Gatekeeper / Windows SmartScreen show a first-run warning.
+          - Licensed under GPL v3 (libmpv / MPVKit-GPL, mpv).
+          EOF
+          # Surface the composed notes as an annotation (CI logs need auth;
+          # annotations are public) — sha256 lets us verify the exact bytes.
+          echo "::notice::release-notes sha256=$(sha256sum /tmp/release-notes.md | cut -c1-16) bytes=$(wc -c < /tmp/release-notes.md)"
+
+      - name: Update release
+        # gh CLI instead of softprops: the action's read-modify-write of the
+        # release body repeatedly failed to persist the new notes on this
+        # repo. gh release edit applies the notes file deterministically.
+        # --draft=false matters: deleting a git tag converts its releases
+        # to drafts, and gh release edit finds drafts but does not publish
+        # them unless told to.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG="$GITHUB_REF_NAME"
+          TITLE="BrushLLM Player $TAG"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --title "$TITLE" --notes-file /tmp/release-notes.md --draft=false
+            gh release upload "$TAG" artifacts/*.dmg --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --title "$TITLE" --notes-file /tmp/release-notes.md artifacts/*.dmg
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name'

@@ -1,0 +1,205 @@
+name: Build Tauri
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "Platform to build (empty = all)"
+        required: false
+        default: ""
+
+concurrency:
+  group: tauri-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS ARM
+            os: macos-14
+            target: aarch64-apple-darwin
+            mpv-url: https://github.com/mpv-player/mpv/releases/download/v0.41.0/mpv-v0.41.0-macos-15-arm.zip
+          - name: Windows x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            mpv-url: https://github.com/mpv-player/mpv/releases/download/v0.41.0/mpv-v0.41.0-x86_64-pc-windows-msvc.zip
+          - name: Windows ARM64
+            os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            mpv-url: ""
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tauri/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: tauri/src-tauri
+          key: ${{ matrix.target }}
+
+      - name: Install frontend dependencies
+        working-directory: tauri
+        run: npm ci
+
+      - name: Download mpv (macOS)
+        if: runner.os == 'macOS'
+        working-directory: tauri
+        shell: bash
+        run: |
+          set -e
+          # Resources in tauri.macos.conf.json resolve relative to src-tauri/,
+          # so the binaries must land in src-tauri/bin/.
+          mkdir -p src-tauri/bin
+          curl -sL --fail "${{ matrix.mpv-url }}" -o /tmp/mpv.zip
+          unzip -o /tmp/mpv.zip -d /tmp/mpv-extract
+          # The archive contains mpv.tar.gz which has mpv.app
+          tar xzf /tmp/mpv-extract/mpv.tar.gz -C /tmp/mpv-extract
+          cp /tmp/mpv-extract/mpv.app/Contents/MacOS/mpv src-tauri/bin/mpv
+          cp -R /tmp/mpv-extract/mpv.app/Contents/MacOS/lib src-tauri/bin/lib
+          ls -lh src-tauri/bin/mpv
+          ls src-tauri/bin/lib | head -5
+
+      - name: Download mpv (Windows x64)
+        if: runner.os == 'Windows' && matrix.mpv-url != ''
+        working-directory: tauri
+        shell: bash
+        run: |
+          set -e
+          # Resources in tauri.windows.conf.json resolve relative to src-tauri/,
+          # so the binaries must land in src-tauri/bin/.
+          mkdir -p src-tauri/bin
+          curl -sL --fail "${{ matrix.mpv-url }}" -o /tmp/mpv.zip
+          unzip -o /tmp/mpv.zip -d /tmp/mpv-extract
+          find /tmp/mpv-extract -name "mpv.exe" -exec cp {} src-tauri/bin/mpv.exe \;
+          # Copy all DLLs alongside
+          find /tmp/mpv-extract -name "*.dll" -exec cp {} src-tauri/bin/ \;
+          ls -lh src-tauri/bin/
+
+      - name: Download mpv (Windows ARM64)
+        if: runner.os == 'Windows' && matrix.mpv-url == ''
+        working-directory: tauri
+        shell: bash
+        run: |
+          set -e
+          mkdir -p src-tauri/bin
+          curl -sL --fail "https://github.com/mpv-player/mpv/releases/download/v0.41.0/mpv-v0.41.0-aarch64-pc-windows-msvc.zip" -o /tmp/mpv.zip
+          unzip -o /tmp/mpv.zip -d /tmp/mpv-extract
+          find /tmp/mpv-extract -name "mpv.exe" -exec cp {} src-tauri/bin/mpv.exe \;
+          find /tmp/mpv-extract -name "*.dll" -exec cp {} src-tauri/bin/ \;
+          ls -lh src-tauri/bin/
+
+      - name: Build app (macOS)
+        if: runner.os == 'macOS'
+        working-directory: tauri
+        run: npx tauri build --target ${{ matrix.target }} --bundles app
+
+      - name: Build app (Windows)
+        if: runner.os == 'Windows'
+        working-directory: tauri
+        run: npx tauri build --target ${{ matrix.target }} --bundles nsis
+
+      - name: Stage dmg (macOS)
+        if: runner.os == 'macOS'
+        working-directory: tauri
+        shell: bash
+        run: |
+          set -e
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.1"
+          APP="src-tauri/target/${{ matrix.target }}/release/bundle/macos/BrushLLM Player.app"
+          # Installers are staged flat in installers/ so the uploaded
+          # artifact has no nested paths (upload-artifact v4 roots the
+          # artifact at the least common ancestor of the search paths).
+          mkdir -p installers
+          DMG="installers/BrushLLM.Player-$VERSION-arm64.dmg"
+          STAGING=$(mktemp -d)
+          cp -R "$APP" "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"
+          hdiutil create -volname "BrushLLM Player" -srcfolder "$STAGING" -ov -format UDZO "$DMG"
+          ls -lh "$DMG"
+
+      - name: Stage installers (Windows)
+        if: runner.os == 'Windows'
+        working-directory: tauri
+        shell: bash
+        run: |
+          set -e
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.1"
+          # Arch label from the target triple, not the filename.
+          case "${{ matrix.target }}" in
+            x86_64*)  ARCH="x64" ;;
+            aarch64*) ARCH="arm64" ;;
+            *)        ARCH="${{ matrix.target }}" ;;
+          esac
+          mkdir -p installers
+          find src-tauri/target -path "*bundle/nsis/*-setup.exe" | while read -r f; do
+            cp "$f" "installers/BrushLLM.Player-$VERSION-$ARCH.exe"
+          done
+          # find in a pipe runs in a subshell; verify via the staged file.
+          [ -f "installers/BrushLLM.Player-$VERSION-$ARCH.exe" ] || { echo "no NSIS installer found"; exit 1; }
+          ls -lh installers/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: BrushLLM-Player-${{ matrix.target }}
+          if-no-files-found: error
+          path: tauri/installers/*
+
+  release:
+    # Adds the Windows installers to the release created by build.yml (the
+    # Swift macOS CI owns the release body). Uploads .exe only — the Tauri
+    # macOS DMG is intentionally NOT released: it would collide with the
+    # Swift DMG's filename, and macOS users get the full-featured Swift app.
+    # Uses `gh release upload` (assets only): softprops always PATCHes the
+    # release body, and a stale read there can revert the Swift CI's body
+    # update when both workflows release concurrently.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Upload Windows installers
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG="$GITHUB_REF_NAME"
+          # The Swift CI's release job usually creates the release first;
+          # if it hasn't yet, wait instead of failing.
+          for i in 1 2 3 4 5; do
+            gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 && break
+            echo "release $TAG not up yet (attempt $i); waiting 60s"
+            sleep 60
+          done
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$TAG" artifacts/*.exe --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            # Swift CI failed to create the release — create it so Windows
+            # users are not blocked; the body converges on the next Swift run.
+            gh release create "$TAG" --title "BrushLLM Player $TAG" \
+              --generate-notes artifacts/*.exe --repo "$GITHUB_REPOSITORY"
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name'

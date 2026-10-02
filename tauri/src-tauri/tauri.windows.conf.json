@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "resources": [
+      "bin/mpv.exe",
+      "bin/*.dll"
+    ]
+  }
+}

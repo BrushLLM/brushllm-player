@@ -1,0 +1,203 @@
+/* BrushLLMPlayer — English */
+
+
+"player.open-hint" = "Open a media file to start playing";
+"player.load-failed" = "Could not play this file";
+
+"controls.play" = "Play";
+"controls.pause" = "Pause";
+"controls.mute" = "Mute";
+"controls.unmute" = "Unmute";
+"controls.volume" = "Volume";
+"controls.speed" = "Playback speed";
+"controls.playlist" = "Playlist";
+"controls.video-settings" = "Video settings";
+"controls.fullscreen" = "Toggle Full Screen";
+
+"panel.tracks.audio" = "Audio";
+"panel.tracks.subtitle" = "Subtitles";
+"panel.tracks.off" = "Off";
+"panel.tracks.none" = "No tracks";
+
+"panel.playlist.title" = "Playlist";
+"panel.playlist.empty" = "Playlist is empty";
+"panel.playlist.clear" = "Clear";
+"panel.playlist.shuffle" = "Shuffle";
+
+"loop.off" = "No Loop";
+"loop.file" = "Loop File";
+"loop.playlist" = "Loop Playlist";
+
+"video.aspect" = "Aspect Ratio";
+"video.aspect.fit" = "Fit to Window";
+"video.aspect.fill" = "Fill Window";
+"video.aspect.stretch" = "Stretch to Window";
+"video.hwdec" = "Hardware Decoding";
+
+"settings.general" = "General";
+"settings.general.language" = "Language";
+"settings.language.system" = "System Language";
+"settings.general.language-note" = "The change applies to most of the interface immediately.";
+"settings.playback" = "Playback";
+"settings.playback.volume" = "Default volume";
+"settings.playback.muted" = "Start muted";
+"settings.playback.loop" = "Default loop mode";
+"settings.video" = "Video";
+"settings.video.hwdec" = "Hardware decoding (VideoToolbox)";
+"settings.video.hwdec.hint" = "Accelerates decoding of H.264, H.265 and AV1.";
+"settings.subtitle" = "Subtitles";
+
+"menu.open" = "Open…";
+"menu.playback" = "Playback";
+"menu.play" = "Play";
+"menu.pause" = "Pause";
+"menu.stop" = "Stop";
+"menu.step-forward" = "Step Forward 5s";
+"menu.step-backward" = "Step Backward 5s";
+"menu.mute" = "Mute";
+"menu.volume-up" = "Volume Up";
+"menu.volume-down" = "Volume Down";
+"menu.next" = "Next";
+"menu.previous" = "Previous";
+"menu.loop" = "Loop";
+"menu.video" = "Video";
+"menu.audio" = "Audio";
+"menu.subtitle" = "Subtitles";
+"menu.playlist" = "Playlist";
+
+/* M3 batch 1 */
+"settings.video.hwdec.note" = "Applies immediately; if playback misbehaves, reopen the file.";
+"menu.next-chapter" = "Next Chapter";
+"menu.previous-chapter" = "Previous Chapter";
+"panel.chapters" = "Chapters";
+"panel.chapters.none" = "No chapters";
+"menu.ab-loop" = "A-B Loop";
+"ab-loop.set-a" = "Set Point A";
+"ab-loop.set-b" = "Set Point B";
+"ab-loop.clear" = "Clear A-B Loop";
+"menu.frame-step" = "Frame Step Forward";
+"menu.frame-back-step" = "Frame Step Backward";
+"menu.ontop" = "Always on Top";
+"menu.screenshot" = "Screenshot";
+"video.ontop" = "Always on Top";
+"video.sync" = "A/V Sync";
+"video.audio-delay" = "Audio delay";
+"video.video-delay" = "Video delay";
+"video.delay-reset" = "Reset";
+
+/* M3 batch 2+ */
+"menu.open-url" = "Open URL…";
+"menu.webdav" = "Open WebDAV…";
+"menu.load-subtitle" = "Load Subtitle File…";
+"menu.start-recording" = "Record To File…";
+"menu.stop-recording" = "Stop Recording";
+"menu.bookmark-add" = "Add Bookmark";
+"panel.url.hint" = "Direct media link or m3u8/HLS address";
+"panel.url.open" = "Play";
+"panel.cancel" = "Cancel";
+"panel.subtitle.hint" = "Choose a subtitle file";
+"panel.history" = "History";
+"panel.history.empty" = "No playback history yet";
+"panel.history.clear" = "Clear History";
+"panel.bookmarks" = "Bookmarks";
+"panel.bookmarks.empty" = "No bookmarks yet";
+"webdav.add" = "Add Server…";
+"webdav.select" = "Select Server";
+"webdav.empty" = "No WebDAV servers configured";
+"webdav.url" = "Server URL";
+"webdav.username" = "Username";
+"webdav.password" = "Password";
+"webdav.password-keychain" = "The password is stored in the Keychain.";
+"webdav.connect" = "Add & Connect";
+"webdav.retry" = "Retry";
+"webdav.empty-folder" = "Empty folder";
+"controls.pip" = "Mini Window";
+"subtitle.font-size" = "Font size";
+"subtitle.border-size" = "Outline width";
+"subtitle.position" = "Vertical position";
+"subtitle.color" = "Text color";
+"subtitle.border-color" = "Outline color";
+"subtitle.live-hint" = "Changes apply to the file currently playing.";
+
+"video.hdr" = "HDR Output";
+
+"controls.equalizer" = "Equalizer";
+"eq.bass" = "Bass";
+"eq.mid" = "Mid";
+"eq.treble" = "Treble";
+"eq.preset.flat" = "Flat";
+"eq.preset.pop" = "Pop";
+"eq.preset.rock" = "Rock";
+"eq.preset.voice" = "Voice";
+
+
+"panel.delete" = "Delete";
+"panel.bookmarks.clear" = "Clear Bookmarks";
+"controls.pip-exit" = "Exit Mini Window";
+
+"menu.start-recording" = "Start Recording";
+"settings.storage" = "Storage";
+"settings.screenshot-dir" = "Screenshot folder";
+"settings.recording-dir" = "Recording folder";
+"settings.choose" = "Choose…";
+
+"player.iso-failed" = "Could not open the disc image";
+"player.iso-no-video" = "No video found on the disc image";
+
+"player.record-failed" = "Recording failed: this stream cannot be stream-copied";
+"player.slow-load-hint" = "Still loading… check file access permissions in System Settings → Privacy & Security";
+
+"subtitle.auto-load" = "Auto-load matching subtitles";
+"subtitle.auto-load-hint" = "Loads same-named subtitle files from the video's folder; may be slow in large or cloud-synced folders.";
+
+/* Crop & Rotation */
+"video.rotate" = "Rotation";
+"video.crop" = "Crop";
+"video.crop.off" = "Off";
+"video.crop.custom" = "Custom";
+"video.crop.top" = "Top";
+"video.crop.bottom" = "Bottom";
+"video.crop.left" = "Left";
+"video.crop.right" = "Right";
+"controls.audio-effects" = "Audio Effects";
+
+/* Subtitle color names */
+"subtitle.color.white" = "White";
+"subtitle.color.yellow" = "Yellow";
+"subtitle.color.violet" = "Violet";
+"subtitle.color.mint" = "Mint";
+"subtitle.color.black" = "Black";
+"app.name" = "BrushLLM Player";
+
+/* Network */
+"controls.network" = "Network";
+"network.user-agent" = "User-Agent";
+"network.user-agent-reset" = "Reset";
+"network.user-agent-hint" = "Sent with every network request; a browser UA passes most CDNs.";
+
+/* WebDAV structured fields */
+"webdav.title" = "Title";
+"webdav.scheme" = "Protocol";
+"webdav.host" = "Host";
+"webdav.port" = "Port";
+"webdav.path" = "Path";
+
+/* Network panel tabs & advanced */
+
+/* Network panel tabs */
+"network.tab.url" = "Stream URL";
+"network.tab.servers" = "Media Servers";
+"network.paste" = "Paste from Clipboard";
+"network.advanced" = "Advanced Settings";
+"webdav.connect-server" = "Connect";
+"webdav.back" = "Back";
+
+/* Network buffer settings */
+"network.readahead" = "Read-ahead";
+"network.buffer" = "Buffer";
+"network.buffer-hint" = "The demuxer thread buffers ahead of playback; larger values smooth unstable networks.";
+
+/* Media servers (multi-protocol) */
+"media.empty" = "No media servers configured";
+"webdav.share" = "Share";
+"menu.media-servers" = "Media Servers…";

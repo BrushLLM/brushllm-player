@@ -1,0 +1,19 @@
+import Foundation
+
+/// Development diagnostics that survive every launch method (stdout is buffered
+/// or discarded for GUI apps). Writes to /tmp/brushllm-debug.log.
+enum DebugLog {
+    private static let url = URL(fileURLWithPath: "/tmp/brushllm-debug.log")
+
+    static func log(_ message: String) {
+        let line = "\(Date()) | \(message)\n"
+        guard let data = line.data(using: .utf8) else { return }
+        if let handle = try? FileHandle(forWritingTo: url) {
+            defer { try? handle.close() }
+            try? handle.seekToEnd()
+            try? handle.write(contentsOf: data)
+        } else {
+            try? data.write(to: url)
+        }
+    }
+}

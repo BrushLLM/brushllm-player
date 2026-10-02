@@ -1,0 +1,203 @@
+/* BrushLLMPlayer — 繁體中文 */
+
+
+"player.open-hint" = "開啟媒體檔案開始播放";
+"player.load-failed" = "無法播放此檔案";
+
+"controls.play" = "播放";
+"controls.pause" = "暫停";
+"controls.mute" = "靜音";
+"controls.unmute" = "取消靜音";
+"controls.volume" = "音量";
+"controls.speed" = "播放速度";
+"controls.playlist" = "播放清單";
+"controls.video-settings" = "畫面設定";
+"controls.fullscreen" = "切換全螢幕";
+
+"panel.tracks.audio" = "音訊";
+"panel.tracks.subtitle" = "字幕";
+"panel.tracks.off" = "關閉";
+"panel.tracks.none" = "無軌道";
+
+"panel.playlist.title" = "播放清單";
+"panel.playlist.empty" = "播放清單為空";
+"panel.playlist.clear" = "清空";
+"panel.playlist.shuffle" = "隨機排序";
+
+"loop.off" = "不循環";
+"loop.file" = "單檔循環";
+"loop.playlist" = "清單循環";
+
+"video.aspect" = "畫面比例";
+"video.aspect.fit" = "符合視窗";
+"video.aspect.fill" = "填滿視窗";
+"video.aspect.stretch" = "延展至視窗";
+"video.hwdec" = "硬體解碼";
+
+"settings.general" = "一般";
+"settings.general.language" = "語言";
+"settings.language.system" = "系統語言";
+"settings.general.language-note" = "變更會立即套用到大部分介面。";
+"settings.playback" = "播放";
+"settings.playback.volume" = "預設音量";
+"settings.playback.muted" = "啟動時靜音";
+"settings.playback.loop" = "預設循環模式";
+"settings.video" = "影片";
+"settings.video.hwdec" = "硬體解碼 (VideoToolbox)";
+"settings.video.hwdec.hint" = "加速 H.264、H.265 與 AV1 的解碼。";
+"settings.subtitle" = "字幕";
+
+"menu.open" = "開啟…";
+"menu.playback" = "播放";
+"menu.play" = "播放";
+"menu.pause" = "暫停";
+"menu.stop" = "停止";
+"menu.step-forward" = "快轉 5 秒";
+"menu.step-backward" = "倒轉 5 秒";
+"menu.mute" = "靜音";
+"menu.volume-up" = "提高音量";
+"menu.volume-down" = "降低音量";
+"menu.next" = "下一個";
+"menu.previous" = "上一個";
+"menu.loop" = "循環";
+"menu.video" = "影片";
+"menu.audio" = "音訊";
+"menu.subtitle" = "字幕";
+"menu.playlist" = "播放清單";
+
+/* M3 batch 1 */
+"settings.video.hwdec.note" = "立即生效；如播放異常，請重新開啟檔案。";
+"menu.next-chapter" = "下一章節";
+"menu.previous-chapter" = "上一章節";
+"panel.chapters" = "章節";
+"panel.chapters.none" = "無章節";
+"menu.ab-loop" = "A-B 循環";
+"ab-loop.set-a" = "設定 A 點";
+"ab-loop.set-b" = "設定 B 點";
+"ab-loop.clear" = "清除 A-B 循環";
+"menu.frame-step" = "逐格前進";
+"menu.frame-back-step" = "逐格後退";
+"menu.ontop" = "視窗置頂";
+"menu.screenshot" = "截圖";
+"video.ontop" = "視窗置頂";
+"video.sync" = "音訊同步";
+"video.audio-delay" = "音訊延遲";
+"video.video-delay" = "視訊延遲";
+"video.delay-reset" = "重設";
+
+/* M3 batch 2+ */
+"menu.open-url" = "開啟 URL…";
+"menu.webdav" = "開啟 WebDAV…";
+"menu.load-subtitle" = "載入字幕檔案…";
+"menu.start-recording" = "錄製到檔案…";
+"menu.stop-recording" = "停止錄製";
+"menu.bookmark-add" = "新增書籤";
+"panel.url.hint" = "媒體直鏈或 m3u8/HLS 位址";
+"panel.url.open" = "播放";
+"panel.cancel" = "取消";
+"panel.subtitle.hint" = "選擇字幕檔案";
+"panel.history" = "歷史";
+"panel.history.empty" = "暫無播放歷史";
+"panel.history.clear" = "清空歷史";
+"panel.bookmarks" = "書籤";
+"panel.bookmarks.empty" = "暫無書籤";
+"webdav.add" = "新增伺服器…";
+"webdav.select" = "選擇伺服器";
+"webdav.empty" = "尚未設定 WebDAV 伺服器";
+"webdav.url" = "伺服器位址";
+"webdav.username" = "使用者名稱";
+"webdav.password" = "密碼";
+"webdav.password-keychain" = "密碼保存在鑰匙圈中。";
+"webdav.connect" = "新增並連線";
+"webdav.retry" = "重試";
+"webdav.empty-folder" = "空資料夾";
+"controls.pip" = "迷你視窗";
+"subtitle.font-size" = "字號";
+"subtitle.border-size" = "外框寬度";
+"subtitle.position" = "垂直位置";
+"subtitle.color" = "文字顏色";
+"subtitle.border-color" = "外框顏色";
+"subtitle.live-hint" = "變更會套用到目前播放的檔案。";
+
+"video.hdr" = "HDR 輸出";
+
+"controls.equalizer" = "等化器";
+"eq.bass" = "低音";
+"eq.mid" = "中音";
+"eq.treble" = "高音";
+"eq.preset.flat" = "平坦";
+"eq.preset.pop" = "流行";
+"eq.preset.rock" = "搖滾";
+"eq.preset.voice" = "人聲";
+
+
+"panel.delete" = "刪除";
+"panel.bookmarks.clear" = "清空書籤";
+"controls.pip-exit" = "退出迷你視窗";
+
+"menu.start-recording" = "開始錄製";
+"settings.storage" = "儲存";
+"settings.screenshot-dir" = "截圖儲存位置";
+"settings.recording-dir" = "錄製儲存位置";
+"settings.choose" = "選擇…";
+
+"player.iso-failed" = "無法開啟光碟映像";
+"player.iso-no-video" = "光碟映像中未找到視訊";
+
+"player.record-failed" = "錄製失敗：此串流的編碼格式無法直接拷貝錄製";
+"player.slow-load-hint" = "仍在載入…請檢查系統設定 → 隱私權與安全性中的檔案存取權限";
+
+"subtitle.auto-load" = "自動載入匹配字幕";
+"subtitle.auto-load-hint" = "從影片所在資料夾載入同名字幕檔案；在大型或雲端同步資料夾中可能較慢。";
+
+/* Crop & Rotation */
+"video.rotate" = "旋轉";
+"video.crop" = "剪切";
+"video.crop.off" = "關閉";
+"video.crop.custom" = "自訂";
+"video.crop.top" = "上";
+"video.crop.bottom" = "下";
+"video.crop.left" = "左";
+"video.crop.right" = "右";
+"controls.audio-effects" = "音效調節";
+
+/* Subtitle color names */
+"subtitle.color.white" = "白色";
+"subtitle.color.yellow" = "黃色";
+"subtitle.color.violet" = "紫色";
+"subtitle.color.mint" = "薄荷綠";
+"subtitle.color.black" = "黑色";
+"app.name" = "BrushLLM Player";
+
+/* Network */
+"controls.network" = "網路";
+"network.user-agent" = "User-Agent";
+"network.user-agent-reset" = "重設";
+"network.user-agent-hint" = "隨所有網路請求傳送；瀏覽器 UA 可通過大多數 CDN。";
+
+/* WebDAV structured fields */
+"webdav.title" = "標題";
+"webdav.scheme" = "協定";
+"webdav.host" = "主機";
+"webdav.port" = "連接埠";
+"webdav.path" = "路徑";
+
+/* Network panel tabs & advanced */
+
+/* Network panel tabs */
+"network.tab.url" = "網路串流";
+"network.tab.servers" = "媒體伺服器";
+"network.paste" = "從剪貼簿貼上";
+"network.advanced" = "進階設定";
+"webdav.connect-server" = "連線";
+"webdav.back" = "返回";
+
+/* Network buffer settings */
+"network.readahead" = "預讀緩衝";
+"network.buffer" = "緩衝大小";
+"network.buffer-hint" = "解復用執行緒在播放前預讀資料；更大的值可平滑不穩定的網路。";
+
+/* Media servers (multi-protocol) */
+"media.empty" = "尚未設定媒體伺服器";
+"webdav.share" = "共享名稱";
+"menu.media-servers" = "媒體伺服器…";
