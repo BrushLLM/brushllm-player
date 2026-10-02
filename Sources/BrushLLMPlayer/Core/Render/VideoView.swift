@@ -18,6 +18,11 @@ final class VideoView: NSView {
     /// feeds fill-window mode.
     var onAspectChanged: ((CGFloat) -> Void)?
 
+    /// Called with (resizing, viewWidth) when a live resize or fullscreen
+    /// transition starts/ends; the control bar swaps to a snapshot while
+    /// resizing (see PlayerCore.isLiveResizing).
+    var onLiveResize: ((Bool, CGFloat) -> Void)?
+
     init(controller: MPVController) {
         self.controller = controller
         self.videoLayer = VideoLayer(controller: controller)
@@ -39,6 +44,63 @@ final class VideoView: NSView {
         super.viewDidChangeBackingProperties()
         videoLayer.contentsScale = window?.backingScaleFactor ?? 2
         videoLayer.update(force: true)
+    }
+
+    // MARK: - Live-resize / fullscreen-transition freeze
+
+    /// Dropping draws during a live resize keeps the drag smooth (see
+    /// VideoLayer.isResizeFrozen); the stretched last frame bridges the
+    /// gap and the end-of-resize redraw restores crisp output.
+    override func viewWillStartLiveResize() {
+        super.viewWillStartLiveResize()
+        videoLayer.isResizeFrozen = true
+        onLiveResize?(true, bounds.width)
+    }
+
+    override func viewDidEndLiveResize() {
+        super.viewDidEndLiveResize()
+        videoLayer.isResizeFrozen = false
+        onLiveResize?(false, bounds.width)
+        videoLayer.update(force: true)
+    }
+
+    /// The fullscreen transition is one continuous animated resize — the
+    /// same drawable-reallocation churn applies, so the freeze covers it
+    /// too. Live-resize callbacks do not fire for it.
+    private var fullscreenObservers: [NSObjectProtocol] = []
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        fullscreenObservers.forEach(NotificationCenter.default.removeObserver)
+        fullscreenObservers.removeAll()
+        guard let window else { return }
+        let transitions: [Notification.Name] = [
+            NSWindow.willEnterFullScreenNotification,
+            NSWindow.willExitFullScreenNotification,
+        ]
+        let settled: [Notification.Name] = [
+            NSWindow.didEnterFullScreenNotification,
+            NSWindow.didExitFullScreenNotification,
+        ]
+        for name in transitions {
+            fullscreenObservers.append(
+                NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                    guard let self else { return }
+                    self.videoLayer.isResizeFrozen = true
+                    self.onLiveResize?(true, self.bounds.width)
+                }
+            )
+        }
+        for name in settled {
+            fullscreenObservers.append(
+                NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                    guard let self else { return }
+                    self.videoLayer.isResizeFrozen = false
+                    self.onLiveResize?(false, self.bounds.width)
+                    self.videoLayer.update(force: true)
+                }
+            )
+        }
     }
 
     override func setFrameSize(_ newSize: NSSize) {

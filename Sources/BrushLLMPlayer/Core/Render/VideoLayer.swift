@@ -127,8 +127,20 @@ final class VideoLayer: CAOpenGLLayer {
         update(force: true)
     }
 
-    /// Triggers a redraw. Safe from any thread.
-    func update(force: Bool = false) {
+    /// While true, display requests are dropped. The window is being
+    /// live-resized: every draw reallocates the GL drawable at the current
+    /// layer size (which changes per resize tick), and that IOSurface churn
+    /// stalls the window server's drag — resizing during playback visibly
+    /// stuttered. The layer stretches the last frame (contentsGravity) for
+    /// the duration; audio and decoding continue; the resize end forces a
+    /// redraw at the final size. Written on the main thread, read from the
+    /// mpv callback thread — a benign Bool race (worst case: one frame).
+    var isResizeFrozen = false
+
+    /// Triggers a redraw. Safe from any thread. `bypassFreeze` lets the
+    /// resize-snapshot capture draw once while frozen (see VideoView).
+    func update(force: Bool = false, bypassFreeze: Bool = false) {
+        if isResizeFrozen && !bypassFreeze { return }
         mpvGLQueue.async { [self] in
             if force {
                 forceDraw = true
@@ -154,7 +166,7 @@ final class VideoLayer: CAOpenGLLayer {
             }
             snapshotLock.unlock()
             previous?(nil)
-            update(force: true)
+            update(force: true, bypassFreeze: true)
         }
     }
 

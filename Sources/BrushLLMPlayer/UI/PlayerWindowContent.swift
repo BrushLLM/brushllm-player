@@ -14,6 +14,11 @@ struct PlayerWindowContent: View {
     /// Whether the WebDAV browser sheet is shown.
     @State private var webDAVVisible = false
 
+    /// Static snapshot of the control bar, shown while the window is being
+    /// live-resized or fullscreen-animated (see PlayerCore.isLiveResizing):
+    /// one image layer instead of the bar's ~100 re-laying-out layers.
+    @State private var barSnapshot: NSImage?
+
     var body: some View {
         VStack(spacing: 0) {
             // NOTE: no .animation modifier here. A value-scoped .animation on
@@ -30,11 +35,19 @@ struct PlayerWindowContent: View {
                 }
             }
 
-            ControlBar(
-                player: player,
-                togglePlaylist: { withAnimation { playlistVisible.toggle() } },
-                isPlaylistVisible: playlistVisible
-            )
+            if player.isLiveResizing, let snapshot = barSnapshot {
+                // Stretched like the video frame during the drag; the real
+                // bar returns (crisp, live) when the resize ends.
+                Image(nsImage: snapshot)
+                    .resizable()
+                    .frame(height: snapshot.size.height)
+            } else {
+                ControlBar(
+                    player: player,
+                    togglePlaylist: { withAnimation { playlistVisible.toggle() } },
+                    isPlaylistVisible: playlistVisible
+                )
+            }
         }
         .background(Color.black)
         .preferredColorScheme(.dark)
@@ -44,6 +57,17 @@ struct PlayerWindowContent: View {
         // its secondary tools collapse via ViewThatFits.
         .frame(minWidth: player.isMiniWindow ? 300 : 640,
                minHeight: player.isMiniWindow ? 160 : 340)
+        .onChange(of: player.isLiveResizing) { _, resizing in
+            if resizing {
+                barSnapshot = Self.renderBarSnapshot(
+                    player: player,
+                    isPlaylistVisible: playlistVisible,
+                    width: player.liveResizeWidth
+                )
+            } else {
+                barSnapshot = nil
+            }
+        }
         .onAppear {
             DebugLog.log("window onAppear, pending opens: \(OpenRequests.shared.pendingCount)")
             player.applyBrandTitle()
@@ -74,6 +98,19 @@ struct PlayerWindowContent: View {
     }
 
     // MARK: - Video area
+
+    /// Renders the control bar to a static image at the given width — the
+    /// live-resize stand-in that keeps the drag smooth.
+    private static func renderBarSnapshot(player: PlayerCore, isPlaylistVisible: Bool,
+                                          width: CGFloat) -> NSImage? {
+        let renderer = ImageRenderer(content: ControlBar(
+            player: player,
+            togglePlaylist: {},
+            isPlaylistVisible: isPlaylistVisible
+        ))
+        renderer.proposedSize = .init(width: width, height: nil)
+        return renderer.nsImage
+    }
 
     private var videoArea: some View {
         VideoViewRepresentable(player: player)
@@ -271,6 +308,10 @@ struct VideoViewRepresentable: NSViewRepresentable {
         }
         view.onAspectChanged = { aspect in
             player.windowAspect = aspect
+        }
+        view.onLiveResize = { resizing, width in
+            player.liveResizeWidth = width
+            player.isLiveResizing = resizing
         }
         player.videoLayer = view.videoLayer
         player.videoView = view

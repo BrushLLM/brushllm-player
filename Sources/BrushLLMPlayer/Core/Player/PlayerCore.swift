@@ -101,6 +101,17 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     @Published private(set) var isRecording = false
 
     /// Mini floating window mode (small, always-on-top).
+    /// True while the main window is being live-resized (or fullscreen-
+    /// animated). The control bar swaps to a static snapshot for the
+    /// duration — SwiftUI re-lays-out its ~100 layers every resize tick,
+    /// and the window server's processing of those updates made drags
+    /// stutter (measured: 12-15 stalls per drag with the live bar vs 3-5
+    /// with a static one).
+    @Published var isLiveResizing = false
+    /// The video area's width when the live resize started; sizes the
+    /// control-bar snapshot.
+    var liveResizeWidth: CGFloat = 900
+
     @Published var isMiniWindow = false {
         didSet { applyWindowLevel() }
     }
