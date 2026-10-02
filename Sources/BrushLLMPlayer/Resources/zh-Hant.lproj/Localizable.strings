@@ -201,3 +201,13 @@
 "media.empty" = "尚未設定媒體伺服器";
 "webdav.share" = "共享名稱";
 "menu.media-servers" = "媒體伺服器…";
+
+// Update checker
+"settings.about" = "關於";
+"update.current" = "目前版本";
+"update.check" = "檢查更新";
+"update.checking" = "正在檢查更新…";
+"update.up-to-date" = "已是最新版本";
+"update.available" = "發現新版本";
+"update.download" = "前往下載";
+"update.failed" = "檢查更新失敗：網路錯誤";

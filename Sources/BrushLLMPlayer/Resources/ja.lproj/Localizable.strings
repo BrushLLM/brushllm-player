@@ -201,3 +201,13 @@
 "media.empty" = "メディアサーバーが設定されていません";
 "webdav.share" = "共有名";
 "menu.media-servers" = "メディアサーバー…";
+
+// Update checker
+"settings.about" = "について";
+"update.current" = "現在のバージョン";
+"update.check" = "アップデートを確認";
+"update.checking" = "アップデートを確認中…";
+"update.up-to-date" = "最新です";
+"update.available" = "新しいバージョンがあります";
+"update.download" = "アップデートをダウンロード";
+"update.failed" = "確認に失敗しました：ネットワークエラー";

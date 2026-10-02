@@ -201,3 +201,13 @@
 "media.empty" = "미디어 서버가 구성되지 않았습니다";
 "webdav.share" = "공유 이름";
 "menu.media-servers" = "미디어 서버…";
+
+// Update checker
+"settings.about" = "정보";
+"update.current" = "현재 버전";
+"update.check" = "업데이트 확인";
+"update.checking" = "업데이트 확인 중…";
+"update.up-to-date" = "최신 버전입니다";
+"update.available" = "새 버전이 있습니다";
+"update.download" = "업데이트 다운로드";
+"update.failed" = "확인 실패: 네트워크 오류";

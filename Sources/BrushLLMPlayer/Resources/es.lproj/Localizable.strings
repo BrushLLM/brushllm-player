@@ -201,3 +201,13 @@
 "media.empty" = "No hay servidores multimedia configurados";
 "webdav.share" = "Recurso compartido";
 "menu.media-servers" = "Servidores multimedia…";
+
+// Update checker
+"settings.about" = "Acerca de";
+"update.current" = "Versión actual";
+"update.check" = "Buscar actualizaciones";
+"update.checking" = "Buscando actualizaciones…";
+"update.up-to-date" = "Actualizado";
+"update.available" = "Nueva versión disponible";
+"update.download" = "Descargar actualización";
+"update.failed" = "Error al comprobar: fallo de red";

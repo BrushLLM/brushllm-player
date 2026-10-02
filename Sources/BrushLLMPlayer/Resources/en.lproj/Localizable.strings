@@ -201,3 +201,13 @@
 "media.empty" = "No media servers configured";
 "webdav.share" = "Share";
 "menu.media-servers" = "Media Servers…";
+
+// Update checker
+"settings.about" = "About";
+"update.current" = "Current version";
+"update.check" = "Check for Updates";
+"update.checking" = "Checking for updates…";
+"update.up-to-date" = "Up to date";
+"update.available" = "New version available";
+"update.download" = "Download Update";
+"update.failed" = "Check failed: network error";

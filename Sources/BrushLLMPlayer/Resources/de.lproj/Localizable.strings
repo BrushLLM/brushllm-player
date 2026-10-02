@@ -201,3 +201,13 @@
 "media.empty" = "Keine Medienserver konfiguriert";
 "webdav.share" = "Freigabe";
 "menu.media-servers" = "Medienserver…";
+
+// Update checker
+"settings.about" = "Über";
+"update.current" = "Aktuelle Version";
+"update.check" = "Nach Updates suchen";
+"update.checking" = "Updates werden gesucht…";
+"update.up-to-date" = "Auf dem neuesten Stand";
+"update.available" = "Neue Version verfügbar";
+"update.download" = "Update herunterladen";
+"update.failed" = "Prüfung fehlgeschlagen: Netzwerkfehler";
