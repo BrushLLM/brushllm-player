@@ -111,31 +111,29 @@ struct ControlBar: View {
                 .fixedSize()
                 .frame(minWidth: 44, alignment: .trailing)
 
-            GeometryReader { geometry in
-                ProgressBar(
-                    position: player.position,
-                    duration: player.duration,
-                    chapters: player.chapters,
-                    abLoopA: player.abLoopA,
-                    abLoopB: player.abLoopB,
-                    bookmarks: player.currentFileBookmarks,
-                    onScrub: { value in
-                        player.isScrubbing = true
-                        scrubPosition = value
-                    },
-                    onScrubEnded: { value in
-                        player.isScrubbing = false
-                        player.seek(to: value)
-                    },
-                    onHover: { fraction, time in
-                        if let fraction, let time {
-                            hoverPreview = (time, fraction)
-                        } else {
-                            hoverPreview = nil
-                        }
+            ProgressBar(
+                position: player.position,
+                duration: player.duration,
+                chapters: player.chapters,
+                abLoopA: player.abLoopA,
+                abLoopB: player.abLoopB,
+                bookmarks: player.currentFileBookmarks,
+                onScrub: { value in
+                    player.isScrubbing = true
+                    scrubPosition = value
+                },
+                onScrubEnded: { value in
+                    player.isScrubbing = false
+                    player.seek(to: value)
+                },
+                onHover: { fraction, time in
+                    if let fraction, let time {
+                        hoverPreview = (time, fraction)
+                    } else {
+                        hoverPreview = nil
                     }
-                )
-            }
+                }
+            )
             .frame(height: 18)
             .overlay(alignment: .topLeading) {
                 // The preview floats fully above the bar: fixed size, never
@@ -209,7 +207,11 @@ struct ControlBar: View {
 
     private var buttonRow: some View {
         HStack(spacing: 0) {
-            // LEFT: playback controls
+            // LEFT: playback controls. fixedSize freezes the group's
+            // measurement: its content is all fixed-size buttons, so the
+            // measurement no longer re-runs on every resize proposal
+            // (live-resize layout cost is dominated by re-measuring this
+            // bar's ~25 buttons per tick).
             HStack(spacing: 2) {
                 iconButton("folder", help: L("menu.open", "Open…")) {
                     OpenMediaPanel.present { urls in player.open(urls) }
@@ -235,6 +237,7 @@ struct ControlBar: View {
                     }
                 }
             }
+            .fixedSize()
 
             // MIDDLE: flexible space
             Spacer(minLength: 12)
@@ -243,14 +246,18 @@ struct ControlBar: View {
             // behind the picture-settings and audio-effects buttons; the
             // window controls (on-top / mini / fullscreen) form a separate
             // group at the far right. ViewThatFits drops the secondary tools
-            // when the window is too narrow for the full set.
+            // when the window is too narrow for the full set. fixedSize on
+            // both alternatives makes their measurements proposal-
+            // independent, so the fit check reads cached sizes.
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 2) {
                     rightTools(includeSecondary: true)
                 }
+                .fixedSize()
                 HStack(spacing: 2) {
                     rightTools(includeSecondary: false)
                 }
+                .fixedSize()
             }
         }
     }

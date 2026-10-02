@@ -16,6 +16,11 @@ struct PlayerWindowContent: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // NOTE: no .animation modifier here. A value-scoped .animation on
+            // this container still animates layout changes that originate
+            // elsewhere (window live-resize re-proposes sizes every tick),
+            // which made resizing visibly stutter — the playlist toggle is
+            // already animated via withAnimation at the call site.
             HStack(spacing: 0) {
                 videoArea
                 if playlistVisible {
@@ -24,7 +29,6 @@ struct PlayerWindowContent: View {
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
-            .animation(.easeInOut(duration: 0.18), value: playlistVisible)
 
             ControlBar(
                 player: player,
