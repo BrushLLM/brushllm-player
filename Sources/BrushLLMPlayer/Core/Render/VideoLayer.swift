@@ -70,6 +70,14 @@ final class VideoLayer: CAOpenGLLayer {
 
     override func canDraw(inCGLContext ctx: CGLContextObj, pixelFormat pf: CGLPixelFormatObj,
                           forLayerTime t: CFTimeInterval, displayTime ts: UnsafePointer<CVTimeStamp>?) -> Bool {
+        // When in live resize, skip all drawing calls on the main thread.
+        // Setting isAsynchronous = true is enough to prevent jittering.
+        guard !(inLiveResize && Thread.isMainThread) else { return false }
+        if !inLiveResize {
+            // Only clear the async mode once a draw is about to happen —
+            // clearing it earlier can flash black when leaving fullscreen.
+            isAsynchronous = false
+        }
         if forceDraw {
             forceDraw = false
             return true
@@ -127,20 +135,27 @@ final class VideoLayer: CAOpenGLLayer {
         update(force: true)
     }
 
-    /// While true, display requests are dropped. The window is being
-    /// live-resized: every draw reallocates the GL drawable at the current
-    /// layer size (which changes per resize tick), and that IOSurface churn
-    /// stalls the window server's drag — resizing during playback visibly
-    /// stuttered. The layer stretches the last frame (contentsGravity) for
-    /// the duration; audio and decoding continue; the resize end forces a
-    /// redraw at the final size. Written on the main thread, read from the
-    /// mpv callback thread — a benign Bool race (worst case: one frame).
-    var isResizeFrozen = false
+    /// Indicates whether the view is being rendered as part of a live
+    /// resizing operation (IINA's ViewLayer.inLiveResize).
+    ///
+    /// While live-resizing, `isAsynchronous` is turned on so CA drives
+    /// canDraw/draw on its own render thread, synchronized with the
+    /// display refresh — the window server expects layer updates on the
+    /// display cycle, so drawing in cooperation with it keeps the drag
+    /// smooth (drawing from our GL queue at arbitrary timings fought it
+    /// and made resizing stutter). `canDraw` also skips main-thread
+    /// draws during the resize.
+    var inLiveResize: Bool = false {
+        didSet {
+            if inLiveResize {
+                isAsynchronous = true
+            }
+            update(force: true)
+        }
+    }
 
-    /// Triggers a redraw. Safe from any thread. `bypassFreeze` lets the
-    /// resize-snapshot capture draw once while frozen (see VideoView).
-    func update(force: Bool = false, bypassFreeze: Bool = false) {
-        if isResizeFrozen && !bypassFreeze { return }
+    /// Triggers a redraw. Safe from any thread.
+    func update(force: Bool = false) {
         mpvGLQueue.async { [self] in
             if force {
                 forceDraw = true
@@ -166,7 +181,7 @@ final class VideoLayer: CAOpenGLLayer {
             }
             snapshotLock.unlock()
             previous?(nil)
-            update(force: true, bypassFreeze: true)
+            update(force: true)
         }
     }
 

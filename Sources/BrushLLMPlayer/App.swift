@@ -37,12 +37,12 @@ struct BrushLLMPlayerApp: App {
 }
 
 
-/// App-level behaviors: keep running after the last window closes, accept files
+/// App-level behaviors: quit when the last window closes, accept files
 /// dropped onto the Dock icon or passed as command-line arguments, and terminate
 /// cleanly.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        false
+        true
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {

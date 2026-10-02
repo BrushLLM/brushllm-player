@@ -46,79 +46,21 @@ final class VideoView: NSView {
         videoLayer.update(force: true)
     }
 
-    // MARK: - Live-resize / fullscreen-transition freeze
+    // MARK: - Live resize
 
-    /// Dropping draws during a live resize keeps the drag smooth (see
-    /// VideoLayer.isResizeFrozen); the stretched last frame bridges the
-    /// gap and the end-of-resize redraw restores crisp output.
+    /// Turns on the layer's asynchronous drawing for the duration of the
+    /// drag (see VideoLayer.inLiveResize) and swaps the control bar to a
+    /// snapshot (see PlayerCore.isLiveResizing).
     override func viewWillStartLiveResize() {
         super.viewWillStartLiveResize()
-        videoLayer.isResizeFrozen = true
+        videoLayer.inLiveResize = true
         onLiveResize?(true, bounds.width)
     }
 
     override func viewDidEndLiveResize() {
         super.viewDidEndLiveResize()
-        videoLayer.isResizeFrozen = false
+        videoLayer.inLiveResize = false
         onLiveResize?(false, bounds.width)
-        videoLayer.update(force: true)
-    }
-
-    /// The fullscreen transition is one continuous animated resize — the
-    /// same drawable-reallocation churn applies, so the freeze covers it
-    /// too. Live-resize callbacks do not fire for it.
-    private var fullscreenObservers: [NSObjectProtocol] = []
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        fullscreenObservers.forEach(NotificationCenter.default.removeObserver)
-        fullscreenObservers.removeAll()
-        guard let window else { return }
-        let transitions: [Notification.Name] = [
-            NSWindow.willEnterFullScreenNotification,
-            NSWindow.willExitFullScreenNotification,
-        ]
-        let settled: [Notification.Name] = [
-            NSWindow.didEnterFullScreenNotification,
-            NSWindow.didExitFullScreenNotification,
-        ]
-        for name in transitions {
-            fullscreenObservers.append(
-                NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
-                    guard let self else { return }
-                    self.videoLayer.isResizeFrozen = true
-                    self.onLiveResize?(true, self.bounds.width)
-                }
-            )
-        }
-        for name in settled {
-            fullscreenObservers.append(
-                NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
-                    guard let self else { return }
-                    self.videoLayer.isResizeFrozen = false
-                    self.onLiveResize?(false, self.bounds.width)
-                    self.videoLayer.update(force: true)
-                }
-            )
-        }
-    }
-
-    override func setFrameSize(_ newSize: NSSize) {
-        super.setFrameSize(newSize)
-        // Redraw at the new size even when paused (mpv has no new frame).
-        // While playing, skip the forced redraw: mpv's render call blocks
-        // on the frame-pace handshake, so one forced redraw per resize tick
-        // backs up the serial GL queue and starves real frame renders —
-        // visible as stutter during live resize and fullscreen. The next
-        // frame (at most one frame interval away) renders at the new size;
-        // until then the layer stretches the old content
-        // (contentsGravity = .resizeAspectFill). nil (no file) still redraws.
-        if controller.getFlag("pause") != false {
-            videoLayer.update(force: true)
-        }
-        if newSize.height > 0 {
-            onAspectChanged?(newSize.width / newSize.height)
-        }
     }
 
     // MARK: - Drag & drop
