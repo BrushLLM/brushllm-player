@@ -44,7 +44,16 @@ final class VideoView: NSView {
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
         // Redraw at the new size even when paused (mpv has no new frame).
-        videoLayer.update(force: true)
+        // While playing, skip the forced redraw: mpv's render call blocks
+        // on the frame-pace handshake, so one forced redraw per resize tick
+        // backs up the serial GL queue and starves real frame renders —
+        // visible as stutter during live resize and fullscreen. The next
+        // frame (at most one frame interval away) renders at the new size;
+        // until then the layer stretches the old content
+        // (contentsGravity = .resizeAspectFill). nil (no file) still redraws.
+        if controller.getFlag("pause") != false {
+            videoLayer.update(force: true)
+        }
         if newSize.height > 0 {
             onAspectChanged?(newSize.width / newSize.height)
         }
