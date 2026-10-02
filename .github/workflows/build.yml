@@ -66,43 +66,36 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           cat > /tmp/release-notes.md << EOF
-          An open-source cross-platform media player — plays virtually every format, streams from WebDAV / SMB / FTP / Emby / Jellyfin, and ships a 9-language UI. macOS gets the native Swift app; Windows gets the cross-platform Tauri app (bundling mpv).
+          An open-source cross-platform media player built on mpv — plays virtually every format, streams from WebDAV / SMB / FTP / Emby / Jellyfin, and ships a 9-language UI.
 
           ## Downloads
 
-          | File | System |
+          | Your system | Download |
           |---|---|
-          | \`BrushLLM.Player-${VERSION}-arm64.dmg\` | **macOS** — Apple Silicon (M-series) |
-          | \`BrushLLM.Player-${VERSION}-x64.exe\` | **Windows 10/11** — x64 (Intel/AMD) |
-          | \`BrushLLM.Player-${VERSION}-arm64.exe\` | **Windows 10/11** — ARM64 (Snapdragon) |
+          | **macOS** — Apple Silicon (M-series) | \`BrushLLM.Player-${VERSION}-arm64.dmg\` |
+          | **Windows 10/11** — x64 (Intel / AMD) | \`BrushLLM.Player-${VERSION}-x64.exe\` |
+          | **Windows 10/11** — ARM64 (Snapdragon) | \`BrushLLM.Player-${VERSION}-arm64.exe\` |
+
+          ## First run (apps are unsigned)
+
+          - **macOS — Gatekeeper**: open the \`.dmg\`, drag **BrushLLM Player** into *Applications*, then **right-click the app and choose “Open”** (a plain double-click is blocked the first time). Confirm “Open” in the dialog.
+          - **Windows — SmartScreen**: run the \`.exe\` matching your CPU; when SmartScreen shows “Windows protected your PC”, choose **“Run anyway”**. The installer opens with a language selector (9 languages) and bundles mpv — no extra downloads needed.
 
           ## Features
 
-          - **Playback** — every mpv-supported format, hardware decoding (VideoToolbox on macOS), HDR output, A-B loop, speed control, frame stepping
-          - **Subtitles** — auto-load matching files, external subtitle loading, live styling (font, size, color, position)
-          - **Media servers** — WebDAV, SMB (native mount), FTP, Emby and Jellyfin (login, browse, direct-stream)
-          - **Network streams** — HTTP(S) direct links and m3u8/HLS with adjustable read-ahead buffer
-          - **Disc images** — ISO Blu-ray (largest title) and DVD (seamless multi-VOB via EDL)
-          - **Library** — playlist, chapters, history with resume, bookmarks
-          - **Tools** — screenshots, stream recording, equalizer, mini window
-          - **9-language UI** — English, Deutsch, Español, Français, Português (Brasil), 日本語， 简体中文， 繁體中文， 한국어
+          - **Playback** — every mpv-supported format, hardware decoding, HDR output, A-B loop, speed control, frame stepping
+          - **Media servers** — WebDAV, SMB, FTP, Emby and Jellyfin
+          - **Network streams** — HTTP(S) direct links and m3u8/HLS
+          - **Subtitles** — auto-load matching files, external loading, live styling
+          - **9-language UI** with instant switching, manual update checks
 
-          The Windows app (Tauri rewrite) currently covers playback, playback control and file opening; the remaining macOS features are being migrated.
-
-          ## Installation
-
-          - **macOS**: Open the \`.dmg\` and drag **BrushLLM Player** into *Applications*. The app is unsigned — on first launch, right-click the app and choose **Open**.
-          - **Windows**: Run the \`.exe\` matching your CPU. The installer opens with a **language selector** (9 languages) and bundles mpv — no extra downloads needed. SmartScreen may warn — choose *Run anyway*.
+          The Windows app (cross-platform rewrite) currently covers playback, controls and file opening; the remaining macOS features are being migrated.
 
           ## Notes
 
-          - Apps are unsigned — macOS Gatekeeper / Windows SmartScreen show a first-run warning.
-          - Licensed under GPL v3 (libmpv / MPVKit-GPL, mpv).
+          - Apps are unsigned — expect the first-run warnings described above.
+          - Licensed under GPL v3 (mpv / libmpv licensing).
           EOF
-          # Surface the composed notes as an annotation (CI logs need auth;
-          # annotations are public) — sha256 lets us verify the exact bytes.
-          echo "::notice::release-notes sha256=$(sha256sum /tmp/release-notes.md | cut -c1-16) bytes=$(wc -c < /tmp/release-notes.md)"
-
       - name: Update release
         # gh CLI instead of softprops: the action's read-modify-write of the
         # release body repeatedly failed to persist the new notes on this
