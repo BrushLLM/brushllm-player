@@ -2,7 +2,11 @@ import Foundation
 
 /// Development diagnostics that survive every launch method (stdout is buffered
 /// or discarded for GUI apps). Writes to /tmp/brushllm-debug.log.
+///
+/// Release builds compile the logging out: each line opened, wrote and closed
+/// the file, which was measurable during playback (an 8s play wrote 245 lines).
 enum DebugLog {
+#if DEBUG
     private static let url = URL(fileURLWithPath: "/tmp/brushllm-debug.log")
 
     static func log(_ message: String) {
@@ -16,4 +20,7 @@ enum DebugLog {
             try? data.write(to: url)
         }
     }
+#else
+    static func log(_ message: String) {}
+#endif
 }

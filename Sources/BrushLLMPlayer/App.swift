@@ -10,8 +10,10 @@ struct BrushLLMPlayerApp: App {
         // A single main window: unlike WindowGroup, the Window scene does not
         // spawn an extra window when macOS delivers a file-open event.
         Window("BrushLLM Player", id: "main") {
+            // No min-size here: PlayerWindowContent owns the constraint and
+            // widens/narrows it with isMiniWindow — a fixed 640 here clamped
+            // the 420pt mini window to 640 and overrode the inner values.
             PlayerWindowContent(player: player)
-                .frame(minWidth: 640, minHeight: 320)
                 .onReceive(NotificationCenter.default.publisher(for: .brushPlayerOpenURLs)) { _ in
                     player.open(OpenRequests.shared.consumeAll())
                 }

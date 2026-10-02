@@ -1281,12 +1281,16 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         case "video-params":
             // Source dimensions (before aspect correction); recompute the crop
             // rect so a persistent crop setting follows each new file.
+            // mpv re-fires this property dozens of times per second even when
+            // the dimensions are unchanged — skip the redundant work (the
+            // per-line file log alone was measurable during playback).
             if let params = mpv.getNode("video-params") as? [String: Any],
                let w = params["w"] as? Int, let h = params["h"] as? Int, w > 0, h > 0 {
+                guard videoSourceSize != (w, h) else { break }
                 videoSourceSize = (w, h)
                 DebugLog.log("video-params: \(w)x\(h)")
                 applyCrop()
-            } else {
+            } else if videoSourceSize != (0, 0) {
                 videoSourceSize = (0, 0)
             }
         case "chapter":
@@ -1313,12 +1317,21 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
 
     private func refreshTracks() {
         let tracks = mpv.trackList
-        audioTracks = tracks.filter { $0.kind == .audio }
-        subtitleTracks = tracks.filter { $0.kind == .sub }
-        videoTracks = tracks.filter { $0.kind == .video }
-        currentAudioTrack = audioTracks.first(where: \.isSelected)?.id
-        currentSubtitleTrack = subtitleTracks.first(where: \.isSelected)?.id
-        DebugLog.log("refreshTracks: total=\(tracks.count), audio=\(audioTracks.count), sub=\(subtitleTracks.count)")
+        let audio = tracks.filter { $0.kind == .audio }
+        let subs = tracks.filter { $0.kind == .sub }
+        let video = tracks.filter { $0.kind == .video }
+        let audioId = audio.first(where: \.isSelected)?.id
+        let subId = subs.first(where: \.isSelected)?.id
+        // mpv re-fires track-list events with identical content; assigning
+        // equal values to @Published still notifies observers, so skip.
+        guard audio != audioTracks || subs != subtitleTracks || video != videoTracks
+                || audioId != currentAudioTrack || subId != currentSubtitleTrack else { return }
+        audioTracks = audio
+        subtitleTracks = subs
+        videoTracks = video
+        currentAudioTrack = audioId
+        currentSubtitleTrack = subId
+        DebugLog.log("refreshTracks: total=\(tracks.count), audio=\(audio.count), sub=\(subs.count)")
     }
 
     private func refreshPlaylist() {
@@ -1327,10 +1340,12 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     }
 
     private func refreshChapters() {
-        chapters = mpv.chapterList
-        let chapter = mpv.getInt("chapter") ?? -1
-        currentChapter = chapter >= 0 ? chapter : nil
-        DebugLog.log("refreshChapters: count=\(chapters.count), current=\(currentChapter.map(String.init) ?? "nil")")
+        let list = mpv.chapterList
+        let chapter = (mpv.getInt("chapter") ?? -1) >= 0 ? mpv.getInt("chapter")! : nil
+        guard list != chapters || chapter != currentChapter else { return }
+        chapters = list
+        currentChapter = chapter
+        DebugLog.log("refreshChapters: count=\(list.count), current=\(chapter.map(String.init) ?? "nil")")
     }
 
     private func nonEmpty(_ string: String?) -> String? {
