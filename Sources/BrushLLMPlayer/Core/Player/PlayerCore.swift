@@ -6,7 +6,6 @@ import Libmpv
 
 /// One player instance: owns the `MPVController` and publishes playback state
 /// for SwiftUI. All published state is mutated on the main thread only.
-/// All published state is mutated on the main thread only (see class docs).
 final class PlayerCore: ObservableObject, @unchecked Sendable {
 
     /// Shared reference for scenes that need the single player (settings).
@@ -360,7 +359,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
                 let ext = (file as NSString).pathExtension.lowercased()
                 if ext == "m2ts" || ext == "mts" {
                     let size = (try? fm.attributesOfItem(atPath: bdStreamDir + "/" + file)[.size] as? UInt64) ?? 0
-                    candidates.append((bdStreamDir + "/" + file, size ?? 0))
+                    candidates.append((bdStreamDir + "/" + file, size))
                 }
             }
             if let main = candidates.max(by: { $0.size < $1.size }) {
@@ -387,7 +386,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
                 // Y=0 is the menu VOB, skip it
                 guard seq >= 1 else { continue }
                 let size = (try? fm.attributesOfItem(atPath: videoTsDir + "/" + file)[.size] as? UInt64) ?? 0
-                titleSets[titleSet, default: []].append((seq, videoTsDir + "/" + file, size ?? 0))
+                titleSets[titleSet, default: []].append((seq, videoTsDir + "/" + file, size))
             }
             // Sort each title set by sequence number
             for (key, _) in titleSets {
@@ -429,17 +428,17 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     /// mpv's EDL duration for concatenated VOBs is inflated because of
     /// MPEG-2 variable bitrate estimation.
     private func probeDiscDuration(_ vobPaths: [String]) {
-        DispatchQueue.global(qos: .utility).async { [weak self] in
+        Task.detached(priority: .utility) { [weak self] in
             var total: Double = 0
             for path in vobPaths {
                 let asset = AVURLAsset(url: URL(fileURLWithPath: path))
-                var duration = CMTimeGetSeconds(asset.duration)
+                var duration = CMTimeGetSeconds((try? await asset.load(.duration)) ?? .invalid)
                 // Some VOBs report wildly inflated durations (MPEG-2 stream
                 // corruption); a single DVD VOB is at most ~1GB ≈ 1 hour.
                 if duration > 3600 {
                     // Estimate from file size: ~2 MB/s MPEG-2 bitrate
                     let size = (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? Int64) ?? 0
-                    let estimated = Double(size ?? 0) / (2.0 * 1024 * 1024)
+                    let estimated = Double(size) / (2.0 * 1024 * 1024)
                     DebugLog.log("ISO (DVD): VOB duration \(Int(duration))s inflated, estimating \(Int(estimated))s from size")
                     duration = estimated
                 }

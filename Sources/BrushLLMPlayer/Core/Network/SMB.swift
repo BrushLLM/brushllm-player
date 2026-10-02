@@ -138,7 +138,7 @@ enum SMBClient {
                 var isDirectory: ObjCBool = false
                 FileManager.default.fileExists(atPath: childAbsolute, isDirectory: &isDirectory)
                 let size = (try? FileManager.default.attributesOfItem(atPath: childAbsolute)[.size] as? Int64) ?? 0
-                return MediaItem(id: childPath, name: entry, isDirectory: isDirectory.boolValue, size: size ?? 0)
+                return MediaItem(id: childPath, name: entry, isDirectory: isDirectory.boolValue, size: size)
             }
     }
 

@@ -32,7 +32,7 @@ enum WebDAVClient {
     /// scheme://authority of the source, without any path.
     private static func origin(of source: MediaServerSource) -> String? {
         guard var components = URLComponents(string: source.baseURL),
-              let host = components.host else { return nil }
+              components.host != nil else { return nil }
         components.path = ""
         components.user = nil
         components.password = nil

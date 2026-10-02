@@ -21,7 +21,12 @@ let package = Package(
             // binary — they are not bundled as runtime resources.
             exclude: ["Resources"],
             swiftSettings: [
-                .unsafeFlags(["-swift-version", "5"])
+                .unsafeFlags(["-swift-version", "5"]),
+                // The video layer is CAOpenGLLayer-based (IINA's proven
+                // architecture); OpenGL is deprecated on macOS but fully
+                // functional. This define silences the API-wide deprecation
+                // warnings, including CAOpenGLLayer's own.
+                .unsafeFlags(["-Xcc", "-DGL_SILENCE_DEPRECATION"])
             ]
         )
     ]

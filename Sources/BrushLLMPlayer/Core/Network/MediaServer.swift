@@ -72,7 +72,7 @@ final class MediaServerStore: ObservableObject {
 
     @discardableResult
     func add(kind: MediaServerKind, name: String, baseURL: String, username: String, password: String) -> MediaServerSource {
-        var source = MediaServerSource(kind: kind, name: name, baseURL: baseURL, username: username)
+        let source = MediaServerSource(kind: kind, name: name, baseURL: baseURL, username: username)
         savePassword(password, for: source.id)
         sources.append(source)
         persistMetadata()

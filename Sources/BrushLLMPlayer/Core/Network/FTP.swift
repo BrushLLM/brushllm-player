@@ -206,6 +206,7 @@ private final class FTPSession {
     /// Sends a command and awaits its complete response. FTP replies may
     /// span multiple lines: `XXX-` starts a block that runs until a `XXX `
     /// line with the same code.
+    @discardableResult
     func command(_ command: String?) async throws -> String {
         if let command {
             send(command)

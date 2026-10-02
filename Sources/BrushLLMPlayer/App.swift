@@ -87,12 +87,6 @@ final class OpenRequests {
         NotificationCenter.default.post(name: .brushPlayerOpenURLs, object: nil, userInfo: ["urls": urls])
     }
 
-    /// Returns the next unopened file, if any.
-    func consumeNext() -> URL? {
-        guard !queue.isEmpty else { return nil }
-        return queue.removeFirst()
-    }
-
     /// Returns and clears every pending file.
     func consumeAll() -> [URL] {
         let urls = queue

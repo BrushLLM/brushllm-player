@@ -74,10 +74,10 @@ actor ThumbnailService {
         var durations: [Double] = []
         for url in urls {
             let asset = AVURLAsset(url: url)
-            var duration = CMTimeGetSeconds(asset.duration)
+            var duration = CMTimeGetSeconds((try? await asset.load(.duration)) ?? .invalid)
             if duration > 3600 {
                 let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
-                duration = Double(size ?? 0) / (2.0 * 1024 * 1024)
+                duration = Double(size) / (2.0 * 1024 * 1024)
             }
             durations.append(max(duration, 0))
         }
