@@ -46,6 +46,13 @@ final class VideoView: NSView {
         videoLayer.update(force: true)
     }
 
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        if newSize.height > 0 {
+            onAspectChanged?(newSize.width / newSize.height)
+        }
+    }
+
     // MARK: - Live resize
 
     /// Turns on the layer's asynchronous drawing for the duration of the
