@@ -821,39 +821,67 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
 
     // MARK: - Titlebar tint
 
+    /// Brand purple used for the window titlebar's "BrushLLM Player" title.
+    private static let brandTitleColor = NSColor(red: 0x89/255, green: 0x3C/255, blue: 0xED/255, alpha: 1)
+    private static var titleTreeDumped = false
+    private var titleWatchdog: Timer?
+
     /// Tints the window titlebar's "BrushLLM Player" title with the brand
     /// purple. The standard title label has no public coloring API, so the
     /// titlebar view tree is traversed for the text field. Runs slightly
     /// delayed — the titlebar hierarchy materializes after the window is
     /// on screen.
+    ///
+    /// The tint is not one-shot: the system re-styles the title label when
+    /// the SwiftUI scene re-applies the window title or the titlebar
+    /// relayouts (fullscreen transitions, appearance switches) — and a
+    /// re-applied identical title emits no `didChangeTitle` notification,
+    /// so there is no reliable event to hook. A 1-second watchdog re-checks
+    /// the color instead; the tree walk covers ~a dozen views.
     func applyBrandTitle() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+            guard let self, let window = self.playerWindow() else { return }
+            Self.tintTitle(in: window)
+            self.startTitleWatchdog()
+        }
+    }
+
+    private func startTitleWatchdog() {
+        guard titleWatchdog == nil else { return }
+        titleWatchdog = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self, let window = self.playerWindow() else { return }
             Self.tintTitle(in: window)
         }
     }
 
+    private static func isBrandColor(_ color: NSColor?) -> Bool {
+        guard let color, let rgb = color.usingColorSpace(.deviceRGB) else { return false }
+        return abs(rgb.redComponent - 0x89/255) < 0.01
+            && abs(rgb.greenComponent - 0x3C/255) < 0.01
+            && abs(rgb.blueComponent - 0xED/255) < 0.01
+    }
+
     private static func tintTitle(in window: NSWindow) {
         // The traffic lights' superview is the titlebar container that also
         // hosts the title label.
-        guard let anchor = window.standardWindowButton(.closeButton)?.superview else {
-            DebugLog.log("titlebar: no anchor view")
-            return
-        }
+        guard let anchor = window.standardWindowButton(.closeButton)?.superview else { return }
         var found = false
         func search(_ view: NSView, depth: Int) {
             if depth > 6 { return }
             if let field = view as? NSTextField,
                field.stringValue == window.title, !field.isEditable {
-                field.textColor = NSColor(red: 0x89/255, green: 0x3C/255, blue: 0xED/255, alpha: 1)
+                if !isBrandColor(field.textColor) {
+                    field.textColor = brandTitleColor
+                    DebugLog.log("titlebar: re-tinted title (system had reset the color)")
+                }
                 found = true
-                DebugLog.log("titlebar: tinted title field \(field.className)")
             }
             for sub in view.subviews { search(sub, depth: depth + 1) }
         }
         search(anchor, depth: 0)
-        if !found {
+        if !found && !titleTreeDumped {
             // Fallback: dump the tree once so the structure can be adapted.
+            titleTreeDumped = true
             DebugLog.log("titlebar: title field not found; tree:")
             func dump(_ view: NSView, depth: Int) {
                 if depth > 5 { return }
