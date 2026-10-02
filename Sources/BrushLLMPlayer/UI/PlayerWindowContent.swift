@@ -106,7 +106,8 @@ struct PlayerWindowContent: View {
         let renderer = ImageRenderer(content: ControlBar(
             player: player,
             togglePlaylist: {},
-            isPlaylistVisible: isPlaylistVisible
+            isPlaylistVisible: isPlaylistVisible,
+            forSnapshot: true
         ))
         renderer.proposedSize = .init(width: width, height: nil)
         return renderer.nsImage

@@ -14,6 +14,13 @@ struct ControlBar: View {
     @ObservedObject var player: PlayerCore
     var togglePlaylist: () -> Void
     var isPlaylistVisible: Bool
+    /// True while rendering the static live-resize snapshot. ImageRenderer
+    /// cannot render Menu views offscreen — they come out as placeholder
+    /// artifacts (a yellow box with a red glyph) that covered the speed and
+    /// A-B buttons during resizes. In snapshot mode the two Menus render as
+    /// their plain text labels, which are visually identical to their
+    /// borderless live appearance.
+    var forSnapshot: Bool = false
 
     /// Local scrub position while dragging the progress bar.
     @State private var scrubPosition: Double = 0
@@ -360,27 +367,33 @@ struct ControlBar: View {
 
     // MARK: - Right-side tools
 
+    @ViewBuilder
     private var speedMenu: some View {
-        Menu {
-            ForEach(speedOptions, id: \.self) { option in
-                Button {
-                    player.speed = option
-                } label: {
-                    Text("\(formatSpeed(option))×")
+        let label = Text("\(formatSpeed(player.speed))×")
+            .font(.system(size: 11, weight: .medium))
+            .monospacedDigit()
+            .foregroundStyle(player.speed == 1 ? BrushLLMPlayerTheme.controlTextSecondary : BrushLLMPlayerTheme.accent)
+            .frame(width: 40, height: 28)
+            .contentShape(.rect)
+        if forSnapshot {
+            label.fixedSize()
+        } else {
+            Menu {
+                ForEach(speedOptions, id: \.self) { option in
+                    Button {
+                        player.speed = option
+                    } label: {
+                        Text("\(formatSpeed(option))×")
+                    }
                 }
+            } label: {
+                label
             }
-        } label: {
-            Text("\(formatSpeed(player.speed))×")
-                .font(.system(size: 11, weight: .medium))
-                .monospacedDigit()
-                .foregroundStyle(player.speed == 1 ? BrushLLMPlayerTheme.controlTextSecondary : BrushLLMPlayerTheme.accent)
-                .frame(width: 40, height: 28)
-                .contentShape(.rect)
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help(L("controls.speed", "Playback speed"))
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .help(L("controls.speed", "Playback speed"))
     }
 
     /// Subtitle track picker — the CC icon.
@@ -422,27 +435,33 @@ struct ControlBar: View {
     /// A-B loop: quick menu to set point A, point B, or clear. The text label
     /// "A⇄B" reads unambiguously (the old a-square icon was confusable with
     /// the subtitle button).
+    @ViewBuilder
     private var abLoopButton: some View {
-        Menu {
-            Button(L("ab-loop.set-a", "Set Point A")) { player.setABLoopA() }
-                .disabled(player.isIdle)
-            Button(L("ab-loop.set-b", "Set Point B")) { player.setABLoopB() }
-                .disabled(player.isIdle)
-            Divider()
-            Button(L("ab-loop.clear", "Clear A-B Loop")) { player.clearABLoop() }
-                .disabled(player.abLoopA == nil && player.abLoopB == nil)
-        } label: {
-            Text("A⇄B")
-                .font(.system(size: 11, weight: .semibold))
-                .monospacedDigit()
-                .foregroundStyle(player.abLoopA != nil || player.abLoopB != nil ? BrushPalette.orange : BrushLLMPlayerTheme.controlTextSecondary)
-                .frame(width: 36, height: 28)
-                .contentShape(.rect)
+        let label = Text("A⇄B")
+            .font(.system(size: 11, weight: .semibold))
+            .monospacedDigit()
+            .foregroundStyle(player.abLoopA != nil || player.abLoopB != nil ? BrushPalette.orange : BrushLLMPlayerTheme.controlTextSecondary)
+            .frame(width: 36, height: 28)
+            .contentShape(.rect)
+        if forSnapshot {
+            label.fixedSize()
+        } else {
+            Menu {
+                Button(L("ab-loop.set-a", "Set Point A")) { player.setABLoopA() }
+                    .disabled(player.isIdle)
+                Button(L("ab-loop.set-b", "Set Point B")) { player.setABLoopB() }
+                    .disabled(player.isIdle)
+                Divider()
+                Button(L("ab-loop.clear", "Clear A-B Loop")) { player.clearABLoop() }
+                    .disabled(player.abLoopA == nil && player.abLoopB == nil)
+            } label: {
+                label
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help(L("menu.ab-loop", "A-B Loop"))
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .help(L("menu.ab-loop", "A-B Loop"))
     }
 
     // MARK: - Settings panels & window controls
