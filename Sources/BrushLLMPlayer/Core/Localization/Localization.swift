@@ -73,10 +73,24 @@ enum Localization {
 
     // MARK: - System language resolution
 
+    /// The user's real system preferred languages. The app writes an
+    /// app-domain AppleLanguages override when a specific language is
+    /// chosen, and that override also redirects
+    /// `Locale.preferredLanguages` for this process — "follow system"
+    /// must resolve the global-domain preference instead.
+    private static var realSystemPreferredLanguages: [String] {
+        if let global = UserDefaults.standard
+            .persistentDomain(forName: "NSGlobalDomain")?["AppleLanguages"] as? [String],
+           !global.isEmpty {
+            return global
+        }
+        return Locale.preferredLanguages
+    }
+
     /// Picks the best shipped language from the user's preferred languages.
     static func systemLanguageCode() -> String {
         let available = Set(GeneratedStrings.tables.keys)
-        for preferred in Locale.preferredLanguages {
+        for preferred in Self.realSystemPreferredLanguages {
             // Tag forms: "zh-Hans-CN", "pt-BR", "en-US", "de-DE", …
             let parts = preferred.split(separator: "-").map(String.init)
             guard let base = parts.first else { continue }

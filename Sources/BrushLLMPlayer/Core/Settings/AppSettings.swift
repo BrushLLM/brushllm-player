@@ -35,14 +35,18 @@ final class AppSettings: ObservableObject {
     @Published var language: String? {
         didSet {
             defaults.set(language ?? "", forKey: Key.language)
-            Localization.setLanguage(language)
-            // Also steer the bundle's localization resolution so AppKit's
+            // Steer the bundle's localization resolution so AppKit's
             // standard menus (File/Edit/…) match; takes effect next launch.
+            // This must happen BEFORE setLanguage: the app-domain
+            // AppleLanguages override also redirects
+            // Locale.preferredLanguages for this process, so a stale
+            // override would otherwise win when resolving "system".
             if let language {
                 defaults.set([language], forKey: "AppleLanguages")
             } else {
                 defaults.removeObject(forKey: "AppleLanguages")
             }
+            Localization.setLanguage(language)
         }
     }
 
