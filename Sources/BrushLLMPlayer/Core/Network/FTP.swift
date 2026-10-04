@@ -63,8 +63,10 @@ enum FTPClient {
     static func playbackURL(source: MediaServerSource, path: String, password: String?) -> URL? {
         guard var components = URLComponents(string: source.baseURL) else { return nil }
         let username = source.username.isEmpty ? "anonymous" : source.username
-        components.user = username.addingPercentEncoding(withAllowedCharacters: .urlUserAllowed)
-        components.password = (password ?? "").addingPercentEncoding(withAllowedCharacters: .urlPasswordAllowed)
+        // URLComponents percent-encodes user/password itself when
+        // serializing — pre-encoding here double-encodes and auth fails.
+        components.user = username
+        components.password = password ?? ""
         let normalized = path.hasPrefix("/") ? path : "/" + path
         components.path = normalized
         return components.url

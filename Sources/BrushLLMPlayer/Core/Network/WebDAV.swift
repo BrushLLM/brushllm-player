@@ -80,8 +80,11 @@ enum WebDAVClient {
         guard let origin = origin(of: source) else { return nil }
         guard var components = URLComponents(string: origin + path) else { return nil }
         if !source.username.isEmpty, let password {
-            components.user = source.username.addingPercentEncoding(withAllowedCharacters: .urlUserAllowed)
-            components.password = password.addingPercentEncoding(withAllowedCharacters: .urlPasswordAllowed)
+            // URLComponents percent-encodes user/password itself when
+            // serializing — pre-encoding here double-encodes ("p@ss" →
+            // "p%40ss" → "p%2540ss") and the server rejects the password.
+            components.user = source.username
+            components.password = password
         }
         return components.url
     }
