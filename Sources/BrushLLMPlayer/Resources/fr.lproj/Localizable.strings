@@ -211,3 +211,10 @@
 "update.available" = "Nouvelle version disponible";
 "update.download" = "Télécharger la mise à jour";
 "update.failed" = "Échec de la vérification : erreur réseau";
+
+// Hardware decoding status
+"video.hwdec.active" = "Actif · VideoToolbox";
+
+// Server editing
+"webdav.edit" = "Modifier";
+"webdav.save" = "Enregistrer";

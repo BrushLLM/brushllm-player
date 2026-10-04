@@ -323,6 +323,8 @@ private struct ServersTab: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var showAddForm = false
+    /// The server being edited; the add form reopens pre-filled.
+    @State private var editingSource: MediaServerSource?
     /// The server currently being browsed; nil = server list.
     @State private var browsingSourceID: UUID?
     @State private var pathStack: [String] = []
@@ -337,11 +339,13 @@ private struct ServersTab: View {
     var body: some View {
         Group {
             if showAddForm {
-                AddServerForm(store: store) { source in
+                AddServerForm(store: store, editing: editingSource) { source in
                     showAddForm = false
+                    editingSource = nil
                     enterBrowser(source)
                 } onCancel: {
                     showAddForm = false
+                    editingSource = nil
                 }
             } else if let source = browsingSource {
                 BrowserView(
@@ -417,6 +421,16 @@ private struct ServersTab: View {
                 enterBrowser(source)
             }
             .buttonStyle(VioletProminentButtonStyle())
+            Button {
+                editingSource = source
+                showAddForm = true
+            } label: {
+                Image(systemName: "pencil.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary.opacity(0.55))
+            }
+            .buttonStyle(.plain)
+            .help(L("webdav.edit", "Edit"))
             Button {
                 MediaServerBrowser.disconnect(source: source)
                 store.remove(source)
@@ -676,6 +690,8 @@ private struct BrowserView: View {
 
 private struct AddServerForm: View {
     @ObservedObject var store = MediaServerStore.shared
+    /// When set, the form edits this server instead of adding one.
+    let editing: MediaServerSource?
     let onAdded: (MediaServerSource) -> Void
     let onCancel: () -> Void
 
@@ -687,6 +703,7 @@ private struct AddServerForm: View {
     @State private var newPath = ""
     @State private var newUsername = ""
     @State private var newPassword = ""
+    @State private var didPrefill = false
 
     /// The connection string composed from the structured fields.
     private var composedBaseURL: String {
@@ -801,7 +818,9 @@ private struct AddServerForm: View {
                         .buttonStyle(.plain)
                         .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
                     Spacer()
-                    Button(L("webdav.connect", "Add & Connect")) { add() }
+                    Button(editing == nil
+                           ? L("webdav.connect", "Add & Connect")
+                           : L("webdav.save", "Save")) { add() }
                         .buttonStyle(VioletProminentButtonStyle())
                         .disabled(!requiredFieldsFilled)
                         .opacity(requiredFieldsFilled ? 1 : 0.45)
@@ -809,6 +828,37 @@ private struct AddServerForm: View {
                 .padding(.top, 6)
             }
             .padding(20)
+        }
+        .onAppear {
+            prefillIfEditing()
+        }
+    }
+
+    /// Decomposes the editing source's baseURL back into the structured
+    /// fields so the form opens exactly as it was added.
+    private func prefillIfEditing() {
+        guard !didPrefill, let source = editing else { return }
+        didPrefill = true
+        kind = source.kind
+        newName = source.name
+        newUsername = source.username
+        newPassword = store.password(for: source) ?? ""
+        guard let url = URL(string: source.baseURL),
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            newHost = source.baseURL
+            return
+        }
+        newScheme = components.scheme ?? "https"
+        newHost = components.host ?? ""
+        if let port = components.port {
+            newPort = String(port)
+        }
+        switch source.kind {
+        case .smb:
+            // path = the share name (leading slash stripped for the field)
+            newPath = (components.path.isEmpty ? "" : String(components.path.dropFirst()))
+        default:
+            newPath = components.path
         }
     }
 
@@ -868,11 +918,20 @@ private struct AddServerForm: View {
     private func add() {
         let host = newHost.trimmingCharacters(in: .whitespaces)
         guard !host.isEmpty else { return }
-        let source = store.add(kind: kind,
-                               name: newName.isEmpty ? host : newName,
-                               baseURL: composedBaseURL,
-                               username: newUsername,
-                               password: newPassword)
-        onAdded(source)
+        if var source = editing {
+            source.kind = kind
+            source.name = newName.isEmpty ? host : newName
+            source.baseURL = composedBaseURL
+            source.username = newUsername
+            store.update(source, password: newPassword)
+            onAdded(source)
+        } else {
+            let source = store.add(kind: kind,
+                                   name: newName.isEmpty ? host : newName,
+                                   baseURL: composedBaseURL,
+                                   username: newUsername,
+                                   password: newPassword)
+            onAdded(source)
+        }
     }
 }

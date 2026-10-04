@@ -94,6 +94,13 @@ final class MPVController {
         setOption("cover-art-auto", "no")
         setOption("vo", "libmpv")
         setOption("hwdec", hardwareDecoding ? "auto-safe" : "no")
+        // Direct rendering (decoder writes straight into VO buffers) runs a
+        // buffer-allocation callback through mpv's dispatch — which deadlocks
+        // against main-thread mpv_get_property calls from the property-change
+        // handler while the decoder starts (main waits for the core, the core
+        // waits for the decoder, the decoder waits for the dispatch). The
+        // extra frame copy in software decoding is the safe trade.
+        setOption("vd-lavc-dr", "no")
         setOption("keepaspect", "yes")
         setOption("title", "BrushLLM Player")
         // Network streaming: mpv's demuxer runs network I/O on its own threads;

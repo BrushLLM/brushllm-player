@@ -211,3 +211,10 @@
 "update.available" = "New version available";
 "update.download" = "Download Update";
 "update.failed" = "Check failed: network error";
+
+// Hardware decoding status
+"video.hwdec.active" = "Active · VideoToolbox";
+
+// Server editing
+"webdav.edit" = "Edit";
+"webdav.save" = "Save";

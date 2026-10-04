@@ -17,6 +17,10 @@ struct TrackInfo: Identifiable, Equatable {
     let isDefault: Bool
     let isSelected: Bool
     let isForced: Bool
+    /// True for tracks loaded from external files (sub-add / sub-files).
+    let isExternal: Bool
+    /// The full path of the external file, when `isExternal`.
+    let externalFilename: String?
 
     /// Human-readable label for menus and panels.
     var label: String {
@@ -24,7 +28,14 @@ struct TrackInfo: Identifiable, Equatable {
         if let language, !language.isEmpty {
             parts.append(LanguageNames.displayName(forCode: language))
         }
-        if let title, !title.isEmpty {
+        if isExternal, let externalFilename,
+           let name = URL(fileURLWithPath: externalFilename).lastPathComponent.removingPercentEncoding,
+           !name.isEmpty {
+            // mpv's title for external tracks is inconsistent (sometimes just
+            // the format, e.g. "srt") — the real file name always identifies
+            // the track better.
+            parts.append(name)
+        } else if let title, !title.isEmpty {
             parts.append(title)
         }
         if parts.isEmpty {
@@ -45,7 +56,9 @@ struct TrackInfo: Identifiable, Equatable {
             codec: map["codec"] as? String,
             isDefault: (map["default"] as? Bool) ?? false,
             isSelected: (map["selected"] as? Bool) ?? false,
-            isForced: (map["forced"] as? Bool) ?? false
+            isForced: (map["forced"] as? Bool) ?? false,
+            isExternal: (map["external"] as? Bool) ?? false,
+            externalFilename: map["external-filename"] as? String
         )
     }
 }

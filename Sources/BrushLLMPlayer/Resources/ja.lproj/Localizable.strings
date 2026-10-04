@@ -211,3 +211,10 @@
 "update.available" = "新しいバージョンがあります";
 "update.download" = "アップデートをダウンロード";
 "update.failed" = "確認に失敗しました：ネットワークエラー";
+
+// Hardware decoding status
+"video.hwdec.active" = "有効 · VideoToolbox";
+
+// Server editing
+"webdav.edit" = "編集";
+"webdav.save" = "保存";

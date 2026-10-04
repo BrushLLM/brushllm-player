@@ -13,6 +13,18 @@ struct VideoSettingsPanel: View {
     /// Rotation choices, clockwise.
     private static let rotations: [Int] = [0, 90, 180, 270]
 
+    /// Human-readable hardware-decoding status. mpv reports raw decoder
+    /// names ("videotoolbox-copy"…) — showing them verbatim confused users.
+    private var hwdecStatus: String? {
+        guard let hwdec = player.hwdecCurrent?.lowercased(), !hwdec.isEmpty, hwdec != "no" else {
+            return nil
+        }
+        if hwdec.contains("videotoolbox") {
+            return L("video.hwdec.active", "Active · VideoToolbox")
+        }
+        return L("video.hwdec.active", "Active") + " · " + hwdec
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -83,8 +95,8 @@ struct VideoSettingsPanel: View {
                         Text(L("video.hwdec", "Hardware Decoding"))
                             .font(.callout)
                             .foregroundStyle(BrushLLMPlayerTheme.controlText)
-                        if let hwdec = player.hwdecCurrent {
-                            Text(hwdec)
+                        if let status = hwdecStatus {
+                            Text(status)
                                 .font(.caption2)
                                 .foregroundStyle(BrushPalette.mint)
                         }

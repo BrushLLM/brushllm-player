@@ -211,3 +211,10 @@
 "update.available" = "새 버전이 있습니다";
 "update.download" = "업데이트 다운로드";
 "update.failed" = "확인 실패: 네트워크 오류";
+
+// Hardware decoding status
+"video.hwdec.active" = "활성 · VideoToolbox";
+
+// Server editing
+"webdav.edit" = "편집";
+"webdav.save" = "저장";

@@ -211,3 +211,10 @@
 "update.available" = "发现新版本";
 "update.download" = "前往下载";
 "update.failed" = "检查更新失败：网络错误";
+
+// Hardware decoding status
+"video.hwdec.active" = "已启用 · VideoToolbox";
+
+// Server editing
+"webdav.edit" = "编辑";
+"webdav.save" = "保存";
