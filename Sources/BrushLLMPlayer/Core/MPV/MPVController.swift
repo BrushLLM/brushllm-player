@@ -109,6 +109,12 @@ final class MPVController {
         setOption("demuxer-readahead-secs", String(Int(AppSettings.shared.readaheadSeconds)))
         setOption("demuxer-max-bytes", "\(Int(AppSettings.shared.bufferMB))MiB")
         setOption("network-timeout", "15")
+        // Remote file streams (WebDAV/FTP/Emby over http) don't always
+        // advertise Range support, and mpv then refuses every seek with
+        // "Cannot seek in this stream" — scrubbing the progress bar killed
+        // playback. Forcing seekable lets mpv re-open the URL at the seek
+        // target (a range request); harmless for local files.
+        setOption("force-seekable", "yes")
         // User-Agent from settings (browser UA by default: many CDNs reject
         // the default "libmpv"/"Lavf" agents outright).
         setOption("user-agent", AppSettings.shared.userAgent)
