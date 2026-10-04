@@ -67,6 +67,11 @@ final class ThumbnailMPV {
         // Skip to the requested position fast (keyframe accuracy is enough
         // for a 160px preview; exact seek happens below for the final frame).
         mpv_set_option_string(handle, "hr-seek", "yes")
+        // Match the main player's User-Agent: WebDAV servers that 302 to a
+        // signed CDN URL (115, etc.) bind that URL to the UA that requested
+        // it, so the default "libmpv" agent gets HTTP 403 on the resolved
+        // playback URL the thumbnail instance is handed.
+        mpv_set_option_string(handle, "user-agent", AppSettings.shared.userAgent)
 
         guard mpv_initialize(handle) >= 0 else {
             mpv_destroy(handle)

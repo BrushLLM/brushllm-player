@@ -228,7 +228,16 @@ enum MediaServerBrowser {
         let password = MediaServerStore.shared.password(for: source)
         switch source.kind {
         case .webdav:
-            return WebDAVClient.playbackURL(source: source, path: item.id, password: password)
+            guard let url = WebDAVClient.playbackURL(source: source, path: item.id, password: password) else {
+                return nil
+            }
+            // Resolve any 302 (e.g. 115 CDN) so mpv opens the final address
+            // and never re-redirects on resume/seek — see resolvePlaybackURL.
+            // The same User-Agent mpv uses is required: the signed URL is
+            // bound to it.
+            return await WebDAVClient.resolvePlaybackURL(url, source: source,
+                                                         password: password,
+                                                         userAgent: AppSettings.shared.userAgent)
         case .smb:
             return try? SMBClient.playbackURL(source: source, path: item.id, password: password)
         case .ftp:
