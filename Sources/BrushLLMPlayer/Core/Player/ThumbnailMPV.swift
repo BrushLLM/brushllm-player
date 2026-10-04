@@ -31,15 +31,21 @@ final class ThumbnailMPV {
     }
 
     func shutdown() {
-        if let rc = renderContext {
-            mpv_render_context_free(rc)
-            renderContext = nil
+        // Serialized against captureFrame/loadFile: freeing the handle from
+        // another thread (idle-active fires on the main thread mid-seek on
+        // network streams) while captureFrame polls it crashed with
+        // EXC_BAD_ACCESS in mpv_get_property_string.
+        processingQueue.sync {
+            if let rc = renderContext {
+                mpv_render_context_free(rc)
+                renderContext = nil
+            }
+            if let mpv {
+                mpv_terminate_destroy(mpv)
+                self.mpv = nil
+            }
+            loadedPath = nil
         }
-        if let mpv {
-            mpv_terminate_destroy(mpv)
-            self.mpv = nil
-        }
-        loadedPath = nil
     }
 
     /// Creates and initializes the headless instance plus a software render
@@ -129,6 +135,7 @@ final class ThumbnailMPV {
             var rendered = false
             var tries = 0
             while tries < 60, !rendered {
+                guard handle == self.mpv else { return nil }
                 let flags = mpv_render_context_update(renderContext)
                 if flags & UInt64(MPV_RENDER_UPDATE_FRAME.rawValue) != 0 {
                     rendered = renderOnce(renderContext, width: thumbWidth, height: thumbHeight, stride: stride, pixels: &pixels)
@@ -184,6 +191,7 @@ final class ThumbnailMPV {
     private func waitForLoaded(_ handle: OpaquePointer) {
         var attempts = 0
         while attempts < 100 {
+            guard handle == self.mpv else { return }
             let idle = mpv_get_property_string(handle, "idle-active")
             let isIdle = idle.map { String(cString: $0) == "yes" } ?? true
             mpv_free(idle)
@@ -196,6 +204,8 @@ final class ThumbnailMPV {
     private func waitForSeek(_ handle: OpaquePointer, target: Double) {
         var attempts = 0
         while attempts < 80 {
+            // Bail when a shutdown reset the instance mid-poll.
+            guard handle == self.mpv else { return }
             let pos = mpv_get_property_string(handle, "time-pos")
             let value = pos.flatMap { Double(String(cString: $0)) }
             mpv_free(pos)
