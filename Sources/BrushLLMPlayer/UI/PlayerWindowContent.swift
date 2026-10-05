@@ -312,7 +312,7 @@ struct VideoViewRepresentable: NSViewRepresentable {
         }
         view.onLiveResize = { resizing, width in
             player.liveResizeWidth = width
-            player.isLiveResizing = resizing
+            player.setDragResizing(resizing)
         }
         player.videoLayer = view.videoLayer
         player.videoView = view

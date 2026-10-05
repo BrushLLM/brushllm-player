@@ -100,16 +100,43 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     @Published private(set) var isRecording = false
 
     /// Mini floating window mode (small, always-on-top).
-    /// True while the main window is being live-resized (or fullscreen-
-    /// animated). The control bar swaps to a static snapshot for the
-    /// duration — SwiftUI re-lays-out its ~100 layers every resize tick,
-    /// and the window server's processing of those updates made drags
-    /// stutter (measured: 12-15 stalls per drag with the live bar vs 3-5
-    /// with a static one).
-    @Published var isLiveResizing = false
-    /// The video area's width when the live resize started; sizes the
+    /// True while the window geometry is animating — a drag-resize (from
+    /// `VideoView`) OR a fullscreen transition (from the window
+    /// notifications). The control bar swaps to a static snapshot for the
+    /// duration — SwiftUI re-lays-out its ~100 layers every geometry tick,
+    /// and the window server's processing of those updates made the
+    /// animation stutter (measured: 12-15 stalls per drag with the live bar
+    /// vs 3-5 with a static one). The same flag also drives the GL layer's
+    /// asynchronous (vsync-aligned, off-main-thread) drawing.
+    @Published private(set) var isLiveResizing = false
+    /// Drag-resize active (reported by `VideoView`).
+    private var dragResizing = false
+    /// Fullscreen transition in flight (reported by the window notifications).
+    private var fullscreenAnimating = false
+
+    /// The video area's width when the animation started; sizes the
     /// control-bar snapshot.
     var liveResizeWidth: CGFloat = 900
+
+    /// Called by `VideoView` on drag-resize start/end.
+    func setDragResizing(_ resizing: Bool) {
+        dragResizing = resizing
+        refreshResizingState()
+    }
+
+    /// Single source of truth for the "geometry animating" state: a drag or a
+    /// fullscreen transition keeps it on. Applying the GL flag here (instead
+    /// of in `VideoView`) prevents the two triggers from clobbering each other
+    /// mid-fullscreen — the window's internal live-resize notifications fire
+    /// and clear within the same runloop tick, which used to switch the async
+    /// drawing off again immediately.
+    private func refreshResizingState() {
+        let active = dragResizing || fullscreenAnimating
+        if isLiveResizing != active {
+            isLiveResizing = active
+        }
+        videoLayer?.inLiveResize = active
+    }
 
     @Published var isMiniWindow = false {
         didSet { applyWindowLevel() }
@@ -800,6 +827,13 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         NotificationCenter.default.publisher(for: NSWindow.willEnterFullScreenNotification)
             .filter(nameFilter)
             .sink { [weak self] note in
+                // Enter the geometry-animating state for the whole transition
+                // (snapshot + async GL drawing).
+                if let window = note.object as? NSWindow {
+                    self?.liveResizeWidth = window.frame.width
+                }
+                self?.fullscreenAnimating = true
+                self?.refreshResizingState()
                 // Only remember genuinely windowed (non-mini) frames —
                 // restoring a mini frame on exit would loop.
                 if let window = note.object as? NSWindow, self?.isMiniWindow != true {
@@ -813,11 +847,22 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
             .filter(nameFilter)
             .sink { [weak self] _ in
                 self?.isMiniWindow = false
+                self?.fullscreenAnimating = false
+                self?.refreshResizingState()
+            }
+            .store(in: &cancellables)
+        NotificationCenter.default.publisher(for: NSWindow.willExitFullScreenNotification)
+            .filter(nameFilter)
+            .sink { [weak self] _ in
+                self?.fullscreenAnimating = true
+                self?.refreshResizingState()
             }
             .store(in: &cancellables)
         NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)
             .filter(nameFilter)
             .sink { [weak self] note in
+                self?.fullscreenAnimating = false
+                self?.refreshResizingState()
                 if let window = note.object as? NSWindow {
                     self?.lastWindowedFrame = window.frame
                 }

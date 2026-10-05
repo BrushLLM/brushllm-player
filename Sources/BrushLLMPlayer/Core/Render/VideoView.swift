@@ -55,18 +55,18 @@ final class VideoView: NSView {
 
     // MARK: - Live resize
 
-    /// Turns on the layer's asynchronous drawing for the duration of the
-    /// drag (see VideoLayer.inLiveResize) and swaps the control bar to a
-    /// snapshot (see PlayerCore.isLiveResizing).
+    /// Reports the drag-resize to the player. The layer's asynchronous-drawing
+    /// flag is applied centrally by `PlayerCore.refreshResizingState`, which
+    /// ORs this with any fullscreen transition — the window fires its internal
+    /// live-resize begin/end within the same tick mid-fullscreen, so setting
+    /// the flag here would switch async drawing off again immediately.
     override func viewWillStartLiveResize() {
         super.viewWillStartLiveResize()
-        videoLayer.inLiveResize = true
         onLiveResize?(true, bounds.width)
     }
 
     override func viewDidEndLiveResize() {
         super.viewDidEndLiveResize()
-        videoLayer.inLiveResize = false
         onLiveResize?(false, bounds.width)
     }
 
