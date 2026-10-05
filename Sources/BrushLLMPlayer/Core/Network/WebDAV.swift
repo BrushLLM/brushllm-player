@@ -49,7 +49,7 @@ enum WebDAVClient {
     }
 
     /// scheme://authority of the source, without any path.
-    private static func origin(of source: MediaServerSource) -> String? {
+    static func origin(of source: MediaServerSource) -> String? {
         guard var components = URLComponents(string: source.baseURL),
               components.host != nil else { return nil }
         components.path = ""
@@ -198,6 +198,7 @@ enum WebDAVClient {
         private var currentSize: Int64 = 0
         private var isDirectory = false
         private var currentText = ""
+        private var currentModified: Date?
         private var inResourceType = false
 
         init(parser: ListingParser) { self.listing = parser }
@@ -211,6 +212,7 @@ enum WebDAVClient {
                 currentPath = nil
                 currentName = nil
                 currentSize = 0
+                currentModified = nil
                 isDirectory = false
             case "resourcetype":
                 inResourceType = true
@@ -237,10 +239,14 @@ enum WebDAVClient {
                 }
             case "getcontentlength":
                 currentSize = Int64(currentText.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+            case "getlastmodified":
+                // RFC 1123: "Mon, 02 Oct 2026 18:00:00 GMT"
+                let text = currentText.trimmingCharacters(in: .whitespacesAndNewlines)
+                currentModified = ISODateParser.rfc1123(text)
             case "response":
                 if let href = currentPath {
                     let name = currentName ?? (href as NSString).lastPathComponent
-                    let item = MediaItem(id: href, name: name, isDirectory: isDirectory, size: currentSize)
+                    let item = MediaItem(id: href, name: name, isDirectory: isDirectory, size: currentSize, modifiedAt: currentModified)
                     listing.items.append(item)
                 }
             default:

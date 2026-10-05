@@ -300,6 +300,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
 
     func open(_ url: URL) {
         loadErrorMessage = nil
+        resolvedPlaylistURLs.removeAll()
         // Local files play from their path; remote URLs from the full string.
         let target = url.isFileURL ? url.path : url.absoluteString
         DebugLog.log("open: \(target)")
@@ -506,6 +507,13 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     func enqueue(_ url: URL) {
         let target = url.isFileURL ? url.path : url.absoluteString
         mpv.command("loadfile", [target, "append"])
+    }
+
+    /// Appends many URLs to the playlist. Returns the number enqueued.
+    @discardableResult
+    func enqueue(_ urls: [URL]) -> Int {
+        for url in urls { enqueue(url) }
+        return urls.count
     }
 
     func togglePlay() {
@@ -1042,6 +1050,46 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         }
     }
 
+    /// Lazy 302 resolution for playlist entries. Entries are enqueued with
+    /// their original WebDAV URL (credentials embedded) because signed CDN
+    /// URLs expire within minutes — resolving at enqueue time would 403 by
+    /// the time mpv reaches the entry. When mpv STARTS an entry, this
+    /// resolves the redirect once and replaces the entry in place, so
+    /// pause/seek re-opens the final address instead of re-redirecting.
+    private var resolvedPlaylistURLs: Set<String> = []
+
+    private func resolvePendingWebDAVEntry() {
+        let playlist = mpv.playlist
+        let index = mpv.getInt("playlist-pos") ?? -1
+        guard index >= 0, index < playlist.count else { return }
+        let rawPath = playlist[index].filename
+
+        // Only WebDAV URLs with embedded credentials need resolution; local
+        // paths, plain http and already-resolved URLs pass through.
+        guard rawPath.contains("://"), rawPath.contains("@"),
+              let url = URL(string: rawPath) else { return }
+        guard !resolvedPlaylistURLs.contains(rawPath) else { return }
+        resolvedPlaylistURLs.insert(rawPath)
+
+        // Find the source whose origin this URL belongs to.
+        let sources = MediaServerStore.shared.sources.filter { $0.kind == .webdav }
+        guard let source = sources.first(where: { src in
+            WebDAVClient.origin(of: src).map { rawPath.hasPrefix($0) } ?? false
+        }) else { return }
+        let password = MediaServerStore.shared.password(for: source)
+
+        Task { @MainActor in
+            let resolved = await WebDAVClient.resolvePlaybackURL(
+                url, source: source, password: password,
+                userAgent: AppSettings.shared.userAgent)
+            // Only replace when a redirect actually resolved to something new.
+            if resolved.absoluteString != rawPath {
+                mpv.command("loadfile", [resolved.absoluteString, "replace"])
+                DebugLog.log("playlist 302: entry \(index) resolved")
+            }
+        }
+    }
+
     // MARK: - History
 
     private func startHistoryUpdates() {
@@ -1228,6 +1276,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
             isBuffering = true
             loadErrorMessage = nil
             startBufferingTimer()
+            resolvePendingWebDAVEntry()
 
         case .fileLoaded:
             isBuffering = false

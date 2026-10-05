@@ -218,3 +218,11 @@
 // Server editing
 "webdav.edit" = "편집";
 "webdav.save" = "저장";
+
+// Browser sort & folder-to-playlist
+"browser.sort" = "정렬";
+"browser.sort.name" = "이름";
+"browser.sort.modified" = "수정 시간";
+"browser.sort.size" = "크기";
+"browser.add-to-playlist" = "재생목록에 추가";
+"browser.adding-folder" = "추가 중…";

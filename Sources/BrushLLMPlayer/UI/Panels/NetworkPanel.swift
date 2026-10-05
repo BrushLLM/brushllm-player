@@ -330,6 +330,8 @@ private struct ServersTab: View {
     @State private var pathStack: [String] = []
     @State private var items: [MediaItem] = []
     @State private var isLoading = false
+    /// True while a folder's contents are being fetched for the playlist.
+    @State private var browserAddingFolder = false
     @State private var errorMessage: String?
 
     private var browsingSource: MediaServerSource? {
@@ -362,10 +364,46 @@ private struct ServersTab: View {
                     onPlay: { url in
                         dismiss()
                         onPlay(url)
-                    }
+                    },
+                    onAddFolderToPlaylist: { folder in
+                        browserAddingFolder = true
+                        addFolderToPlaylist(source: source, folder: folder)
+                    },
+                    addingFolder: browserAddingFolder
                 )
             } else {
                 serverList
+            }
+        }
+    }
+
+    /// Adds a folder's playable files to the playlist: lists the folder,
+    /// filters playable extensions, builds playback URLs, enqueues them,
+    /// then opens the playlist sidebar so the result is visible.
+    private func addFolderToPlaylist(source: MediaServerSource, folder: MediaItem) {
+        Task { @MainActor in
+            defer { Task { @MainActor in browserAddingFolder = false } }
+            do {
+                let children = try await MediaServerBrowser.list(source: source, path: folder.id)
+                let playable = children.filter { item in
+                    !item.isDirectory
+                    && !item.name.hasPrefix(".")
+                    && MediaTypes.playableExtensions.contains(
+                        URL(fileURLWithPath: item.name).pathExtension.lowercased())
+                }
+                var urls: [URL] = []
+                for item in playable {
+                    if let url = await MediaServerBrowser.playbackURL(source: source, item: item) {
+                        urls.append(url)
+                    }
+                }
+                let count = PlayerCore.sharedForSettings.enqueue(urls)
+                if count > 0 {
+                    NotificationCenter.default.post(name: .brushPlayerShowPlaylist, object: nil)
+                }
+                DebugLog.log("add-folder: \(count) of \(children.count) items enqueued from \(folder.name)")
+            } catch {
+                DebugLog.log("add-folder failed: \(error)")
             }
         }
     }
@@ -541,9 +579,20 @@ private struct BrowserView: View {
     let onReload: () -> Void
     let onExit: () -> Void
     let onPlay: (URL) -> Void
+    /// Adds a folder's playable files to the playlist (context menu).
+    let onAddFolderToPlaylist: (MediaItem) -> Void
+    /// True while the folder listing is being fetched (parent state).
+    var addingFolder = false
+
+    @ObservedObject private var settings = AppSettings.shared
 
     private var currentPath: String {
         pathStack.last ?? "/"
+    }
+
+    /// Cached sorted items — recomputed only when items or the sort change.
+    private var sortedItems: [MediaItem] {
+        settings.mediaSort.apply(items, ascending: settings.mediaSortAscending)
     }
 
     var body: some View {
@@ -581,10 +630,17 @@ private struct BrowserView: View {
 
                 Spacer()
 
+                if addingFolder {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                        .help(L("browser.adding-folder", "Adding…"))
+                }
                 if isLoading {
                     ProgressView()
                         .scaleEffect(0.7)
                 }
+
+                sortMenu
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -617,14 +673,54 @@ private struct BrowserView: View {
         } else {
             ScrollView {
                 VStack(spacing: 4) {
-                    ForEach(items.sorted { lhs, rhs in
-                        lhs.isDirectory != rhs.isDirectory ? lhs.isDirectory : lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
-                    }) { item in
+                    ForEach(sortedItems) { item in
                         row(item)
                     }
                 }
                 .padding(12)
             }
+        }
+    }
+
+    /// The sort menu: three modes, each toggleable between ascending and
+    /// descending with an arrow indicator.
+    private var sortMenu: some View {
+        Menu {
+            ForEach([MediaSortMode.name, .modified, .size], id: \.self) { mode in
+                Button {
+                    if settings.mediaSort == mode {
+                        settings.mediaSortAscending.toggle()
+                    } else {
+                        settings.mediaSort = mode
+                        settings.mediaSortAscending = true
+                    }
+                } label: {
+                    let label = sortLabel(mode)
+                    if settings.mediaSort == mode {
+                        let arrow = settings.mediaSortAscending ? "↑" : "↓"
+                        Text("\(label) \(arrow)")
+                    } else {
+                        Text(label)
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "arrow.up.arrow.down")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .frame(width: 26, height: 20)
+        .help(L("browser.sort", "Sort"))
+    }
+
+    private func sortLabel(_ mode: MediaSortMode) -> String {
+        switch mode {
+        case .name: return L("browser.sort.name", "Name")
+        case .modified: return L("browser.sort.modified", "Modified")
+        case .size: return L("browser.sort.size", "Size")
         }
     }
 
@@ -675,6 +771,15 @@ private struct BrowserView: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            if item.isDirectory {
+                Button {
+                    onAddFolderToPlaylist(item)
+                } label: {
+                    Label(L("browser.add-to-playlist", "Add to Playlist"), systemImage: "text.badge.plus")
+                }
+            }
+        }
     }
 
     /// Emby folders are libraries, not plain directories — still folder icon;

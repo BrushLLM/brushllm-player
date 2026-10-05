@@ -137,8 +137,10 @@ enum SMBClient {
                 let childAbsolute = absolutePath(mountPoint: mountPoint, path: childPath)
                 var isDirectory: ObjCBool = false
                 FileManager.default.fileExists(atPath: childAbsolute, isDirectory: &isDirectory)
-                let size = (try? FileManager.default.attributesOfItem(atPath: childAbsolute)[.size] as? Int64) ?? 0
-                return MediaItem(id: childPath, name: entry, isDirectory: isDirectory.boolValue, size: size)
+                let attrs = try? FileManager.default.attributesOfItem(atPath: childAbsolute)
+                let size = (attrs?[.size] as? Int64) ?? 0
+                let modified = attrs?[.modificationDate] as? Date
+                return MediaItem(id: childPath, name: entry, isDirectory: isDirectory.boolValue, size: size, modifiedAt: modified)
             }
     }
 

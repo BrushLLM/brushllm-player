@@ -84,6 +84,9 @@ struct PlayerWindowContent: View {
         .onReceive(NotificationCenter.default.publisher(for: .brushPlayerOpenURLs)) { _ in
             player.open(OpenRequests.shared.consumeAll())
         }
+        .onReceive(NotificationCenter.default.publisher(for: .brushPlayerShowPlaylist)) { _ in
+            withAnimation { playlistVisible = true }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .brushPlayerShowWebDAV)) { _ in
             webDAVVisible = true
         }
@@ -377,6 +380,16 @@ enum SubtitlePanel {
 
 /// Uniform type identifiers accepted by the player.
 enum MediaTypes {
+    /// Extensions the browser treats as playable when adding a folder's
+    /// contents to the playlist. Single source for this decision.
+    static let playableExtensions: Set<String> = [
+        // Video
+        "mkv", "mp4", "m4v", "avi", "mov", "webm", "flv", "wmv", "mpg", "mpeg",
+        "ts", "m2ts", "mts", "vob", "3gp", "ogv", "rmvb", "iso", "iso9660", "m3u8",
+        // Audio
+        "mp3", "flac", "wav", "aac", "ogg", "opus", "m4a", "wma", "ape", "wv", "aiff", "alac",
+    ]
+
     static var all: [UTType] {
         var types: [UTType] = [.movie, .video, .audio, .mpeg4Movie, .quickTimeMovie, .avi]
         for ext in ["mkv", "webm", "flac", "ape", "m3u8", "ts", "m2ts", "ogg", "opus", "aac", "wv", "iso", "iso9660"] {
@@ -390,4 +403,6 @@ enum MediaTypes {
 
 extension Notification.Name {
     static let brushPlayerShowWebDAV = Notification.Name("dev.brushllm.showWebDAV")
+    /// Opens the playlist sidebar (e.g. after adding a folder's files).
+    static let brushPlayerShowPlaylist = Notification.Name("dev.brushllm.showPlaylist")
 }

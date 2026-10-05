@@ -85,10 +85,11 @@ enum EmbyClient {
                 let Id: String?
                 let ItemType: String?
                 let Size: Int64?
+                let DateModified: String?
                 let IsFolder: Bool?
 
                 enum CodingKeys: String, CodingKey {
-                    case Name, Id, Size, IsFolder
+                    case Name, Id, Size, DateModified, IsFolder
                     case ItemType = "Type"
                 }
             }
@@ -97,7 +98,7 @@ enum EmbyClient {
         var components = URLComponents(string: apiBase(source) + "/Users/\(session.userID)/Items")
         components?.queryItems = [
             URLQueryItem(name: "ParentId", value: parentID.isEmpty ? nil : parentID),
-            URLQueryItem(name: "Fields", value: "Size"),
+            URLQueryItem(name: "Fields", value: "Size,DateModified"),
             URLQueryItem(name: "SortBy", value: "SortName"),
         ].compactMap { $0 }
         guard let url = components?.url else { throw EmbyError.badURL }
@@ -119,7 +120,13 @@ enum EmbyClient {
         return decoded.Items.compactMap { item in
             guard let id = item.Id, let name = item.Name else { return nil }
             let isFolder = item.IsFolder ?? (item.ItemType == "Folder")
-            return MediaItem(id: id, name: name, isDirectory: isFolder, size: item.Size ?? 0)
+            // Emby DateModified is ISO 8601 with fractional seconds.
+            let modified = item.DateModified.flatMap {
+                let formatter = ISO8601DateFormatter()
+                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                return formatter.date(from: $0) ?? ISO8601DateFormatter().date(from: $0)
+            }
+            return MediaItem(id: id, name: name, isDirectory: isFolder, size: item.Size ?? 0, modifiedAt: modified)
         }
     }
 

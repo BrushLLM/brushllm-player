@@ -43,6 +43,72 @@ struct MediaItem: Identifiable {
     let name: String
     let isDirectory: Bool
     let size: Int64
+    /// Modification time when the protocol reports it; nil otherwise.
+    let modifiedAt: Date?
+
+    init(id: String, name: String, isDirectory: Bool, size: Int64, modifiedAt: Date? = nil) {
+        self.id = id
+        self.name = name
+        self.isDirectory = isDirectory
+        self.size = size
+        self.modifiedAt = modifiedAt
+    }
+}
+
+/// Browser sort modes. Direction is separate so the menu can toggle it.
+enum MediaSortMode: String {
+    case name
+    case modified
+    case size
+
+    /// Sorts items by the mode's rules. The direction only applies to the
+    /// mode's primary key; ties and unknown values (nil dates, folders in
+    /// size mode) fall back to an always-ascending name comparison so they
+    /// keep a stable position when the direction is toggled.
+    func apply(_ items: [MediaItem], ascending: Bool) -> [MediaItem] {
+        items.sorted { lhs, rhs in
+            primary(lhs, rhs, ascending: ascending) == .orderedAscending
+        }
+    }
+
+    private func primary(_ lhs: MediaItem, _ rhs: MediaItem, ascending: Bool) -> ComparisonResult {
+        switch self {
+        case .name:
+            // Folders first in name mode (the long-standing default) —
+            // placement is not direction-dependent.
+            if lhs.isDirectory != rhs.isDirectory { return lhs.isDirectory ? .orderedAscending : .orderedDescending }
+            return directional(lhs.name.localizedCaseInsensitiveCompare(rhs.name), ascending)
+        case .modified:
+            // Files and folders together; nil dates fall back to name.
+            if let l = lhs.modifiedAt, let r = rhs.modifiedAt, l != r {
+                return directional(l < r ? .orderedAscending : .orderedDescending, ascending)
+            }
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name)
+        case .size:
+            // Files by size; folders at the bottom (not direction-dependent),
+            // among themselves by modification time, per spec.
+            if lhs.isDirectory != rhs.isDirectory { return lhs.isDirectory ? .orderedDescending : .orderedAscending }
+            if lhs.isDirectory && rhs.isDirectory {
+                if let l = lhs.modifiedAt, let r = rhs.modifiedAt, l != r {
+                    return directional(l < r ? .orderedAscending : .orderedDescending, ascending)
+                }
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name)
+            }
+            if lhs.size != rhs.size {
+                return directional(lhs.size < rhs.size ? .orderedAscending : .orderedDescending, ascending)
+            }
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name)
+        }
+    }
+
+    private func directional(_ result: ComparisonResult, _ ascending: Bool) -> ComparisonResult {
+        guard !ascending else { return result }
+        switch result {
+        case .orderedAscending: return .orderedDescending
+        case .orderedDescending: return .orderedAscending
+        case .orderedSame: return .orderedSame
+        }
+    }
 }
 
 /// Manages media servers of all kinds: metadata in UserDefaults, passwords

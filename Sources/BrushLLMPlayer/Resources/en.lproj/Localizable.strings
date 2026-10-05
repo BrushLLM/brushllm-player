@@ -218,3 +218,11 @@
 // Server editing
 "webdav.edit" = "Edit";
 "webdav.save" = "Save";
+
+// Browser sort & folder-to-playlist
+"browser.sort" = "Sort";
+"browser.sort.name" = "Name";
+"browser.sort.modified" = "Modified";
+"browser.sort.size" = "Size";
+"browser.add-to-playlist" = "Add to Playlist";
+"browser.adding-folder" = "Adding…";

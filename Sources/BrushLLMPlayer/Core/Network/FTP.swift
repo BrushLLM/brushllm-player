@@ -111,8 +111,9 @@ enum FTPClient {
         let type = facts["type"] ?? ""
         let isDirectory = type == "dir" || type == "cdir" || type == "pdir"
         let size = Int64(facts["size"] ?? "0") ?? 0
+        let modified = facts["modify"].flatMap(ISODateParser.mlsdModify)
         guard type != "cdir" && type != "pdir" else { return nil }
-        return MediaItem(id: name, name: name, isDirectory: isDirectory, size: size)
+        return MediaItem(id: name, name: name, isDirectory: isDirectory, size: size, modifiedAt: modified)
     }
 
     /// Classic unix LIST: `drwxr-xr-x 1 owner group 4096 Jan 1 12:00 name`.
@@ -122,11 +123,16 @@ enum FTPClient {
               parts[0].hasPrefix("-") || parts[0].hasPrefix("d") || parts[0].hasPrefix("l") else { return nil }
         let isDirectory = parts[0].hasPrefix("d")
         let size = Int64(parts[4]) ?? 0
+        // Columns 5-7 are the date: month, day, year-or-time. Parsed when
+        // possible so time sorting works on servers without MLSD.
+        let modified = parts.count >= 8
+            ? ISODateParser.unixList(month: parts[5], day: parts[6], yearOrTime: parts[7])
+            : nil
         // The file name is everything after the 8th column (may contain spaces).
         let nameParts = parts.dropFirst(8)
         let name = nameParts.joined(separator: " ")
         guard !name.isEmpty else { return nil }
-        return MediaItem(id: name, name: name, isDirectory: isDirectory, size: size)
+        return MediaItem(id: name, name: name, isDirectory: isDirectory, size: size, modifiedAt: modified)
     }
 }
 

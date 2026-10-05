@@ -24,6 +24,8 @@ final class AppSettings: ObservableObject {
         static let screenshotDirectory = "screenshotDirectory"
         static let recordingDirectory = "recordingDirectory"
         static let autoLoadSubtitles = "autoLoadSubtitles"
+        static let mediaSort = "mediaSort"
+        static let mediaSortAscending = "mediaSortAscending"
         static let userAgent = "userAgent"
         static let readaheadSecs = "readaheadSecs"
         static let bufferMB = "bufferMB"
@@ -56,6 +58,17 @@ final class AppSettings: ObservableObject {
 
     @Published var startMuted: Bool {
         didSet { defaults.set(startMuted, forKey: Key.muted) }
+    }
+
+    /// Browser sort mode (name / modified / size), persisted.
+    @Published var mediaSort: MediaSortMode {
+        didSet {
+            defaults.set(mediaSort.rawValue, forKey: Key.mediaSort)
+        }
+    }
+    /// Sort direction for the browser sort, persisted.
+    @Published var mediaSortAscending: Bool {
+        didSet { defaults.set(mediaSortAscending, forKey: Key.mediaSortAscending) }
     }
 
     @Published var hardwareDecoding: Bool {
@@ -156,6 +169,8 @@ final class AppSettings: ObservableObject {
         defaultVolume = defaults.object(forKey: Key.volume) as? Double ?? 100
         startMuted = defaults.bool(forKey: Key.muted)
         hardwareDecoding = defaults.object(forKey: Key.hardwareDecoding) as? Bool ?? true
+        mediaSort = MediaSortMode(rawValue: defaults.string(forKey: Key.mediaSort) ?? "") ?? .name
+        mediaSortAscending = defaults.object(forKey: Key.mediaSortAscending) as? Bool ?? true
         loopMode = LoopMode(rawValue: defaults.string(forKey: Key.loopMode) ?? "") ?? .off
         aspectMode = PlayerCore.AspectMode(rawValue: defaults.string(forKey: Key.aspectMode) ?? "") ?? .fit
         let override = defaults.string(forKey: Key.aspectOverride)
