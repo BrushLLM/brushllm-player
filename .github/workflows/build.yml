@@ -34,7 +34,7 @@ jobs:
         run: |
           set -e
           VERSION="${GITHUB_REF_NAME#v}"
-          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.4"  # workflow_dispatch: no tag
+          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.5"  # workflow_dispatch: no tag
           APP="build/BrushLLM Player.app"
           DMG="build/BrushLLM.Player-$VERSION-arm64.dmg"
           STAGING=$(mktemp -d)
@@ -68,6 +68,12 @@ jobs:
           cat > /tmp/release-notes.md << EOF
           An open-source cross-platform media player built on mpv — plays virtually every format, streams from WebDAV / SMB / FTP / Emby / Jellyfin, and ships a 9-language UI.
 
+          ## What's new in ${VERSION} (macOS app)
+
+          - **Browser sorting** — sort media server folders by name, modified date, or size; pick the same option again to flip ascending/descending. Works across WebDAV, SMB, FTP, Emby and Jellyfin.
+          - **Folder to playlist** — right-click a folder in the browser and choose "Add to Playlist" to enqueue every playable file inside it, then the playlist panel opens automatically.
+          - **Smoother WebDAV streaming on 115/OpenList** — the server's redirect is resolved once when a playlist entry starts, so pausing and seeking no longer re-trigger it.
+
           ## Downloads
 
           | Your system | Download |
@@ -84,7 +90,7 @@ jobs:
           ## Features
 
           - **Playback** — every mpv-supported format, hardware decoding, HDR output, A-B loop, speed control, frame stepping
-          - **Media servers** — WebDAV, SMB, FTP, Emby and Jellyfin
+          - **Media servers** — WebDAV, SMB, FTP, Emby and Jellyfin; sortable browser and folder-to-playlist
           - **Network streams** — HTTP(S) direct links and m3u8/HLS
           - **Subtitles** — auto-load matching files, external loading, live styling
           - **9-language UI** with instant switching, manual update checks
