@@ -1,9 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getVersion } from "@tauri-apps/api/app";
+import { openUrl as openExternal } from "@tauri-apps/plugin-opener";
 
 import { applySnapshot, CommandGate, commandError, initialView, sameMedia, trackFraction, volumeAtClick } from "./player-state";
 import type { StateSnapshot } from "./player-state";
+
+const GITHUB_PROJECT_URL = "https://github.com/BrushLLM/brushllm-player";
+const GITHUB_RELEASES_URL = "https://github.com/BrushLLM/brushllm-player/releases";
 
 function formatTime(seconds: number): string {
   if (!isFinite(seconds) || seconds < 0) return "0:00";
@@ -23,11 +28,67 @@ export default function App() {
   const [invokeError, setInvokeError] = useState<{ generation: number; message: string } | null>(null);
   const [scrubbing, setScrubbing] = useState(false);
   const [scrubPosition, setScrubPosition] = useState(0);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [appVersion, setAppVersion] = useState<string | null>(null);
+  const [versionLoading, setVersionLoading] = useState(true);
   const trackRef = useRef<HTMLDivElement>(null);
+  const aboutDialogRef = useRef<HTMLElement>(null);
+  const aboutCloseRef = useRef<HTMLButtonElement>(null);
   const dragCleanup = useRef<(() => void) | null>(null);
   const mounted = useRef(false);
   const commandGate = useRef(new CommandGate());
   const state = view.player;
+
+  const closeAbout = useCallback(() => setAboutOpen(false), []);
+
+  useEffect(() => {
+    if (!aboutOpen || appVersion !== null) return;
+    let cancelled = false;
+    setVersionLoading(true);
+    void getVersion()
+      .then((version) => {
+        if (!cancelled) setAppVersion(version || "Unavailable");
+      })
+      .catch(() => {
+        if (!cancelled) setAppVersion("Unavailable");
+      })
+      .finally(() => {
+        if (!cancelled) setVersionLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [aboutOpen, appVersion]);
+
+  useEffect(() => {
+    if (!aboutOpen) return;
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeAbout();
+        return;
+      }
+      if (event.key === "Tab") {
+        const focusable = aboutDialogRef.current?.querySelectorAll<HTMLElement>(
+          "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
+        );
+        if (!focusable?.length) return;
+        const items = Array.from(focusable);
+        const current = document.activeElement as HTMLElement | null;
+        const index = current ? items.indexOf(current) : -1;
+        const next = event.shiftKey
+          ? (index <= 0 ? items.length - 1 : index - 1)
+          : (index === -1 || index === items.length - 1 ? 0 : index + 1);
+        event.preventDefault();
+        items[next].focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    aboutCloseRef.current?.focus();
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      if (previouslyFocused?.isConnected) previouslyFocused.focus();
+    };
+  }, [aboutOpen, closeAbout]);
 
   const acceptSnapshot = useCallback((snapshot: StateSnapshot) => {
     const next = applySnapshot(viewRef.current, snapshot);
@@ -216,8 +277,81 @@ export default function App() {
               <div className="volume-fill" style={{ width: `${(state.volume / 130) * 100}%` }} />
             </div>
           </div>
+          <button
+            className="tool-btn about-trigger"
+            onClick={() => setAboutOpen(true)}
+            aria-label="About BrushLLM Player"
+            aria-haspopup="dialog"
+            title="About"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="12" r="9" />
+              <line x1="12" y1="10.5" x2="12" y2="16" />
+              <circle cx="12" cy="7.5" r="0.7" fill="currentColor" stroke="none" />
+            </svg>
+          </button>
         </div>
       </div>
+
+      {aboutOpen && (
+        <div
+          className="about-overlay"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeAbout();
+          }}
+        >
+          <section
+            id="about-dialog"
+            className="about-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="about-dialog-title"
+            aria-describedby="about-dialog-description"
+          >
+            <div className="about-header">
+              <div>
+                <h2 id="about-dialog-title">BrushLLM Player</h2>
+                <p className="about-version">
+                  Version {versionLoading ? "Loading…" : appVersion ?? "Unavailable"}
+                </p>
+              </div>
+              <button
+                ref={aboutCloseRef}
+                className="tool-btn about-close"
+                onClick={closeAbout}
+                aria-label="Close About dialog"
+                title="Close"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <p id="about-dialog-description" className="about-description">Powered by mpv.</p>
+            <p className="about-license">
+              Licensed under the GNU General Public License, version 3 (GPL v3). You may copy,
+              distribute, and modify this software under the terms of that license.
+            </p>
+
+            <div className="about-links" aria-label="Project links">
+              <button className="about-link" type="button" onClick={() => void openExternal(GITHUB_PROJECT_URL)}>
+                GitHub project
+                <span aria-hidden="true">↗</span>
+              </button>
+              <button className="about-link" type="button" onClick={() => void openExternal(GITHUB_RELEASES_URL)}>
+                Releases
+                <span aria-hidden="true">↗</span>
+              </button>
+              <button className="about-link" type="button" onClick={() => void openExternal("https://github.com/BrushLLM/brushllm-player/blob/main/LICENSE")}>
+                Full license
+                <span aria-hidden="true">↗</span>
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

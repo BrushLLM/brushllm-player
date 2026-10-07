@@ -35,6 +35,12 @@ struct BrushLLMPlayerApp: App {
         Settings {
             SettingsWindow()
         }
+
+        Window(L("settings.about", "About"), id: "about") {
+            AboutWindow()
+        }
+        .windowResizability(.contentSize)
+        .defaultSize(width: 360, height: 430)
     }
 }
 
@@ -119,8 +125,16 @@ extension Notification.Name {
 struct BrushLLMPlayerCommands: Commands {
     let player: PlayerCore
     var refreshToken: Int = 0
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
+        CommandGroup(replacing: .appInfo) {
+            Button(L("about.menu", "About BrushLLM Player")) {
+                NSApp.activate(ignoringOtherApps: true)
+                openWindow(id: "about")
+            }
+        }
+
         CommandGroup(replacing: .newItem) {
             Button(L("menu.open", "Open…")) {
                 OpenMediaPanel.present { urls in

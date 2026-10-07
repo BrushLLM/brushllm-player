@@ -226,3 +226,12 @@
 "browser.sort.size" = "大小";
 "browser.add-to-playlist" = "加入播放清單";
 "browser.adding-folder" = "正在加入…";
+
+// Native About window
+"about.menu" = "關於 BrushLLM Player";
+"about.description" = "一款由 mpv 驅動的 macOS 媒體播放器。";
+"about.powered-by" = "由 mpv 驅動";
+"about.license" = "採用 GPL v3 授權";
+"about.github" = "GitHub 專案";
+"about.releases" = "發行版本";
+"about.license-link" = "完整授權條款";
