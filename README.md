@@ -21,7 +21,13 @@
   <img src=".github/assets/screenshot.png" width="800" alt="BrushLLM Player">
 </p>
 
-## ✨ Features
+[English](#english) | [Deutsch](#deutsch) | [Español](#español) | [Français](#français) | [Bahasa Indonesia](#bahasa-indonesia) | [Italiano](#italiano) | [Nederlands](#nederlands) | [Polski](#polski) | [Português (BR)](#português-br) | [Türkçe](#türkçe) | [Tiếng Việt](#tiếng-việt) | [简体中文](#简体中文) | [繁體中文](#繁體中文) | [日本語](#日本語) | [한국어](#한국어)
+
+---
+
+## English
+
+### ✨ Features
 
 - **Playback** — every mpv-supported format (MKV, MP4, AVI, MOV, WebM, FLAC, MP3, …) · hardware decoding (VideoToolbox, live toggle) · HDR output (PQ + EDR) · ISO disc images (Blu-ray largest-title, DVD seamless multi-VOB via EDL) · A-B loop · playback speed · frame stepping · chapters
 - **Media servers** — browse and play directly from **WebDAV, SMB, FTP, Emby and Jellyfin**; sortable browser (name / modified / size) and folder-to-playlist
@@ -30,7 +36,7 @@
 - **Library & tools** — playlist with drag-reorder · history with resume · bookmarks · screenshots · stream recording · equalizer · mini floating window
 - **Also** — 15-language UI with instant switching · manual check-for-updates · zero telemetry
 
-## 📥 Download
+### 📥 Download
 
 Grab the latest installer from [Releases](https://github.com/BrushLLM/brushllm-player/releases):
 
@@ -42,7 +48,7 @@ Grab the latest installer from [Releases](https://github.com/BrushLLM/brushllm-p
 
 > **Apps are unsigned.** macOS: right-click the app → **Open** on first launch (Gatekeeper). Windows: choose **Run anyway** when SmartScreen appears — the installer opens with a 15-language selector and bundles mpv, so no extra downloads are needed.
 
-## 🌐 UI Languages
+### 🌐 UI Languages
 
 English · Deutsch · Español · Français · Bahasa Indonesia · Italiano · Nederlands · Polski · Português (BR) · Türkçe · Tiếng Việt · 日本語 · 简体中文 · 繁體中文 · 한국어
 
@@ -76,17 +82,14 @@ macOS requires Xcode 15+ (Swift 5.9); Swift Package Manager resolves MPVKit auto
 
 </details>
 
-## ⚠️ Known limitations
+### ⚠️ Known limitations
 
 - The Windows app is a newer cross-platform rewrite — it currently covers playback, controls and file opening; the remaining macOS features are being migrated.
 - Apps are unsigned (code signing can be added to CI later).
 
-<details>
-<summary><strong>🌍 Translations</strong></summary>
+---
 
-[Deutsch](#deutsch) | [Español](#español) | [Français](#français) | [Bahasa Indonesia](#bahasa-indonesia) | [Italiano](#italiano) | [Nederlands](#nederlands) | [Polski](#polski) | [Português (BR)](#português-br) | [Türkçe](#türkçe) | [Tiếng Việt](#tiếng-việt) | [简体中文](#简体中文) | [繁體中文](#繁體中文) | [日本語](#日本語) | [한국어](#한국어)
-
-### Deutsch
+## Deutsch
 
 Ein Open-Source-Mediaplayer auf mpv-Basis — spielt praktisch jedes Format, streamt von WebDAV / SMB / FTP / Emby / Jellyfin und bietet eine 15-sprachige Oberfläche.
 
@@ -96,7 +99,11 @@ Ein Open-Source-Mediaplayer auf mpv-Basis — spielt praktisch jedes Format, str
 
 **📥 Herunterladen:** aktuelle Installationspakete auf [Releases](https://github.com/BrushLLM/brushllm-player/releases) — macOS `.dmg` (Apple Silicon), Windows `.exe` (x64 / ARM64). Unsignierte Apps lösen beim ersten Start eine Warnung aus (macOS: Rechtsklick → „Öffnen“; Windows: „Ausführen“ wählen).
 
-### Español
+Entwicklung und Architektur: siehe Abschnitt [English](#english).
+
+---
+
+## Español
 
 Un reproductor multimedia de código abierto basado en mpv — reproduce casi cualquier formato, transmite desde WebDAV / SMB / FTP / Emby / Jellyfin e incluye una interfaz en 15 idiomas.
 
@@ -106,7 +113,11 @@ Un reproductor multimedia de código abierto basado en mpv — reproduce casi cu
 
 **📥 Descarga:** instaladores en [Releases](https://github.com/BrushLLM/brushllm-player/releases) — macOS `.dmg` (Apple Silicon), Windows `.exe` (x64 / ARM64). Apps sin firmar: en el primer inicio, macOS exige clic derecho → *Abrir*; Windows muestra SmartScreen → *Ejecutar de todas formas*.
 
-### Français
+Desarrollo y arquitectura: ver la sección [English](#english).
+
+---
+
+## Français
 
 Un lecteur multimédia open source basé sur mpv — lit pratiquement tous les formats, diffuse depuis WebDAV / SMB / FTP / Emby / Jellyfin et propose une interface en 15 langues.
 
@@ -116,7 +127,11 @@ Un lecteur multimédia open source basé sur mpv — lit pratiquement tous les f
 
 **📥 Téléchargement :** installateurs sur [Releases](https://github.com/BrushLLM/brushllm-player/releases) — macOS `.dmg` (Apple Silicon), Windows `.exe` (x64 / ARM64). Apps non signées : au premier lancement, macOS exige clic droit puis *Ouvrir* ; Windows affiche SmartScreen → *Exécuter quand même*.
 
-### Bahasa Indonesia
+Développement et architecture : voir la section [English](#english).
+
+---
+
+## Bahasa Indonesia
 
 Pemutar media open source berbasis mpv — memutar hampir semua format, menstreaming dari WebDAV / SMB / FTP / Emby / Jellyfin, dan memiliki antarmuka 15 bahasa.
 
@@ -126,7 +141,11 @@ Pemutar media open source berbasis mpv — memutar hampir semua format, menstrea
 
 **📥 Unduh:** installer di [Releases](https://github.com/BrushLLM/brushllm-player/releases) — macOS `.dmg` (Apple Silicon), Windows `.exe` (x64 / ARM64). Aplikasi tidak ditandatangani: saat pertama kali menjalankan, macOS meminta klik kanan → *Buka*; Windows SmartScreen → *Tetap jalankan*.
 
-### Italiano
+Pengembangan dan arsitektur: lihat bagian [English](#english).
+
+---
+
+## Italiano
 
 Un media player open source basato su mpv — riproduce praticamente ogni formato, trasmette da WebDAV / SMB / FTP / Emby / Jellyfin e offre un'interfaccia in 15 lingue.
 
@@ -136,7 +155,11 @@ Un media player open source basato su mpv — riproduce praticamente ogni format
 
 **📥 Download:** installazioni su [Releases](https://github.com/BrushLLM/brushllm-player/releases) — macOS `.dmg` (Apple Silicon), Windows `.exe` (x64 / ARM64). App non firmate: al primo avvio macOS richiede clic destro → *Apri*; Windows SmartScreen → *Esegui comunque*.
 
-### Nederlands
+Sviluppo e architettura: vedi la sezione [English](#english).
+
+---
+
+## Nederlands
 
 Een open-source mediaspeler op mpv-basis — speelt vrijwel elk formaat af, streamt van WebDAV / SMB / FTP / Emby / Jellyfin en heeft een interface in 15 talen.
 
@@ -146,7 +169,11 @@ Een open-source mediaspeler op mpv-basis — speelt vrijwel elk formaat af, stre
 
 **📥 Download:** installaties op [Releases](https://github.com/BrushLLM/brushllm-player/releases) — macOS `.dmg` (Apple Silicon), Windows `.exe` (x64 / ARM64). Niet-ondertekende apps: bij de eerste start vereist macOS rechtsklikken → *Openen*; Windows SmartScreen → *Toch uitvoeren*.
 
-### Polski
+Ontwikkeling en architectuur: zie de sectie [English](#english).
+
+---
+
+## Polski
 
 Odtwarzacz multimedialny open source oparty na mpv — odtwarza praktycznie każdy format, strumieniuje z WebDAV / SMB / FTP / Emby / Jellyfin i oferuje interfejs w 15 językach.
 
@@ -156,7 +183,11 @@ Odtwarzacz multimedialny open source oparty na mpv — odtwarza praktycznie każ
 
 **📥 Pobieranie:** instalatory na [Releases](https://github.com/BrushLLM/brushllm-player/releases) — macOS `.dmg` (Apple Silicon), Windows `.exe` (x64 / ARM64). Niepodpisane aplikacje: przy pierwszym uruchomieniu macOS wymaga kliknięcia prawym przyciskiem → *Otwórz*; Windows SmartScreen → *Uruchom mimo to*.
 
-### Português (BR)
+Rozwój i architektura: sekcja [English](#english).
+
+---
+
+## Português (BR)
 
 Um reprodutor de mídia de código aberto baseado em mpv — reproduz praticamente qualquer formato, transmite de WebDAV / SMB / FTP / Emby / Jellyfin e tem interface em 15 idiomas.
 
@@ -166,7 +197,11 @@ Um reprodutor de mídia de código aberto baseado em mpv — reproduz praticamen
 
 **📥 Download:** instaladores em [Releases](https://github.com/BrushLLM/brushllm-player/releases) — macOS `.dmg` (Apple Silicon), Windows `.exe` (x64 / ARM64). Apps não assinados: no primeiro uso, macOS exige clique com o botão direito → *Abrir*; Windows mostra SmartScreen → *Executar assim mesmo*.
 
-### Türkçe
+Desenvolvimento e arquitetura: veja a seção [English](#english).
+
+---
+
+## Türkçe
 
 mpv tabanlı açık kaynaklı bir medya oynatıcı — neredeyse her biçimi oynatır, WebDAV / SMB / FTP / Emby / Jellyfin üzerinden akış yapar ve 15 dilli arayüz sunar.
 
@@ -176,7 +211,11 @@ mpv tabanlı açık kaynaklı bir medya oynatıcı — neredeyse her biçimi oyn
 
 **📥 İndirme:** kurulum dosyaları [Releases](https://github.com/BrushLLM/brushllm-player/releases) sayfasında — macOS `.dmg` (Apple Silicon), Windows `.exe` (x64 / ARM64). İmzasız uygulamalar: ilk açılışta macOS sağ tık → *Aç* ister; Windows SmartScreen → *Yine de çalıştır*.
 
-### Tiếng Việt
+Geliştirme ve mimari: [English](#english) bölümüne bakın.
+
+---
+
+## Tiếng Việt
 
 Trình phát phương tiện mã nguồn mở dựa trên mpv — phát gần như mọi định dạng, phát luồng từ WebDAV / SMB / FTP / Emby / Jellyfin và có giao diện 15 ngôn ngữ.
 
@@ -186,7 +225,11 @@ Trình phát phương tiện mã nguồn mở dựa trên mpv — phát gần nh
 
 **📥 Tải xuống:** bộ cài đặt tại [Releases](https://github.com/BrushLLM/brushllm-player/releases) — macOS `.dmg` (Apple Silicon), Windows `.exe` (x64 / ARM64). Ứng dụng chưa ký: lần đầu chạy, macOS yêu cầu nhấp chuột phải → *Mở*; Windows SmartScreen → *Vẫn chạy*.
 
-### 简体中文
+Phát triển và kiến trúc: xem phần [English](#english).
+
+---
+
+## 简体中文
 
 一个基于 mpv 的开源跨平台媒体播放器 —— 支持几乎所有格式，可从 WebDAV / SMB / FTP / Emby / Jellyfin 流媒体服务器直接播放，内置 15 语言界面。
 
@@ -196,7 +239,11 @@ Trình phát phương tiện mã nguồn mở dựa trên mpv — phát gần nh
 
 **📥 下载**：最新安装包见 [Releases](https://github.com/BrushLLM/brushllm-player/releases) —— macOS `.dmg`（Apple Silicon）、Windows `.exe`（x64 / ARM64）。应用未签名 —— macOS 首次启动请右键选择“打开”；Windows 遇 SmartScreen 警告请选择“仍要运行”。
 
-### 繁體中文
+开发与架构详情见 [English](#english)。
+
+---
+
+## 繁體中文
 
 一個基於 mpv 的開源跨平台媒體播放器 —— 支援幾乎所有格式，可從 WebDAV / SMB / FTP / Emby / Jellyfin 串流伺服器直接播放，內建 15 語言介面。
 
@@ -206,7 +253,11 @@ Trình phát phương tiện mã nguồn mở dựa trên mpv — phát gần nh
 
 **📥 下載**：最新安裝包見 [Releases](https://github.com/BrushLLM/brushllm-player/releases) —— macOS `.dmg`（Apple Silicon）、Windows `.exe`（x64 / ARM64）。應用程式未簽署 —— macOS 首次啟動請右鍵選擇「開啟」；Windows 遇 SmartScreen 警告請選擇「仍要執行」。
 
-### 日本語
+開發與架構詳情見 [English](#english)。
+
+---
+
+## 日本語
 
 mpv ベースのオープンソース・クロスプラットフォームメディアプレイヤーです。ほぼすべての形式を再生し、WebDAV / SMB / FTP / Emby / Jellyfin から直接ストリーミングでき、15 言語の UI を搭載しています。
 
@@ -216,7 +267,11 @@ mpv ベースのオープンソース・クロスプラットフォームメデ�
 
 **📥 ダウンロード**：最新のインストーラーは [Releases](https://github.com/BrushLLM/brushllm-player/releases) —— macOS `.dmg`（Apple Silicon）、Windows `.exe`（x64 / ARM64）。アプリは未署名です —— macOS は初回起動時に右クリックで「開く」を選択、Windows は SmartScreen の警告で「実行」を選んでください。
 
-### 한국어
+開発とアーキテクチャの詳細は [English](#english) を参照。
+
+---
+
+## 한국어
 
 mpv 기반의 오픈소스 크로스 플랫폼 미디어 플레이어입니다. 거의 모든 형식을 재생하고, WebDAV / SMB / FTP / Emby / Jellyfin에서 직접 스트리밍할 수 있으며, 15개 언어 UI를 제공합니다.
 
@@ -226,7 +281,9 @@ mpv 기반의 오픈소스 크로스 플랫폼 미디어 플레이어입니다. 
 
 **📥 다운로드**: 최신 설치 파일은 [Releases](https://github.com/BrushLLM/brushllm-player/releases) —— macOS `.dmg`(Apple Silicon), Windows `.exe`(x64 / ARM64). 앱은 서명되지 않았습니다 —— macOS는 첫 실행 시 마우스 오른쪽 클릭으로 *열기*를, Windows는 SmartScreen 경고에서 *실행*을 선택하세요.
 
-</details>
+개발 및 아키텍처 세부 사항은 [English](#english)를 참조하세요.
+
+---
 
 ## 📄 License
 
