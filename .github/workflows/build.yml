@@ -34,7 +34,7 @@ jobs:
         run: |
           set -e
           VERSION="${GITHUB_REF_NAME#v}"
-          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.5"  # workflow_dispatch: no tag
+          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.6"  # workflow_dispatch: no tag
           APP="build/BrushLLM Player.app"
           DMG="build/BrushLLM.Player-$VERSION-arm64.dmg"
           STAGING=$(mktemp -d)
@@ -68,11 +68,17 @@ jobs:
           cat > /tmp/release-notes.md << EOF
           An open-source cross-platform media player built on mpv — plays virtually every format, streams from WebDAV / SMB / FTP / Emby / Jellyfin, and ships a 9-language UI.
 
-          ## What's new in ${VERSION} (macOS app)
+          ## What's new in ${VERSION}
 
-          - **Browser sorting** — sort media server folders by name, modified date, or size; pick the same option again to flip ascending/descending. Works across WebDAV, SMB, FTP, Emby and Jellyfin.
-          - **Folder to playlist** — right-click a folder in the browser and choose "Add to Playlist" to enqueue every playable file inside it, then the playlist panel opens automatically.
-          - **Smoother WebDAV streaming on 115/OpenList** — the server's redirect is resolved once when a playlist entry starts, so pausing and seeking no longer re-trigger it.
+          A full external audit of v0.0.5 found 20 confirmed issues (data safety, credentials, playback correctness); this release fixes all of them and adds a 78-test regression suite that now runs in CI.
+
+          - **Credential safety** — passwords and access tokens no longer persist in plaintext history/bookmarks: server entries store a logical identity, sensitive URLs go to the Keychain, and logs are redacted
+          - **Share safety** — SMB mount cleanup can never recursively delete share contents; mounts are verified by exact identity before any cleanup
+          - **WebDAV** — redirects resolve right before playback (the playlist is preserved), directory parsing handles absolute paths, and modified-date sorting now actually requests dates from servers
+          - **Sorting** — comparators are stable and transitive; FTP directory dates parse correctly
+          - **Emby/Jellyfin** — expired sessions recover automatically; media types come from the server instead of size guessing
+          - **Player fixes** — bookmarks open the correct file, playlist drag-and-drop lands where you drop it, subtitle preset colors render as shown
+          - **Windows (Tauri)** — play/pause and progress now work (property subscriptions were being rejected), the player reconnects after closing the video window, and the volume slider clicks where you point
 
           ## Downloads
 

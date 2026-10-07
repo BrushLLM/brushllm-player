@@ -120,7 +120,7 @@ jobs:
         run: |
           set -e
           VERSION="${GITHUB_REF_NAME#v}"
-          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.5"
+          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.6"
           APP="src-tauri/target/${{ matrix.target }}/release/bundle/macos/BrushLLM Player.app"
           # Installers are staged flat in installers/ so the uploaded
           # artifact has no nested paths (upload-artifact v4 roots the
@@ -140,7 +140,7 @@ jobs:
         run: |
           set -e
           VERSION="${GITHUB_REF_NAME#v}"
-          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.5"
+          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.6"
           # Arch label from the target triple, not the filename.
           case "${{ matrix.target }}" in
             x86_64*)  ARCH="x64" ;;
