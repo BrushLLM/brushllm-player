@@ -50,7 +50,13 @@
           "German",
           "Spanish",
           "French",
-          "PortugueseBR"
+          "PortugueseBR",
+          "Italian",
+          "Dutch",
+          "Polish",
+          "Turkish",
+          "Indonesian",
+          "Vietnamese"
         ],
         "displayLanguageSelector": true
       }

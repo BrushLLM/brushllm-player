@@ -66,7 +66,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           cat > /tmp/release-notes.md << EOF
-          An open-source cross-platform media player built on mpv — plays virtually every format, streams from WebDAV / SMB / FTP / Emby / Jellyfin, and ships a 9-language UI.
+          An open-source cross-platform media player built on mpv — plays virtually every format, streams from WebDAV / SMB / FTP / Emby / Jellyfin, and ships a 15-language UI.
 
           ## What's new in ${VERSION}
 
@@ -91,7 +91,7 @@ jobs:
           ## First run (apps are unsigned)
 
           - **macOS — Gatekeeper**: open the \`.dmg\`, drag **BrushLLM Player** into *Applications*, then **right-click the app and choose “Open”** (a plain double-click is blocked the first time). Confirm “Open” in the dialog.
-          - **Windows — SmartScreen**: run the \`.exe\` matching your CPU; when SmartScreen shows “Windows protected your PC”, choose **“Run anyway”**. The installer opens with a language selector (9 languages) and bundles mpv — no extra downloads needed.
+          - **Windows — SmartScreen**: run the \`.exe\` matching your CPU; when SmartScreen shows “Windows protected your PC”, choose **“Run anyway”**. The installer opens with a language selector (15 languages) and bundles mpv — no extra downloads needed.
 
           ## Features
 
@@ -99,7 +99,7 @@ jobs:
           - **Media servers** — WebDAV, SMB, FTP, Emby and Jellyfin; sortable browser and folder-to-playlist
           - **Network streams** — HTTP(S) direct links and m3u8/HLS
           - **Subtitles** — auto-load matching files, external loading, live styling
-          - **9-language UI** with instant switching, manual update checks
+          - **15-language UI** with instant switching, manual update checks
 
           The Windows app (cross-platform rewrite) currently covers playback, controls and file opening; the remaining macOS features are being migrated.
 

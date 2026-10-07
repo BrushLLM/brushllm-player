@@ -1,0 +1,218 @@
+/* BrushLLMPlayer — Bahasa Indonesia */
+
+"player.open-hint" = "Buka berkas media untuk mulai memutar";
+"player.load-failed" = "Berkas ini tidak dapat diputar";
+
+"controls.play" = "Putar";
+"controls.pause" = "Jeda";
+"controls.mute" = "Bisukan";
+"controls.unmute" = "Nyalakan suara";
+"controls.volume" = "Volume";
+"controls.speed" = "Kecepatan pemutaran";
+"controls.playlist" = "Daftar putar";
+"controls.video-settings" = "Pengaturan video";
+"controls.fullscreen" = "Layar penuh";
+
+"panel.tracks.audio" = "Audio";
+"panel.tracks.subtitle" = "Takarir";
+"panel.tracks.off" = "Mati";
+"panel.tracks.none" = "Tidak ada trek";
+
+"panel.playlist.title" = "Daftar putar";
+"panel.playlist.empty" = "Daftar putar kosong";
+"panel.playlist.clear" = "Bersihkan";
+"panel.playlist.shuffle" = "Acak";
+
+"loop.off" = "Tanpa pengulangan";
+"loop.file" = "Ulangi berkas";
+"loop.playlist" = "Ulangi daftar putar";
+
+"video.aspect" = "Rasio aspek";
+"video.aspect.fit" = "Sesuaikan ke jendela";
+"video.aspect.fill" = "Isi jendela";
+"video.aspect.stretch" = "Rentangkan ke jendela";
+"video.hwdec" = "Dekode perangkat keras";
+
+"settings.general" = "Umum";
+"settings.general.language" = "Bahasa";
+"settings.language.system" = "Bahasa sistem";
+"settings.general.language-note" = "Perubahan langsung diterapkan ke sebagian besar antarmuka.";
+"settings.playback" = "Pemutaran";
+"settings.playback.volume" = "Volume bawaan";
+"settings.playback.muted" = "Mulai dibisukan";
+"settings.playback.loop" = "Mode pengulangan bawaan";
+"settings.video" = "Video";
+"settings.video.hwdec" = "Dekode perangkat keras (VideoToolbox)";
+"settings.video.hwdec.hint" = "Mempercepat dekode H.264, H.265, dan AV1.";
+"settings.subtitle" = "Takarir";
+
+"menu.open" = "Buka…";
+"menu.playback" = "Pemutaran";
+"menu.play" = "Putar";
+"menu.pause" = "Jeda";
+"menu.stop" = "Hentikan";
+"menu.step-forward" = "Maju 5 detik";
+"menu.step-backward" = "Mundur 5 detik";
+"menu.mute" = "Bisukan";
+"menu.volume-up" = "Naikkan volume";
+"menu.volume-down" = "Turunkan volume";
+"menu.next" = "Berikutnya";
+"menu.previous" = "Sebelumnya";
+"menu.loop" = "Pengulangan";
+"menu.video" = "Video";
+"menu.audio" = "Audio";
+"menu.subtitle" = "Takarir";
+"menu.playlist" = "Daftar putar";
+
+"settings.video.hwdec.note" = "Langsung diterapkan; jika pemutaran bermasalah, buka ulang berkasnya.";
+"menu.next-chapter" = "Bab berikutnya";
+"menu.previous-chapter" = "Bab sebelumnya";
+"panel.chapters" = "Bab";
+"panel.chapters.none" = "Tidak ada bab";
+"menu.ab-loop" = "Putaran A-B";
+"ab-loop.set-a" = "Atur titik A";
+"ab-loop.set-b" = "Atur titik B";
+"ab-loop.clear" = "Hapus putaran A-B";
+"menu.frame-step" = "Maju satu bingkai";
+"menu.frame-back-step" = "Mundur satu bingkai";
+"menu.ontop" = "Selalu di atas";
+"menu.screenshot" = "Tangkapan layar";
+"video.ontop" = "Selalu di atas";
+"video.sync" = "Sinkron A/V";
+"video.audio-delay" = "Tundaan audio";
+"video.video-delay" = "Tundaan video";
+"video.delay-reset" = "Atur ulang";
+
+"menu.open-url" = "Buka URL…";
+"menu.webdav" = "Buka WebDAV…";
+"menu.load-subtitle" = "Muat berkas takarir…";
+"menu.start-recording" = "Mulai merekam";
+"menu.stop-recording" = "Hentikan perekaman";
+"menu.bookmark-add" = "Tambah markah";
+"panel.url.hint" = "Tautan media langsung atau alamat m3u8/HLS";
+"panel.url.open" = "Putar";
+"panel.cancel" = "Batal";
+"panel.subtitle.hint" = "Pilih berkas takarir";
+"panel.history" = "Riwayat";
+"panel.history.empty" = "Belum ada riwayat pemutaran";
+"panel.history.clear" = "Bersihkan riwayat";
+"panel.bookmarks" = "Markah";
+"panel.bookmarks.empty" = "Belum ada markah";
+"webdav.add" = "Tambah server…";
+"webdav.select" = "Pilih server";
+"webdav.empty" = "Belum ada server WebDAV yang dikonfigurasi";
+"webdav.url" = "URL server";
+"webdav.username" = "Nama pengguna";
+"webdav.password" = "Kata sandi";
+"webdav.password-keychain" = "Kata sandi disimpan di Keychain.";
+"webdav.connect" = "Tambah & sambungkan";
+"webdav.retry" = "Coba lagi";
+"webdav.empty-folder" = "Folder kosong";
+"controls.pip" = "Jendela mini";
+"subtitle.font-size" = "Ukuran huruf";
+"subtitle.border-size" = "Lebar garis tepi";
+"subtitle.position" = "Posisi vertikal";
+"subtitle.color" = "Warna teks";
+"subtitle.border-color" = "Warna garis tepi";
+"subtitle.live-hint" = "Perubahan diterapkan ke berkas yang sedang diputar.";
+
+"video.hdr" = "Output HDR";
+
+"controls.equalizer" = "Ekualiser";
+"eq.bass" = "Bas";
+"eq.mid" = "Tengah";
+"eq.treble" = "Treble";
+"eq.preset.flat" = "Datar";
+"eq.preset.pop" = "Pop";
+"eq.preset.rock" = "Rock";
+"eq.preset.voice" = "Suara";
+
+"panel.delete" = "Hapus";
+"panel.bookmarks.clear" = "Bersihkan markah";
+"controls.pip-exit" = "Keluar dari jendela mini";
+
+"settings.storage" = "Penyimpanan";
+"settings.screenshot-dir" = "Folder tangkapan layar";
+"settings.recording-dir" = "Folder rekaman";
+"settings.choose" = "Pilih…";
+
+"player.iso-failed" = "Citra disk tidak dapat dibuka";
+"player.iso-no-video" = "Tidak ada video pada citra disk";
+
+"player.record-failed" = "Perekaman gagal: stream ini tidak dapat disalin dengan stream-copy";
+"player.slow-load-hint" = "Masih memuat… periksa izin akses berkas di Pengaturan Sistem → Privasi & Keamanan";
+
+"subtitle.auto-load" = "Muat takarir yang cocok secara otomatis";
+"subtitle.auto-load-hint" = "Memuat berkas takarir bernama sama dari folder video; bisa lambat pada folder besar atau yang tersinkron cloud.";
+
+"video.rotate" = "Rotasi";
+"video.crop" = "Pemotongan";
+"video.crop.off" = "Mati";
+"video.crop.custom" = "Khusus";
+"video.crop.top" = "Atas";
+"video.crop.bottom" = "Bawah";
+"video.crop.left" = "Kiri";
+"video.crop.right" = "Kanan";
+"controls.audio-effects" = "Efek audio";
+
+"subtitle.color.white" = "Putih";
+"subtitle.color.yellow" = "Kuning";
+"subtitle.color.violet" = "Ungu";
+"subtitle.color.mint" = "Mint";
+"subtitle.color.black" = "Hitam";
+"app.name" = "BrushLLM Player";
+
+"controls.network" = "Jaringan";
+"network.user-agent" = "User-Agent";
+"network.user-agent-reset" = "Atur ulang";
+"network.user-agent-hint" = "Dikirim dengan setiap permintaan jaringan; UA peramban lolos dari sebagian besar CDN.";
+
+"webdav.title" = "Judul";
+"webdav.scheme" = "Protokol";
+"webdav.host" = "Host";
+"webdav.port" = "Port";
+"webdav.path" = "Path";
+
+"network.tab.url" = "URL stream";
+"network.tab.servers" = "Server media";
+"network.paste" = "Tempel dari papan klip";
+"network.advanced" = "Pengaturan lanjutan";
+"webdav.connect-server" = "Sambungkan";
+"webdav.back" = "Kembali";
+
+"network.readahead" = "Baca di depan";
+"network.buffer" = "Buffer";
+"network.buffer-hint" = "Thread demuxer menyangga data di depan pemutaran; nilai lebih besar menstabilkan jaringan tidak stabil.";
+
+"media.empty" = "Belum ada server media yang dikonfigurasi";
+"webdav.share" = "Share";
+"menu.media-servers" = "Server media…";
+
+"settings.about" = "Tentang";
+"update.current" = "Versi saat ini";
+"update.check" = "Periksa Pembaruan";
+"update.checking" = "Memeriksa pembaruan…";
+"update.up-to-date" = "Sudah terbaru";
+"update.available" = "Versi baru tersedia";
+"update.download" = "Unduh Pembaruan";
+"update.failed" = "Pemeriksaan gagal: kesalahan jaringan";
+
+"video.hwdec.active" = "Aktif · VideoToolbox";
+
+"webdav.edit" = "Edit";
+"webdav.save" = "Simpan";
+
+"browser.sort" = "Urutkan";
+"browser.sort.name" = "Nama";
+"browser.sort.modified" = "Diubah";
+"browser.sort.size" = "Ukuran";
+"browser.add-to-playlist" = "Tambahkan ke Daftar Putar";
+"browser.adding-folder" = "Menambahkan…";
+
+"about.menu" = "Tentang BrushLLM Player";
+"about.description" = "Pemutar media macOS yang fokus, didukung mpv.";
+"about.powered-by" = "Didukung mpv";
+"about.license" = "Dilisensikan di bawah GPL v3";
+"about.github" = "Proyek GitHub";
+"about.releases" = "Rilis";
+"about.license-link" = "Lisensi lengkap";

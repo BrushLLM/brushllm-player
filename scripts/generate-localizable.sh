@@ -14,7 +14,7 @@ RESOURCES="Sources/BrushLLMPlayer/Resources"
 OUTPUT="Sources/BrushLLMPlayer/Core/Localization/GeneratedStrings.swift"
 
 # All languages shipped in the product, in the required order.
-LANGS=("de" "en" "es" "fr" "pt-BR" "ja" "zh-Hans" "zh-Hant" "ko")
+LANGS=("de" "en" "es" "fr" "id" "it" "nl" "pl" "pt-BR" "tr" "vi" "ja" "zh-Hans" "zh-Hant" "ko")
 
 swift_dict() {
     local file="$1"

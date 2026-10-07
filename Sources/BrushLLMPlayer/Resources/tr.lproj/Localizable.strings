@@ -1,0 +1,218 @@
+/* BrushLLMPlayer — Türkçe */
+
+"player.open-hint" = "Oynatmaya başlamak için bir medya dosyası açın";
+"player.load-failed" = "Bu dosya oynatılamadı";
+
+"controls.play" = "Oynat";
+"controls.pause" = "Duraklat";
+"controls.mute" = "Sessize al";
+"controls.unmute" = "Sesi aç";
+"controls.volume" = "Ses düzeyi";
+"controls.speed" = "Oynatma hızı";
+"controls.playlist" = "Oynatma listesi";
+"controls.video-settings" = "Video ayarları";
+"controls.fullscreen" = "Tam ekran aç/kapat";
+
+"panel.tracks.audio" = "Ses";
+"panel.tracks.subtitle" = "Altyazılar";
+"panel.tracks.off" = "Kapalı";
+"panel.tracks.none" = "Parça yok";
+
+"panel.playlist.title" = "Oynatma listesi";
+"panel.playlist.empty" = "Oynatma listesi boş";
+"panel.playlist.clear" = "Temizle";
+"panel.playlist.shuffle" = "Karıştır";
+
+"loop.off" = "Döngü kapalı";
+"loop.file" = "Dosyayı döngüye al";
+"loop.playlist" = "Listeyi döngüye al";
+
+"video.aspect" = "En boy oranı";
+"video.aspect.fit" = "Pencereye sığdır";
+"video.aspect.fill" = "Pencereyi doldur";
+"video.aspect.stretch" = "Pencereye ger";
+"video.hwdec" = "Donanım çözümleme";
+
+"settings.general" = "Genel";
+"settings.general.language" = "Dil";
+"settings.language.system" = "Sistem dili";
+"settings.general.language-note" = "Değişiklik arayüzün büyük kısmına anında uygulanır.";
+"settings.playback" = "Oynatma";
+"settings.playback.volume" = "Varsayılan ses düzeyi";
+"settings.playback.muted" = "Sessiz başlat";
+"settings.playback.loop" = "Varsayılan döngü modu";
+"settings.video" = "Video";
+"settings.video.hwdec" = "Donanım çözümleme (VideoToolbox)";
+"settings.video.hwdec.hint" = "H.264, H.265 ve AV1 çözümlemesini hızlandırır.";
+"settings.subtitle" = "Altyazılar";
+
+"menu.open" = "Aç…";
+"menu.playback" = "Oynatma";
+"menu.play" = "Oynat";
+"menu.pause" = "Duraklat";
+"menu.stop" = "Durdur";
+"menu.step-forward" = "5 sn ileri";
+"menu.step-backward" = "5 sn geri";
+"menu.mute" = "Sessize al";
+"menu.volume-up" = "Sesi yükselt";
+"menu.volume-down" = "Sesi kıs";
+"menu.next" = "Sonraki";
+"menu.previous" = "Önceki";
+"menu.loop" = "Döngü";
+"menu.video" = "Video";
+"menu.audio" = "Ses";
+"menu.subtitle" = "Altyazı";
+"menu.playlist" = "Oynatma listesi";
+
+"settings.video.hwdec.note" = "Anında uygulanır; oynatma sorunlu olursa dosyayı yeniden açın.";
+"menu.next-chapter" = "Sonraki bölüm";
+"menu.previous-chapter" = "Önceki bölüm";
+"panel.chapters" = "Bölümler";
+"panel.chapters.none" = "Bölüm yok";
+"menu.ab-loop" = "A-B döngüsü";
+"ab-loop.set-a" = "A noktasını ayarla";
+"ab-loop.set-b" = "B noktasını ayarla";
+"ab-loop.clear" = "A-B döngüsünü temizle";
+"menu.frame-step" = "Kare ileri";
+"menu.frame-back-step" = "Kare geri";
+"menu.ontop" = "Her zaman üstte";
+"menu.screenshot" = "Ekran görüntüsü";
+"video.ontop" = "Her zaman üstte";
+"video.sync" = "A/V eşitleme";
+"video.audio-delay" = "Ses gecikmesi";
+"video.video-delay" = "Video gecikmesi";
+"video.delay-reset" = "Sıfırla";
+
+"menu.open-url" = "URL aç…";
+"menu.webdav" = "WebDAV aç…";
+"menu.load-subtitle" = "Altyazı dosyası yükle…";
+"menu.start-recording" = "Kayda başla";
+"menu.stop-recording" = "Kaydı durdur";
+"menu.bookmark-add" = "Yer imi ekle";
+"panel.url.hint" = "Doğrudan medya bağlantısı veya m3u8/HLS adresi";
+"panel.url.open" = "Oynat";
+"panel.cancel" = "İptal";
+"panel.subtitle.hint" = "Bir altyazı dosyası seçin";
+"panel.history" = "Geçmiş";
+"panel.history.empty" = "Henüz oynatma geçmişi yok";
+"panel.history.clear" = "Geçmişi temizle";
+"panel.bookmarks" = "Yer imleri";
+"panel.bookmarks.empty" = "Henüz yer imi yok";
+"webdav.add" = "Sunucu ekle…";
+"webdav.select" = "Sunucu seç";
+"webdav.empty" = "Yapılandırılmış WebDAV sunucusu yok";
+"webdav.url" = "Sunucu adresi";
+"webdav.username" = "Kullanıcı adı";
+"webdav.password" = "Parola";
+"webdav.password-keychain" = "Parola Anahtar Zinciri'nde saklanır.";
+"webdav.connect" = "Ekle ve bağlan";
+"webdav.retry" = "Yeniden dene";
+"webdav.empty-folder" = "Boş klasör";
+"controls.pip" = "Mini pencere";
+"subtitle.font-size" = "Yazı boyutu";
+"subtitle.border-size" = "Kenarlık kalınlığı";
+"subtitle.position" = "Dikey konum";
+"subtitle.color" = "Metin rengi";
+"subtitle.border-color" = "Kenarlık rengi";
+"subtitle.live-hint" = "Değişiklikler o anda oynatılan dosyaya uygulanır.";
+
+"video.hdr" = "HDR çıkışı";
+
+"controls.equalizer" = "Ekolayzer";
+"eq.bass" = "Bas";
+"eq.mid" = "Orta";
+"eq.treble" = "Tiz";
+"eq.preset.flat" = "Düz";
+"eq.preset.pop" = "Pop";
+"eq.preset.rock" = "Rock";
+"eq.preset.voice" = "Ses";
+
+"panel.delete" = "Sil";
+"panel.bookmarks.clear" = "Yer imlerini temizle";
+"controls.pip-exit" = "Mini pencereden çık";
+
+"settings.storage" = "Depolama";
+"settings.screenshot-dir" = "Ekran görüntüsü klasörü";
+"settings.recording-dir" = "Kayıt klasörü";
+"settings.choose" = "Seç…";
+
+"player.iso-failed" = "Disk kalıbı açılamadı";
+"player.iso-no-video" = "Disk kalıbında video bulunamadı";
+
+"player.record-failed" = "Kayıt başarısız: bu akış stream-copy desteklemiyor";
+"player.slow-load-hint" = "Hâlâ yükleniyor… dosya erişim izinlerini Sistem Ayarları → Gizlilik ve Güvenlik'ten kontrol edin";
+
+"subtitle.auto-load" = "Eşleşen altyazıları otomatik yükle";
+"subtitle.auto-load-hint" = "Videonun klasöründen aynı adlı altyazı dosyalarını yükler; büyük veya bulutla eşitlenen klasörlerde yavaş olabilir.";
+
+"video.rotate" = "Döndürme";
+"video.crop" = "Kırpma";
+"video.crop.off" = "Kapalı";
+"video.crop.custom" = "Özel";
+"video.crop.top" = "Üst";
+"video.crop.bottom" = "Alt";
+"video.crop.left" = "Sol";
+"video.crop.right" = "Sağ";
+"controls.audio-effects" = "Ses efektleri";
+
+"subtitle.color.white" = "Beyaz";
+"subtitle.color.yellow" = "Sarı";
+"subtitle.color.violet" = "Mor";
+"subtitle.color.mint" = "Nane yeşili";
+"subtitle.color.black" = "Siyah";
+"app.name" = "BrushLLM Player";
+
+"controls.network" = "Ağ";
+"network.user-agent" = "User-Agent";
+"network.user-agent-reset" = "Sıfırla";
+"network.user-agent-hint" = "Her ağ isteğiyle gönderilir; tarayıcı UA'sı çoğu CDN'i geçer.";
+
+"webdav.title" = "Başlık";
+"webdav.scheme" = "Protokol";
+"webdav.host" = "Ana makine";
+"webdav.port" = "Port";
+"webdav.path" = "Yol";
+
+"network.tab.url" = "Akış URL'si";
+"network.tab.servers" = "Medya sunucuları";
+"network.paste" = "Panodan yapıştır";
+"network.advanced" = "Gelişmiş ayarlar";
+"webdav.connect-server" = "Bağlan";
+"webdav.back" = "Geri";
+
+"network.readahead" = "Önden okuma";
+"network.buffer" = "Arabellek";
+"network.buffer-hint" = "Demuxer iş parçacığı oynatmanın önünde veri tamponlar; büyük değerler dengesiz ağları yumuşatır.";
+
+"media.empty" = "Yapılandırılmış medya sunucusu yok";
+"webdav.share" = "Paylaşım";
+"menu.media-servers" = "Medya sunucuları…";
+
+"settings.about" = "Hakkında";
+"update.current" = "Geçerli sürüm";
+"update.check" = "Güncellemeleri denetle";
+"update.checking" = "Güncellemeler denetleniyor…";
+"update.up-to-date" = "Güncel";
+"update.available" = "Yeni sürüm var";
+"update.download" = "Güncellemeyi indir";
+"update.failed" = "Denetim başarısız: ağ hatası";
+
+"video.hwdec.active" = "Etkin · VideoToolbox";
+
+"webdav.edit" = "Düzenle";
+"webdav.save" = "Kaydet";
+
+"browser.sort" = "Sırala";
+"browser.sort.name" = "Ad";
+"browser.sort.modified" = "Değiştirilme";
+"browser.sort.size" = "Boyut";
+"browser.add-to-playlist" = "Oynatma listesine ekle";
+"browser.adding-folder" = "Ekleniyor…";
+
+"about.menu" = "BrushLLM Player Hakkında";
+"about.description" = "mpv tabanlı, odaklanmış bir macOS medya oynatıcısı.";
+"about.powered-by" = "mpv ile güçlendirildi";
+"about.license" = "GPL v3 lisansıyla sunulur";
+"about.github" = "GitHub projesi";
+"about.releases" = "Sürümler";
+"about.license-link" = "Tam lisans metni";

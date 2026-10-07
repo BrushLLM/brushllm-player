@@ -91,7 +91,13 @@ cat > "$CONTENTS/Info.plist" <<'EOF'
         <string>de</string>
         <string>es</string>
         <string>fr</string>
+        <string>id</string>
+        <string>it</string>
+        <string>nl</string>
+        <string>pl</string>
         <string>pt-BR</string>
+        <string>tr</string>
+        <string>vi</string>
         <string>ja</string>
         <string>zh-Hans</string>
         <string>zh-Hant</string>

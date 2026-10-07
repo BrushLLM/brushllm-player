@@ -1,0 +1,218 @@
+/* BrushLLMPlayer — Nederlands */
+
+"player.open-hint" = "Open een mediabestand om afspelen te starten";
+"player.load-failed" = "Kan dit bestand niet afspelen";
+
+"controls.play" = "Afspelen";
+"controls.pause" = "Pauzeren";
+"controls.mute" = "Dempen";
+"controls.unmute" = "Dempen opheffen";
+"controls.volume" = "Volume";
+"controls.speed" = "Afspeelsnelheid";
+"controls.playlist" = "Afspeellijst";
+"controls.video-settings" = "Video-instellingen";
+"controls.fullscreen" = "Volledig scherm aan/uit";
+
+"panel.tracks.audio" = "Audio";
+"panel.tracks.subtitle" = "Ondertitels";
+"panel.tracks.off" = "Uit";
+"panel.tracks.none" = "Geen sporen";
+
+"panel.playlist.title" = "Afspeellijst";
+"panel.playlist.empty" = "Afspeellijst is leeg";
+"panel.playlist.clear" = "Wissen";
+"panel.playlist.shuffle" = "Willekeurig";
+
+"loop.off" = "Niet herhalen";
+"loop.file" = "Bestand herhalen";
+"loop.playlist" = "Afspeellijst herhalen";
+
+"video.aspect" = "Beeldverhouding";
+"video.aspect.fit" = "Passend in venster";
+"video.aspect.fill" = "Venster vullen";
+"video.aspect.stretch" = "Uitrekken naar venster";
+"video.hwdec" = "Hardwaredecodering";
+
+"settings.general" = "Algemeen";
+"settings.general.language" = "Taal";
+"settings.language.system" = "Systeemtaal";
+"settings.general.language-note" = "De wijziging wordt direct op het grootste deel van de interface toegepast.";
+"settings.playback" = "Afspelen";
+"settings.playback.volume" = "Standaardvolume";
+"settings.playback.muted" = "Gedempt starten";
+"settings.playback.loop" = "Standaard herhaalmodus";
+"settings.video" = "Video";
+"settings.video.hwdec" = "Hardwaredecodering (VideoToolbox)";
+"settings.video.hwdec.hint" = "Versnelt het decoderen van H.264, H.265 en AV1.";
+"settings.subtitle" = "Ondertitels";
+
+"menu.open" = "Openen…";
+"menu.playback" = "Afspelen";
+"menu.play" = "Afspelen";
+"menu.pause" = "Pauzeren";
+"menu.stop" = "Stoppen";
+"menu.step-forward" = "5 s vooruit";
+"menu.step-backward" = "5 s terug";
+"menu.mute" = "Dempen";
+"menu.volume-up" = "Volume harder";
+"menu.volume-down" = "Volume zachter";
+"menu.next" = "Volgende";
+"menu.previous" = "Vorige";
+"menu.loop" = "Herhalen";
+"menu.video" = "Video";
+"menu.audio" = "Audio";
+"menu.subtitle" = "Ondertitels";
+"menu.playlist" = "Afspeellijst";
+
+"settings.video.hwdec.note" = "Wordt direct toegepast; open het bestand opnieuw als afspelen problemen geeft.";
+"menu.next-chapter" = "Volgend hoofdstuk";
+"menu.previous-chapter" = "Vorig hoofdstuk";
+"panel.chapters" = "Hoofdstukken";
+"panel.chapters.none" = "Geen hoofdstukken";
+"menu.ab-loop" = "A-B-lus";
+"ab-loop.set-a" = "Punt A instellen";
+"ab-loop.set-b" = "Punt B instellen";
+"ab-loop.clear" = "A-B-lus wissen";
+"menu.frame-step" = "Frame vooruit";
+"menu.frame-back-step" = "Frame terug";
+"menu.ontop" = "Altijd op de voorgrond";
+"menu.screenshot" = "Schermafbeelding";
+"video.ontop" = "Altijd op de voorgrond";
+"video.sync" = "A/V-synchronisatie";
+"video.audio-delay" = "Audiovertraging";
+"video.video-delay" = "Videovertraging";
+"video.delay-reset" = "Herstellen";
+
+"menu.open-url" = "URL openen…";
+"menu.webdav" = "WebDAV openen…";
+"menu.load-subtitle" = "Ondertitelbestand laden…";
+"menu.start-recording" = "Opname starten";
+"menu.stop-recording" = "Opname stoppen";
+"menu.bookmark-add" = "Bladwijzer toevoegen";
+"panel.url.hint" = "Directe medialink of m3u8/HLS-adres";
+"panel.url.open" = "Afspelen";
+"panel.cancel" = "Annuleren";
+"panel.subtitle.hint" = "Kies een ondertitelbestand";
+"panel.history" = "Geschiedenis";
+"panel.history.empty" = "Nog geen afspeelgeschiedenis";
+"panel.history.clear" = "Geschiedenis wissen";
+"panel.bookmarks" = "Bladwijzers";
+"panel.bookmarks.empty" = "Nog geen bladwijzers";
+"webdav.add" = "Server toevoegen…";
+"webdav.select" = "Server kiezen";
+"webdav.empty" = "Geen WebDAV-servers geconfigureerd";
+"webdav.url" = "Server-URL";
+"webdav.username" = "Gebruikersnaam";
+"webdav.password" = "Wachtwoord";
+"webdav.password-keychain" = "Het wachtwoord wordt in de Sleutelhanger bewaard.";
+"webdav.connect" = "Toevoegen en verbinden";
+"webdav.retry" = "Opnieuw";
+"webdav.empty-folder" = "Lege map";
+"controls.pip" = "Mini-venster";
+"subtitle.font-size" = "Lettergrootte";
+"subtitle.border-size" = "Randdikte";
+"subtitle.position" = "Verticale positie";
+"subtitle.color" = "Tekstkleur";
+"subtitle.border-color" = "Randkleur";
+"subtitle.live-hint" = "Wijzigingen gelden voor het bestand dat nu afspeelt.";
+
+"video.hdr" = "HDR-uitvoer";
+
+"controls.equalizer" = "Equalizer";
+"eq.bass" = "Bas";
+"eq.mid" = "Midden";
+"eq.treble" = "Hoge tonen";
+"eq.preset.flat" = "Vlak";
+"eq.preset.pop" = "Pop";
+"eq.preset.rock" = "Rock";
+"eq.preset.voice" = "Spraak";
+
+"panel.delete" = "Verwijderen";
+"panel.bookmarks.clear" = "Bladwijzers wissen";
+"controls.pip-exit" = "Mini-venster sluiten";
+
+"settings.storage" = "Opslag";
+"settings.screenshot-dir" = "Map voor schermafbeeldingen";
+"settings.recording-dir" = "Map voor opnames";
+"settings.choose" = "Kiezen…";
+
+"player.iso-failed" = "Kan de schijfimage niet openen";
+"player.iso-no-video" = "Geen video gevonden op de schijfimage";
+
+"player.record-failed" = "Opname mislukt: deze stream kan niet met stream-copy worden opgenomen";
+"player.slow-load-hint" = "Nog aan het laden… controleer de bestandstoegangsrechten in Systeeminstellingen → Privacy en beveiliging";
+
+"subtitle.auto-load" = "Bijpassende ondertitels automatisch laden";
+"subtitle.auto-load-hint" = "Laadt ondertitelbestanden met dezelfde naam uit de map van de video; kan traag zijn in grote of met de cloud gesynchroniseerde mappen.";
+
+"video.rotate" = "Rotatie";
+"video.crop" = "Bijsnijden";
+"video.crop.off" = "Uit";
+"video.crop.custom" = "Aangepast";
+"video.crop.top" = "Boven";
+"video.crop.bottom" = "Onder";
+"video.crop.left" = "Links";
+"video.crop.right" = "Rechts";
+"controls.audio-effects" = "Audio-effecten";
+
+"subtitle.color.white" = "Wit";
+"subtitle.color.yellow" = "Geel";
+"subtitle.color.violet" = "Violet";
+"subtitle.color.mint" = "Mint";
+"subtitle.color.black" = "Zwart";
+"app.name" = "BrushLLM Player";
+
+"controls.network" = "Netwerk";
+"network.user-agent" = "User-Agent";
+"network.user-agent-reset" = "Herstellen";
+"network.user-agent-hint" = "Wordt met elk netwerkverzoek meegestuurd; een browser-UA passeert de meeste CDN's.";
+
+"webdav.title" = "Titel";
+"webdav.scheme" = "Protocol";
+"webdav.host" = "Host";
+"webdav.port" = "Poort";
+"webdav.path" = "Pad";
+
+"network.tab.url" = "Stream-URL";
+"network.tab.servers" = "Mediaservers";
+"network.paste" = "Plakken vanaf klembord";
+"network.advanced" = "Geavanceerde instellingen";
+"webdav.connect-server" = "Verbinden";
+"webdav.back" = "Terug";
+
+"network.readahead" = "Vooruitlezen";
+"network.buffer" = "Buffer";
+"network.buffer-hint" = "De demuxer-thread leest voor op het afspelen; grotere waarden stabiliseren onstabiele netwerken.";
+
+"media.empty" = "Geen mediaservers geconfigureerd";
+"webdav.share" = "Share";
+"menu.media-servers" = "Mediaservers…";
+
+"settings.about" = "Over";
+"update.current" = "Huidige versie";
+"update.check" = "Naar updates zoeken";
+"update.checking" = "Updates zoeken…";
+"update.up-to-date" = "Up-to-date";
+"update.available" = "Nieuwe versie beschikbaar";
+"update.download" = "Update downloaden";
+"update.failed" = "Controle mislukt: netwerkfout";
+
+"video.hwdec.active" = "Actief · VideoToolbox";
+
+"webdav.edit" = "Bewerken";
+"webdav.save" = "Bewaren";
+
+"browser.sort" = "Sorteren";
+"browser.sort.name" = "Naam";
+"browser.sort.modified" = "Gewijzigd";
+"browser.sort.size" = "Grootte";
+"browser.add-to-playlist" = "Toevoegen aan afspeellijst";
+"browser.adding-folder" = "Toevoegen…";
+
+"about.menu" = "Over BrushLLM Player";
+"about.description" = "Een toegankelijke mediaspeler voor macOS, aangedreven door mpv.";
+"about.powered-by" = "Aangedreven door mpv";
+"about.license" = "Gelicentieerd onder GPL v3";
+"about.github" = "GitHub-project";
+"about.releases" = "Releases";
+"about.license-link" = "Volledige licentie";

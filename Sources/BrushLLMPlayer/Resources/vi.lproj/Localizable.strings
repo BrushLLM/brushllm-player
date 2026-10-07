@@ -1,0 +1,218 @@
+/* BrushLLMPlayer — Tiếng Việt */
+
+"player.open-hint" = "Mở tệp phương tiện để bắt đầu phát";
+"player.load-failed" = "Không thể phát tệp này";
+
+"controls.play" = "Phát";
+"controls.pause" = "Tạm dừng";
+"controls.mute" = "Tắt tiếng";
+"controls.unmute" = "Bật tiếng";
+"controls.volume" = "Âm lượng";
+"controls.speed" = "Tốc độ phát";
+"controls.playlist" = "Danh sách phát";
+"controls.video-settings" = "Cài đặt video";
+"controls.fullscreen" = "Bật/tắt toàn màn hình";
+
+"panel.tracks.audio" = "Âm thanh";
+"panel.tracks.subtitle" = "Phụ đề";
+"panel.tracks.off" = "Tắt";
+"panel.tracks.none" = "Không có rãnh nào";
+
+"panel.playlist.title" = "Danh sách phát";
+"panel.playlist.empty" = "Danh sách phát trống";
+"panel.playlist.clear" = "Xóa";
+"panel.playlist.shuffle" = "Ngẫu nhiên";
+
+"loop.off" = "Không lặp";
+"loop.file" = "Lặp tệp";
+"loop.playlist" = "Lặp danh sách";
+
+"video.aspect" = "Tỷ lệ khung hình";
+"video.aspect.fit" = "Vừa khung cửa sổ";
+"video.aspect.fill" = "Lấp đầy cửa sổ";
+"video.aspect.stretch" = "Kéo giãn theo cửa sổ";
+"video.hwdec" = "Giải mã bằng phần cứng";
+
+"settings.general" = "Chung";
+"settings.general.language" = "Ngôn ngữ";
+"settings.language.system" = "Ngôn ngữ hệ thống";
+"settings.general.language-note" = "Thay đổi áp dụng ngay cho hầu hết giao diện.";
+"settings.playback" = "Phát";
+"settings.playback.volume" = "Âm lượng mặc định";
+"settings.playback.muted" = "Bắt đầu tắt tiếng";
+"settings.playback.loop" = "Chế độ lặp mặc định";
+"settings.video" = "Video";
+"settings.video.hwdec" = "Giải mã bằng phần cứng (VideoToolbox)";
+"settings.video.hwdec.hint" = "Tăng tốc giải mã H.264, H.265 và AV1.";
+"settings.subtitle" = "Phụ đề";
+
+"menu.open" = "Mở…";
+"menu.playback" = "Phát";
+"menu.play" = "Phát";
+"menu.pause" = "Tạm dừng";
+"menu.stop" = "Dừng";
+"menu.step-forward" = "Tới 5 giây";
+"menu.step-backward" = "Lùi 5 giây";
+"menu.mute" = "Tắt tiếng";
+"menu.volume-up" = "Tăng âm lượng";
+"menu.volume-down" = "Giảm âm lượng";
+"menu.next" = "Tiếp theo";
+"menu.previous" = "Trước đó";
+"menu.loop" = "Lặp";
+"menu.video" = "Video";
+"menu.audio" = "Âm thanh";
+"menu.subtitle" = "Phụ đề";
+"menu.playlist" = "Danh sách phát";
+
+"settings.video.hwdec.note" = "Áp dụng ngay; nếu phát có vấn đề, hãy mở lại tệp.";
+"menu.next-chapter" = "Chương tiếp theo";
+"menu.previous-chapter" = "Chương trước";
+"panel.chapters" = "Chương";
+"panel.chapters.none" = "Không có chương";
+"menu.ab-loop" = "Vòng lặp A-B";
+"ab-loop.set-a" = "Đặt điểm A";
+"ab-loop.set-b" = "Đặt điểm B";
+"ab-loop.clear" = "Xóa vòng lặp A-B";
+"menu.frame-step" = "Tới một khung hình";
+"menu.frame-back-step" = "Lùi một khung hình";
+"menu.ontop" = "Luôn nổi";
+"menu.screenshot" = "Chụp màn hình";
+"video.ontop" = "Luôn nổi";
+"video.sync" = "Đồng bộ A/V";
+"video.audio-delay" = "Độ trễ âm thanh";
+"video.video-delay" = "Độ trễ video";
+"video.delay-reset" = "Đặt lại";
+
+"menu.open-url" = "Mở URL…";
+"menu.webdav" = "Mở WebDAV…";
+"menu.load-subtitle" = "Nạp tệp phụ đề…";
+"menu.start-recording" = "Bắt đầu ghi";
+"menu.stop-recording" = "Dừng ghi";
+"menu.bookmark-add" = "Thêm dấu trang";
+"panel.url.hint" = "Liên kết phương tiện trực tiếp hoặc địa chỉ m3u8/HLS";
+"panel.url.open" = "Phát";
+"panel.cancel" = "Hủy";
+"panel.subtitle.hint" = "Chọn tệp phụ đề";
+"panel.history" = "Lịch sử";
+"panel.history.empty" = "Chưa có lịch sử phát";
+"panel.history.clear" = "Xóa lịch sử";
+"panel.bookmarks" = "Dấu trang";
+"panel.bookmarks.empty" = "Chưa có dấu trang";
+"webdav.add" = "Thêm máy chủ…";
+"webdav.select" = "Chọn máy chủ";
+"webdav.empty" = "Chưa cấu hình máy chủ WebDAV nào";
+"webdav.url" = "URL máy chủ";
+"webdav.username" = "Tên người dùng";
+"webdav.password" = "Mật khẩu";
+"webdav.password-keychain" = "Mật khẩu được lưu trong Keychain.";
+"webdav.connect" = "Thêm & kết nối";
+"webdav.retry" = "Thử lại";
+"webdav.empty-folder" = "Thư mục trống";
+"controls.pip" = "Cửa sổ mini";
+"subtitle.font-size" = "Cỡ chữ";
+"subtitle.border-size" = "Độ dày viền";
+"subtitle.position" = "Vị trí dọc";
+"subtitle.color" = "Màu chữ";
+"subtitle.border-color" = "Màu viền";
+"subtitle.live-hint" = "Thay đổi áp dụng cho tệp đang phát.";
+
+"video.hdr" = "Xuất HDR";
+
+"controls.equalizer" = "Bộ cân bằng";
+"eq.bass" = "Trầm";
+"eq.mid" = "Trung";
+"eq.treble" = "Cao";
+"eq.preset.flat" = "Phẳng";
+"eq.preset.pop" = "Pop";
+"eq.preset.rock" = "Rock";
+"eq.preset.voice" = "Giọng nói";
+
+"panel.delete" = "Xóa";
+"panel.bookmarks.clear" = "Xóa dấu trang";
+"controls.pip-exit" = "Thoát cửa sổ mini";
+
+"settings.storage" = "Lưu trữ";
+"settings.screenshot-dir" = "Thư mục chụp màn hình";
+"settings.recording-dir" = "Thư mục ghi";
+"settings.choose" = "Chọn…";
+
+"player.iso-failed" = "Không thể mở ảnh đĩa";
+"player.iso-no-video" = "Không tìm thấy video trong ảnh đĩa";
+
+"player.record-failed" = "Ghi thất bại: luồng này không thể ghi bằng stream-copy";
+"player.slow-load-hint" = "Vẫn đang tải… kiểm tra quyền truy cập tệp trong Cài đặt Hệ thống → Quyền riêng tư & Bảo mật";
+
+"subtitle.auto-load" = "Tự động nạp phụ đề khớp";
+"subtitle.auto-load-hint" = "Nạp các tệp phụ đề cùng tên từ thư mục của video; có thể chậm trong thư mục lớn hoặc đồng bộ đám mây.";
+
+"video.rotate" = "Xoay";
+"video.crop" = "Cắt";
+"video.crop.off" = "Tắt";
+"video.crop.custom" = "Tùy chỉnh";
+"video.crop.top" = "Trên";
+"video.crop.bottom" = "Dưới";
+"video.crop.left" = "Trái";
+"video.crop.right" = "Phải";
+"controls.audio-effects" = "Hiệu ứng âm thanh";
+
+"subtitle.color.white" = "Trắng";
+"subtitle.color.yellow" = "Vàng";
+"subtitle.color.violet" = "Tím";
+"subtitle.color.mint" = "Xanh bạc hà";
+"subtitle.color.black" = "Đen";
+"app.name" = "BrushLLM Player";
+
+"controls.network" = "Mạng";
+"network.user-agent" = "User-Agent";
+"network.user-agent-reset" = "Đặt lại";
+"network.user-agent-hint" = "Được gửi với mọi yêu cầu mạng; UA trình duyệt vượt qua hầu hết CDN.";
+
+"webdav.title" = "Tiêu đề";
+"webdav.scheme" = "Giao thức";
+"webdav.host" = "Máy chủ";
+"webdav.port" = "Cổng";
+"webdav.path" = "Đường dẫn";
+
+"network.tab.url" = "URL luồng";
+"network.tab.servers" = "Máy chủ phương tiện";
+"network.paste" = "Dán từ bảng tạm";
+"network.advanced" = "Cài đặt nâng cao";
+"webdav.connect-server" = "Kết nối";
+"webdav.back" = "Quay lại";
+
+"network.readahead" = "Đọc trước";
+"network.buffer" = "Bộ đệm";
+"network.buffer-hint" = "Luồng demuxer đệm trước khi phát; giá trị lớn giúp ổn định mạng không ổn định.";
+
+"media.empty" = "Chưa cấu hình máy chủ phương tiện nào";
+"webdav.share" = "Chia sẻ";
+"menu.media-servers" = "Máy chủ phương tiện…";
+
+"settings.about" = "Giới thiệu";
+"update.current" = "Phiên bản hiện tại";
+"update.check" = "Kiểm tra bản cập nhật";
+"update.checking" = "Đang kiểm tra cập nhật…";
+"update.up-to-date" = "Đã cập nhật";
+"update.available" = "Có phiên bản mới";
+"update.download" = "Tải bản cập nhật";
+"update.failed" = "Kiểm tra thất bại: lỗi mạng";
+
+"video.hwdec.active" = "Đang bật · VideoToolbox";
+
+"webdav.edit" = "Sửa";
+"webdav.save" = "Lưu";
+
+"browser.sort" = "Sắp xếp";
+"browser.sort.name" = "Tên";
+"browser.sort.modified" = "Ngày sửa";
+"browser.sort.size" = "Dung lượng";
+"browser.add-to-playlist" = "Thêm vào Danh sách phát";
+"browser.adding-folder" = "Đang thêm…";
+
+"about.menu" = "Giới thiệu BrushLLM Player";
+"about.description" = "Trình phát phương tiện macOS tinh gọn, vận hành bằng mpv.";
+"about.powered-by" = "Vận hành bằng mpv";
+"about.license" = "Phát hành theo giấy phép GPL v3";
+"about.github" = "Dự án GitHub";
+"about.releases" = "Các bản phát hành";
+"about.license-link" = "Văn bản giấy phép đầy đủ";

@@ -1,0 +1,218 @@
+/* BrushLLMPlayer — Italiano */
+
+"player.open-hint" = "Apri un file multimediale per iniziare la riproduzione";
+"player.load-failed" = "Impossibile riprodurre questo file";
+
+"controls.play" = "Riproduci";
+"controls.pause" = "Pausa";
+"controls.mute" = "Silenzia";
+"controls.unmute" = "Riattiva audio";
+"controls.volume" = "Volume";
+"controls.speed" = "Velocità di riproduzione";
+"controls.playlist" = "Playlist";
+"controls.video-settings" = "Impostazioni video";
+"controls.fullscreen" = "Attiva/disattiva schermo intero";
+
+"panel.tracks.audio" = "Audio";
+"panel.tracks.subtitle" = "Sottotitoli";
+"panel.tracks.off" = "Disattivato";
+"panel.tracks.none" = "Nessuna traccia";
+
+"panel.playlist.title" = "Playlist";
+"panel.playlist.empty" = "La playlist è vuota";
+"panel.playlist.clear" = "Svuota";
+"panel.playlist.shuffle" = "Mescola";
+
+"loop.off" = "Nessuna ripetizione";
+"loop.file" = "Ripeti file";
+"loop.playlist" = "Ripeti playlist";
+
+"video.aspect" = "Proporzioni";
+"video.aspect.fit" = "Adatta alla finestra";
+"video.aspect.fill" = "Riempi la finestra";
+"video.aspect.stretch" = "Stira la finestra";
+"video.hwdec" = "Decodifica hardware";
+
+"settings.general" = "Generali";
+"settings.general.language" = "Lingua";
+"settings.language.system" = "Lingua di sistema";
+"settings.general.language-note" = "La modifica viene applicata immediatamente alla maggior parte dell'interfaccia.";
+"settings.playback" = "Riproduzione";
+"settings.playback.volume" = "Volume predefinito";
+"settings.playback.muted" = "Avvia senza audio";
+"settings.playback.loop" = "Modalità ripetizione predefinita";
+"settings.video" = "Video";
+"settings.video.hwdec" = "Decodifica hardware (VideoToolbox)";
+"settings.video.hwdec.hint" = "Accelera la decodifica di H.264, H.265 e AV1.";
+"settings.subtitle" = "Sottotitoli";
+
+"menu.open" = "Apri…";
+"menu.playback" = "Riproduzione";
+"menu.play" = "Riproduci";
+"menu.pause" = "Pausa";
+"menu.stop" = "Ferma";
+"menu.step-forward" = "Avanti di 5 s";
+"menu.step-backward" = "Indietro di 5 s";
+"menu.mute" = "Silenzia";
+"menu.volume-up" = "Alza il volume";
+"menu.volume-down" = "Abbassa il volume";
+"menu.next" = "Successivo";
+"menu.previous" = "Precedente";
+"menu.loop" = "Ripetizione";
+"menu.video" = "Video";
+"menu.audio" = "Audio";
+"menu.subtitle" = "Sottotitoli";
+"menu.playlist" = "Playlist";
+
+"settings.video.hwdec.note" = "Applicato immediatamente; se la riproduzione presenta problemi, riapri il file.";
+"menu.next-chapter" = "Capitolo successivo";
+"menu.previous-chapter" = "Capitolo precedente";
+"panel.chapters" = "Capitoli";
+"panel.chapters.none" = "Nessun capitolo";
+"menu.ab-loop" = "Ciclo A-B";
+"ab-loop.set-a" = "Imposta punto A";
+"ab-loop.set-b" = "Imposta punto B";
+"ab-loop.clear" = "Cancella ciclo A-B";
+"menu.frame-step" = "Fotogramma successivo";
+"menu.frame-back-step" = "Fotogramma precedente";
+"menu.ontop" = "Sempre in primo piano";
+"menu.screenshot" = "Istantanea";
+"video.ontop" = "Sempre in primo piano";
+"video.sync" = "Sincronia A/V";
+"video.audio-delay" = "Ritardo audio";
+"video.video-delay" = "Ritardo video";
+"video.delay-reset" = "Ripristina";
+
+"menu.open-url" = "Apri URL…";
+"menu.webdav" = "Apri WebDAV…";
+"menu.load-subtitle" = "Carica file sottotitoli…";
+"menu.start-recording" = "Registra su file…";
+"menu.stop-recording" = "Interrompi registrazione";
+"menu.bookmark-add" = "Aggiungi segnalibro";
+"panel.url.hint" = "Collegamento diretto al media o indirizzo m3u8/HLS";
+"panel.url.open" = "Riproduci";
+"panel.cancel" = "Annulla";
+"panel.subtitle.hint" = "Scegli un file sottotitoli";
+"panel.history" = "Cronologia";
+"panel.history.empty" = "Nessuna cronologia di riproduzione";
+"panel.history.clear" = "Svuota cronologia";
+"panel.bookmarks" = "Segnalibri";
+"panel.bookmarks.empty" = "Nessun segnalibro";
+"webdav.add" = "Aggiungi server…";
+"webdav.select" = "Seleziona server";
+"webdav.empty" = "Nessun server WebDAV configurato";
+"webdav.url" = "URL del server";
+"webdav.username" = "Nome utente";
+"webdav.password" = "Password";
+"webdav.password-keychain" = "La password viene salvata nel Portachiavi.";
+"webdav.connect" = "Aggiungi e connetti";
+"webdav.retry" = "Riprova";
+"webdav.empty-folder" = "Cartella vuota";
+"controls.pip" = "Mini finestra";
+"subtitle.font-size" = "Dimensione carattere";
+"subtitle.border-size" = "Spessore contorno";
+"subtitle.position" = "Posizione verticale";
+"subtitle.color" = "Colore testo";
+"subtitle.border-color" = "Colore contorno";
+"subtitle.live-hint" = "Le modifiche si applicano al file in riproduzione.";
+
+"video.hdr" = "Output HDR";
+
+"controls.equalizer" = "Equalizzatore";
+"eq.bass" = "Bassi";
+"eq.mid" = "Medi";
+"eq.treble" = "Alti";
+"eq.preset.flat" = "Neutro";
+"eq.preset.pop" = "Pop";
+"eq.preset.rock" = "Rock";
+"eq.preset.voice" = "Voce";
+
+"panel.delete" = "Elimina";
+"panel.bookmarks.clear" = "Svuota segnalibri";
+"controls.pip-exit" = "Esci dalla mini finestra";
+
+"settings.storage" = "Archiviazione";
+"settings.screenshot-dir" = "Cartella istantanee";
+"settings.recording-dir" = "Cartella registrazioni";
+"settings.choose" = "Scegli…";
+
+"player.iso-failed" = "Impossibile aprire l'immagine disco";
+"player.iso-no-video" = "Nessun video trovato nell'immagine disco";
+
+"player.record-failed" = "Registrazione non riuscita: questo flusso non supporta la copia diretta";
+"player.slow-load-hint" = "Caricamento in corso… verifica i permessi di accesso ai file in Impostazioni di sistema → Privacy e sicurezza";
+
+"subtitle.auto-load" = "Carica automaticamente i sottotitoli corrispondenti";
+"subtitle.auto-load-hint" = "Carica i file sottotitoli con lo stesso nome dalla cartella del video; può essere lento in cartelle molto grandi o sincronizzate nel cloud.";
+
+"video.rotate" = "Rotazione";
+"video.crop" = "Ritaglio";
+"video.crop.off" = "Disattivato";
+"video.crop.custom" = "Personalizzato";
+"video.crop.top" = "Alto";
+"video.crop.bottom" = "Basso";
+"video.crop.left" = "Sinistra";
+"video.crop.right" = "Destra";
+"controls.audio-effects" = "Effetti audio";
+
+"subtitle.color.white" = "Bianco";
+"subtitle.color.yellow" = "Giallo";
+"subtitle.color.violet" = "Viola";
+"subtitle.color.mint" = "Menta";
+"subtitle.color.black" = "Nero";
+"app.name" = "BrushLLM Player";
+
+"controls.network" = "Rete";
+"network.user-agent" = "User-Agent";
+"network.user-agent-reset" = "Ripristina";
+"network.user-agent-hint" = "Inviato con ogni richiesta di rete; uno UA da browser supera la maggior parte dei CDN.";
+
+"webdav.title" = "Titolo";
+"webdav.scheme" = "Protocollo";
+"webdav.host" = "Host";
+"webdav.port" = "Porta";
+"webdav.path" = "Percorso";
+
+"network.tab.url" = "URL flusso";
+"network.tab.servers" = "Server multimediali";
+"network.paste" = "Incolla dagli appunti";
+"network.advanced" = "Impostazioni avanzate";
+"webdav.connect-server" = "Connetti";
+"webdav.back" = "Indietro";
+
+"network.readahead" = "Prelettura";
+"network.buffer" = "Buffer";
+"network.buffer-hint" = "Il thread demuxer legge in anticipo rispetto alla riproduzione; valori maggiori stabilizzano reti instabili.";
+
+"media.empty" = "Nessun server multimediale configurato";
+"webdav.share" = "Condivisione";
+"menu.media-servers" = "Server multimediali…";
+
+"settings.about" = "Informazioni";
+"update.current" = "Versione attuale";
+"update.check" = "Cerca aggiornamenti";
+"update.checking" = "Ricerca aggiornamenti…";
+"update.up-to-date" = "Aggiornato";
+"update.available" = "Nuova versione disponibile";
+"update.download" = "Scarica aggiornamento";
+"update.failed" = "Verifica non riuscita: errore di rete";
+
+"video.hwdec.active" = "Attivo · VideoToolbox";
+
+"webdav.edit" = "Modifica";
+"webdav.save" = "Salva";
+
+"browser.sort" = "Ordina";
+"browser.sort.name" = "Nome";
+"browser.sort.modified" = "Modificato";
+"browser.sort.size" = "Dimensione";
+"browser.add-to-playlist" = "Aggiungi alla playlist";
+"browser.adding-folder" = "Aggiunta…";
+
+"about.menu" = "Informazioni su BrushLLM Player";
+"about.description" = "Un media player macOS essenziale, basato su mpv.";
+"about.powered-by" = "Basato su mpv";
+"about.license" = "Rilasciato con licenza GPL v3";
+"about.github" = "Progetto GitHub";
+"about.releases" = "Rilasci";
+"about.license-link" = "Licenza completa";
