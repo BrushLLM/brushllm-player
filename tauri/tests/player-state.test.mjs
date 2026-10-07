@@ -145,3 +145,30 @@ test("invoke rejections retain backend generation and actionable message", () =>
   assert.deepEqual(commandError("IPC disconnected"), { message: "IPC disconnected" });
   assert.equal(commandError(new Error("Timeout")).message, "Timeout");
 });
+
+// The project intentionally has no DOM test runner. Keep this contract check
+// dependency-free while ensuring the user-facing About surface stays complete.
+test("About surface exposes version, license, links, and accessible close paths", async () => {
+  const appSource = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../src/index.css", import.meta.url), "utf8");
+  const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+
+  assert.match(appSource, /getVersion/);
+  assert.match(appSource, /Version \{versionLoading \? "Loading…" : appVersion \?\? "Unavailable"\}/);
+  assert.doesNotMatch(appSource, new RegExp(`Version ${packageJson.version.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}`));
+  assert.match(appSource, /aria-label="About BrushLLM Player"/);
+  assert.match(appSource, /role="dialog"/);
+  assert.match(appSource, /aria-modal="true"/);
+  assert.match(appSource, /event\.key === "Escape"/);
+  assert.match(appSource, /Powered by mpv/);
+  assert.match(appSource, /GPL v3/);
+  assert.ok(appSource.includes("https://github.com/BrushLLM/brushllm-player"));
+  assert.ok(appSource.includes("https://github.com/BrushLLM/brushllm-player/releases"));
+  assert.match(appSource, /openUrl as openExternal/);
+  assert.doesNotMatch(appSource, /window\.open\(GITHUB/);
+  assert.match(appSource, /Full license/);
+  assert.match(appSource, /event\.key === "Tab"/);
+  assert.match(styles, /\.about-overlay/);
+  assert.match(styles, /\.about-dialog/);
+  assert.match(styles, /\.about-trigger/);
+});

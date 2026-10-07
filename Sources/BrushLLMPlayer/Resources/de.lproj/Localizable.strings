@@ -226,3 +226,12 @@
 "browser.sort.size" = "Größe";
 "browser.add-to-playlist" = "Zur Wiedergabeliste hinzufügen";
 "browser.adding-folder" = "Wird hinzugefügt…";
+
+// Native About window
+"about.menu" = "Über BrushLLM Player";
+"about.description" = "Ein fokussierter macOS-Mediaplayer mit mpv.";
+"about.powered-by" = "Powered by mpv";
+"about.license" = "Lizenziert unter GPL v3";
+"about.github" = "GitHub-Projekt";
+"about.releases" = "Veröffentlichungen";
+"about.license-link" = "Vollständige Lizenz";

@@ -1,4 +1,67 @@
 import SwiftUI
+import AppKit
+
+/// Native macOS About window.
+struct AboutWindow: View {
+    private static let projectURL = URL(string: "https://github.com/BrushLLM/brushllm-player")!
+    private static let licenseURL = URL(string: "https://github.com/BrushLLM/brushllm-player/blob/main/LICENSE")!
+    @Environment(\.dismissWindow) private var dismissWindow
+
+    var body: some View {
+        VStack(spacing: 14) {
+            if let icon = Bundle.main.image(forResource: "AppIcon") {
+                Image(nsImage: icon)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 96, height: 96)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+            } else {
+                Image(systemName: "play.rectangle")
+                    .font(.system(size: 72, weight: .light))
+                    .foregroundStyle(BrushLLMPlayerTheme.accent)
+            }
+
+            Text(L("app.name", "BrushLLM Player"))
+                .font(.title2.weight(.semibold))
+            Text("v\(UpdateChecker.currentVersion)")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            Text(L("about.description", "A focused macOS media player powered by mpv."))
+                .font(.callout)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: 280)
+
+            VStack(spacing: 4) {
+                Text(L("about.powered-by", "Powered by mpv"))
+                Text(L("about.license", "Licensed under GPL v3"))
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                Button(L("about.github", "GitHub Project")) {
+                    NSWorkspace.shared.open(Self.projectURL)
+                }
+                Button(L("about.releases", "Releases")) {
+                    NSWorkspace.shared.open(UpdateChecker.releasePageURL)
+                }
+                Button(L("about.license-link", "Full license")) {
+                    NSWorkspace.shared.open(Self.licenseURL)
+                }
+            }
+            .buttonStyle(.bordered)
+
+            Button(L("panel.cancel", "Close")) {
+                dismissWindow(id: "about")
+            }
+            .keyboardShortcut(.cancelAction)
+        }
+        .padding(28)
+        .frame(width: 360)
+    }
+}
 
 /// The app settings window (⌘,): General, Playback, Video.
 struct SettingsWindow: View {

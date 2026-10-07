@@ -175,6 +175,17 @@ html, body, #root {
   gap: 4px;
 }
 
+.about-trigger svg,
+.about-close svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .volume-slider {
   width: 62px;
   height: 3px;
@@ -245,4 +256,114 @@ html, body, #root {
 
 .player-error {
   background: rgba(115, 30, 35, 0.95);
+}
+
+.about-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.68);
+}
+
+.about-dialog {
+  width: min(100%, 420px);
+  max-height: min(560px, 100%);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: var(--radius);
+  background: #17171c;
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.52);
+  color: var(--text);
+}
+
+.about-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.about-header h2 {
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.about-version {
+  margin-top: 5px;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.about-close {
+  flex: 0 0 auto;
+  margin: -5px -5px 0 0;
+}
+
+.about-description {
+  margin-top: 24px;
+  color: var(--accent-bright);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.about-license {
+  margin-top: 12px;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.55;
+  user-select: text;
+}
+
+.about-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.about-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 7px;
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  transition: border-color 0.1s, background 0.1s, color 0.1s;
+}
+
+.about-link:hover {
+  border-color: rgba(230, 255, 0, 0.45);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--accent-bright);
+}
+
+.tool-btn:focus-visible,
+.play-btn:focus-visible,
+.about-link:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  .about-overlay {
+    padding: 14px;
+  }
+
+  .about-dialog {
+    padding: 18px;
+  }
 }

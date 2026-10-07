@@ -226,3 +226,12 @@
 "browser.sort.size" = "サイズ";
 "browser.add-to-playlist" = "プレイリストに追加";
 "browser.adding-folder" = "追加中…";
+
+// Native About window
+"about.menu" = "BrushLLM Player について";
+"about.description" = "mpv を採用した macOS 向けメディアプレーヤーです。";
+"about.powered-by" = "mpv を搭載";
+"about.license" = "GPL v3 ライセンス";
+"about.github" = "GitHub プロジェクト";
+"about.releases" = "リリース";
+"about.license-link" = "ライセンス全文";

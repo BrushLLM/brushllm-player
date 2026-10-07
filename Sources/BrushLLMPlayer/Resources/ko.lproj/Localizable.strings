@@ -226,3 +226,12 @@
 "browser.sort.size" = "크기";
 "browser.add-to-playlist" = "재생목록에 추가";
 "browser.adding-folder" = "추가 중…";
+
+// Native About window
+"about.menu" = "BrushLLM Player 정보";
+"about.description" = "mpv로 구동되는 macOS 미디어 플레이어입니다.";
+"about.powered-by" = "mpv 기반";
+"about.license" = "GPL v3 라이선스";
+"about.github" = "GitHub 프로젝트";
+"about.releases" = "릴리스";
+"about.license-link" = "전체 라이선스";
