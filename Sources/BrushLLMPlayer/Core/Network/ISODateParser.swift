@@ -15,17 +15,36 @@ enum ISODateParser {
 
     /// MLSD `modify` fact: "YYYYMMDDHHMMSS" (optionally with .sss fraction).
     static func mlsdModify(_ text: String) -> Date? {
-        let digits = String(text.prefix(14))
-        guard digits.count == 14, let stamp = Int(digits) else { return nil }
+        let parts = text.split(separator: ".", omittingEmptySubsequences: false)
+        guard parts.count == 1 || parts.count == 2 else { return nil }
+        let digits = Array(parts[0].utf8)
+        guard digits.count == 14, digits.allSatisfy({ (48...57).contains($0) }) else { return nil }
+        func number(_ range: Range<Int>) -> Int {
+            digits[range].reduce(0) { $0 * 10 + Int($1 - 48) }
+        }
+        var fraction = 0.0
+        if parts.count == 2 {
+            guard !parts[1].isEmpty, parts[1].utf8.allSatisfy({ (48...57).contains($0) }),
+                  let value = Double("0." + parts[1]), value.isFinite else { return nil }
+            fraction = value
+        }
         var comps = DateComponents()
-        comps.year = stamp / 1_000_000
-        comps.month = (stamp / 10_000) % 100
-        comps.day = (stamp / 100) % 100
-        comps.hour = (stamp % 10_000) / 100
-        comps.minute = stamp % 100
-        comps.second = 0
-        comps.timeZone = TimeZone(identifier: "UTC")
-        return Calendar(identifier: .gregorian).date(from: comps)
+        comps.year = number(0..<4)
+        comps.month = number(4..<6)
+        comps.day = number(6..<8)
+        comps.hour = number(8..<10)
+        comps.minute = number(10..<12)
+        comps.second = number(12..<14)
+        guard (1...9999).contains(comps.year!), (1...12).contains(comps.month!),
+              (1...31).contains(comps.day!), (0...23).contains(comps.hour!),
+              (0...59).contains(comps.minute!), (0...59).contains(comps.second!) else { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        guard let date = calendar.date(from: comps) else { return nil }
+        let roundTrip = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+        guard roundTrip.year == comps.year, roundTrip.month == comps.month, roundTrip.day == comps.day,
+              roundTrip.hour == comps.hour, roundTrip.minute == comps.minute, roundTrip.second == comps.second else { return nil }
+        return date.addingTimeInterval(fraction)
     }
 
     /// Classic unix LIST date columns: "Jan  1 12:00" (recent, no year) or

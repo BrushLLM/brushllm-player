@@ -1,54 +1,80 @@
 import Foundation
 import Network
 
-/// FTP client. Directory listing is implemented directly over
-/// Network.framework (USER/PASS → TYPE I → PASV → MLSD, falling back to
-/// LIST); playback uses ffmpeg's native ftp:// protocol with credentials
-/// embedded in the URL (same approach as WebDAV).
+/// Callback transport seam used by the protocol tests; fakes never open TCP.
+protocol FTPConnection: AnyObject {
+    func start(queue: DispatchQueue, completion: @escaping (Result<Void, Error>) -> Void)
+    func send(_ data: Data, completion: @escaping (Result<Void, Error>) -> Void)
+    func receive(maximumLength: Int, completion: @escaping (Result<(Data, Bool), Error>) -> Void)
+    func cancel()
+}
+
+final class NWFTPConnection: FTPConnection {
+    private let connection: NWConnection
+    init(host: String, port: Int) {
+        connection = NWConnection(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: UInt16(port))!, using: .tcp)
+    }
+    func start(queue: DispatchQueue, completion: @escaping (Result<Void, Error>) -> Void) {
+        connection.stateUpdateHandler = { state in
+            switch state {
+            case .ready: completion(.success(()))
+            case .failed(let error): completion(.failure(error))
+            case .cancelled: completion(.failure(CancellationError()))
+            default: break
+            }
+        }
+        connection.start(queue: queue)
+    }
+    func send(_ data: Data, completion: @escaping (Result<Void, Error>) -> Void) {
+        connection.send(content: data, completion: .contentProcessed { error in
+            if let error { completion(.failure(error)) } else { completion(.success(())) }
+        })
+    }
+    func receive(maximumLength: Int, completion: @escaping (Result<(Data, Bool), Error>) -> Void) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: maximumLength) { content, _, done, error in
+            if let error { completion(.failure(error)) } else { completion(.success((content ?? Data(), done))) }
+        }
+    }
+    func cancel() { connection.cancel() }
+}
+
 enum FTPClient {
-
+    typealias ConnectionFactory = (String, Int) -> any FTPConnection
     enum FTPError: LocalizedError {
-        case badURL
-        case connection(String)
-        case login
-        case listing
-
+        case badURL, connection(String), login, listing, timeout, responseTooLarge
         var errorDescription: String? {
             switch self {
             case .badURL: return "Invalid FTP URL"
             case .connection(let detail): return "Could not connect: \(detail)"
             case .login: return "Login failed — check username and password"
             case .listing: return "Could not read the directory listing"
+            case .timeout: return "The FTP server did not respond in time"
+            case .responseTooLarge: return "The FTP directory listing is too large"
             }
         }
     }
 
-    // MARK: - Browsing
-
-    /// Lists a directory. `path` is the absolute server path ("/" = root).
-    /// Item ids are absolute paths so they work as browse cursors directly.
-    static func list(source: MediaServerSource, path: String, password: String?) async throws -> [MediaItem] {
-        guard let components = URLComponents(string: source.baseURL),
-              let host = components.host else { throw FTPError.badURL }
-        let port = components.port ?? 21
-        let username = source.username.isEmpty ? "anonymous" : source.username
-        let pass = password ?? ""
-
-        let session = try await FTPSession(host: host, port: port)
+    static func list(source: MediaServerSource, path: String, password: String?, timeout: TimeInterval = 30,
+                     connectionFactory: @escaping ConnectionFactory = { NWFTPConnection(host: $0, port: $1) }) async throws -> [MediaItem] {
+        guard let components = URLComponents(string: source.baseURL), components.scheme?.lowercased() == "ftp",
+              let host = components.host, (1...65535).contains(components.port ?? 21),
+              timeout.isFinite, timeout > 0 else { throw FTPError.badURL }
+        let session = try await FTPSession(host: host, port: components.port ?? 21, timeout: timeout, factory: connectionFactory)
         defer { session.close() }
-        try await session.login(username: username, password: pass)
+        try await session.login(username: source.username.isEmpty ? "anonymous" : source.username, password: password ?? "")
         let raw = try await session.listDirectory(path: path)
-
         guard let parsed = parseListing(raw) else { throw FTPError.listing }
-        let prefix = path.hasSuffix("/") ? path : path + "/"
-        // Drop the "." and ".." entries some servers return; ids become
-        // absolute paths.
-        return parsed
-            .filter { $0.name != "." && $0.name != ".." }
-            .map { MediaItem(id: prefix + $0.name, name: $0.name, isDirectory: $0.isDirectory, size: $0.size) }
+        return items(parsed, under: path)
     }
 
-    /// The root path: the path part of the base URL ("/" by default).
+    static func items(_ listing: [MediaItem], under path: String) -> [MediaItem] {
+        let prefix = path.hasSuffix("/") ? path : path + "/"
+        return listing.filter { $0.name != "." && $0.name != ".." }.map {
+            MediaItem(id: prefix + $0.name, name: $0.name, isDirectory: $0.isDirectory,
+                      size: $0.size, modifiedAt: $0.modifiedAt)
+        }
+    }
+
     static func rootPath(of source: MediaServerSource) -> String {
         guard let components = URLComponents(string: source.baseURL) else { return "/" }
         var path = components.path
@@ -57,341 +83,252 @@ enum FTPClient {
         return path.isEmpty ? "/" : path
     }
 
-    // MARK: - Playback
-
-    /// ftp:// URL with embedded credentials for ffmpeg's native protocol.
     static func playbackURL(source: MediaServerSource, path: String, password: String?) -> URL? {
-        guard var components = URLComponents(string: source.baseURL) else { return nil }
-        let username = source.username.isEmpty ? "anonymous" : source.username
-        // URLComponents percent-encodes user/password itself when
-        // serializing — pre-encoding here double-encodes and auth fails.
-        components.user = username
+        guard var components = URLComponents(string: source.baseURL), components.scheme?.lowercased() == "ftp",
+              components.host != nil else { return nil }
+        components.user = source.username.isEmpty ? "anonymous" : source.username
         components.password = password ?? ""
-        let normalized = path.hasPrefix("/") ? path : "/" + path
-        components.path = normalized
+        components.path = path.hasPrefix("/") ? path : "/" + path
+        components.query = nil
+        components.fragment = nil
         return components.url
     }
 
-    // MARK: - Listing parsing
-
-    /// Parses MLSD lines (`fact=value;... name`) or classic unix LIST lines
-    /// (`drwxr-xr-x ... size date name`).
     static func parseListing(_ raw: String) -> [MediaItem]? {
-        // Servers use \r\n, \n or (rarely) bare \r line endings.
-        let normalized = raw
-            .replacingOccurrences(of: "\r\n", with: "\n")
-            .replacingOccurrences(of: "\r", with: "\n")
-        let lines = normalized.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let lines = raw.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
+            .split(separator: "\n").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        guard !lines.isEmpty else { return [] }
         var items: [MediaItem] = []
         var parsedAny = false
-        for line in lines where !line.isEmpty {
+        for line in lines {
             if let item = parseMLSDLine(line) ?? parseUnixLine(line) {
-                items.append(item)
                 parsedAny = true
+                if item.name != "." && item.name != ".." { items.append(item) }
             }
         }
         return parsedAny ? items : nil
     }
 
-    /// MLSD: `type=dir;size=0; name` (facts separated by ";").
     private static func parseMLSDLine(_ line: String) -> MediaItem? {
-        guard line.contains("=") else { return nil }
+        guard let separator = line.firstIndex(of: " ") else { return nil }
+        let rawFacts = line[..<separator]
+        guard rawFacts.hasSuffix(";") else { return nil }
         var facts: [String: String] = [:]
-        var rest = Substring(line)
-        while let semicolon = rest.firstIndex(of: ";") {
-            let fact = rest[..<semicolon]
-            rest = rest[rest.index(after: semicolon)...]
-            guard let equals = fact.firstIndex(of: "=") else { continue }
-            facts[String(fact[..<equals])] = String(fact[fact.index(after: equals)...])
-            // Facts end when the remainder starts with a space.
-            if rest.hasPrefix(" ") { rest = rest.dropFirst(); break }
+        for fact in rawFacts.split(separator: ";") {
+            guard let equals = fact.firstIndex(of: "=") else { return nil }
+            facts[String(fact[..<equals]).lowercased()] = String(fact[fact.index(after: equals)...])
         }
-        guard !rest.isEmpty else { return nil }
-        let name = String(rest)
-        let type = facts["type"] ?? ""
-        let isDirectory = type == "dir" || type == "cdir" || type == "pdir"
-        let size = Int64(facts["size"] ?? "0") ?? 0
+        guard let type = facts["type"]?.lowercased(), ["file", "dir", "cdir", "pdir"].contains(type) || type.hasPrefix("os.unix=slink") else { return nil }
+        let name = String(line[line.index(after: separator)...])
+        guard !name.isEmpty, !name.contains("/"), !name.contains("\0") else { return nil }
+        let size = max(0, Int64(facts["size"] ?? "0") ?? 0)
         let modified = facts["modify"].flatMap(ISODateParser.mlsdModify)
-        guard type != "cdir" && type != "pdir" else { return nil }
-        return MediaItem(id: name, name: name, isDirectory: isDirectory, size: size, modifiedAt: modified)
+        let displayName = type == "cdir" ? "." : (type == "pdir" ? ".." : name)
+        return MediaItem(id: displayName, name: displayName, isDirectory: ["dir", "cdir", "pdir"].contains(type), size: size, modifiedAt: modified)
     }
 
-    /// Classic unix LIST: `drwxr-xr-x 1 owner group 4096 Jan 1 12:00 name`.
     private static func parseUnixLine(_ line: String) -> MediaItem? {
         let parts = line.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
-        guard parts.count >= 9, parts[0].count >= 10,
-              parts[0].hasPrefix("-") || parts[0].hasPrefix("d") || parts[0].hasPrefix("l") else { return nil }
-        let isDirectory = parts[0].hasPrefix("d")
-        let size = Int64(parts[4]) ?? 0
-        // Columns 5-7 are the date: month, day, year-or-time. Parsed when
-        // possible so time sorting works on servers without MLSD.
-        let modified = parts.count >= 8
-            ? ISODateParser.unixList(month: parts[5], day: parts[6], yearOrTime: parts[7])
-            : nil
-        // The file name is everything after the 8th column (may contain spaces).
-        let nameParts = parts.dropFirst(8)
-        let name = nameParts.joined(separator: " ")
-        guard !name.isEmpty else { return nil }
-        return MediaItem(id: name, name: name, isDirectory: isDirectory, size: size, modifiedAt: modified)
+        guard parts.count >= 9, parts[0].count >= 10, parts[0].hasPrefix("-") || parts[0].hasPrefix("d") || parts[0].hasPrefix("l"),
+              let size = Int64(parts[4]), size >= 0 else { return nil }
+        let modified = ISODateParser.unixList(month: parts[5], day: parts[6], yearOrTime: parts[7])
+        let name = parts.dropFirst(8).joined(separator: " ")
+        guard !name.isEmpty, !name.contains("/"), !name.contains("\0") else { return nil }
+        return MediaItem(id: name, name: name, isDirectory: parts[0].hasPrefix("d"), size: size, modifiedAt: modified)
     }
 }
 
-// MARK: - Minimal FTP session over NWConnection
+/// Timeout, close and cancellation race NW callbacks; all share this one
+/// exactly-once continuation gate. Cancellation before installation is kept.
+private final class FTPContinuation<Value>: @unchecked Sendable {
+    private let lock = NSRecursiveLock()
+    private var continuation: CheckedContinuation<Value, Error>?
+    private var finished = false
+    private var result: Result<Value, Error>?
+    private var timer: DispatchWorkItem?
 
+    func install(_ continuation: CheckedContinuation<Value, Error>, deadline: Date,
+                 cancel: @escaping () -> Void, operation: @escaping (@escaping (Result<Value, Error>) -> Void) -> Void) {
+        lock.lock(); defer { lock.unlock() }
+        if finished { continuation.resume(with: result ?? .failure(CancellationError())); return }
+        self.continuation = continuation
+        let timer = DispatchWorkItem { [weak self] in
+            guard let self, self.finish(.failure(FTPClient.FTPError.timeout)) else { return }
+            cancel()
+        }
+        self.timer = timer
+        let remaining = deadline.timeIntervalSinceNow
+        guard remaining > 0 else { _ = finish(.failure(FTPClient.FTPError.timeout)); cancel(); return }
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + remaining, execute: timer)
+        operation { [weak self] result in _ = self?.finish(result) }
+    }
 
-/// Resumes a continuation exactly once from any thread (NWConnection state
-/// handlers run on the connection's queue, but Swift's concurrency checking
-/// cannot prove exclusivity for captured vars).
-private final class ResumeOnce {
-    private let lock = NSLock()
-    private var done = false
-
-    func resume(_ continuation: CheckedContinuation<Void, Error>, throwing error: Error?) {
+    @discardableResult
+    func finish(_ result: Result<Value, Error>) -> Bool {
         lock.lock()
-        let already = done
-        done = true
+        guard !finished else { lock.unlock(); return false }
+        finished = true
+        self.result = result
+        let continuation = self.continuation
+        self.continuation = nil
+        timer?.cancel()
+        timer = nil
         lock.unlock()
-        guard !already else { return }
-        if let error {
-            continuation.resume(throwing: error)
-        } else {
-            continuation.resume()
-        }
+        continuation?.resume(with: result)
+        return true
     }
 }
 
-/// A single-connection FTP control channel: sequential command/response
-/// with PASV data connections for listings.
-private final class FTPSession {
-    private let connection: NWConnection
-    private var buffer = Data()
-    private let queue = DispatchQueue(label: "dev.brushllm.player.ftp")
-    /// Servers behind NAT advertise 0.0.0.0 in PASV replies; data
-    /// connections must go to the control connection's host instead.
-    private let controlHost: String
-
-    init(host: String, port: Int) async throws {
-        controlHost = host
-        // NWConnection's async establishment via a continuation wrapper.
-        let conn = NWConnection(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: UInt16(clamping: port))!, using: .tcp)
-        self.connection = conn
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            let once = ResumeOnce()
-            conn.stateUpdateHandler = { state in
-                switch state {
-                case .ready:
-                    once.resume(continuation, throwing: nil)
-                case .failed(let error):
-                    once.resume(continuation, throwing: error)
-                default:
-                    break
-                }
-            }
-            conn.start(queue: queue)
+private func ftpWait<Value>(deadline: Date, cancel: @escaping () -> Void,
+                            operation: @escaping (@escaping (Result<Value, Error>) -> Void) -> Void) async throws -> Value {
+    let once = FTPContinuation<Value>()
+    return try await withTaskCancellationHandler(operation: {
+        try Task.checkCancellation()
+        return try await withCheckedThrowingContinuation { continuation in
+            once.install(continuation, deadline: deadline, cancel: cancel, operation: operation)
         }
+    }, onCancel: { if once.finish(.failure(CancellationError())) { cancel() } })
+}
+
+private final class FTPSession {
+    private let connection: any FTPConnection
+    private var buffer = Data()
+    private var eof = false
+    private let deadline: Date
+    private let queue = DispatchQueue(label: "dev.brushllm.player.ftp", qos: .utility)
+    private let controlHost: String
+    private let factory: FTPClient.ConnectionFactory
+    private let replyLimit = 1024 * 1024
+
+    init(host: String, port: Int, timeout: TimeInterval, factory: @escaping FTPClient.ConnectionFactory) async throws {
+        controlHost = host
+        self.factory = factory
+        deadline = Date().addingTimeInterval(timeout)
+        let connection = factory(host, port)
+        self.connection = connection
+        do {
+            let _: Void = try await ftpWait(deadline: deadline, cancel: { connection.cancel() }) {
+                connection.start(queue: self.queue, completion: $0)
+            }
+        } catch { connection.cancel(); throw error }
     }
 
-    func close() {
-        // Best-effort QUIT; the connection closes regardless.
-        send("QUIT")
-        connection.cancel()
-    }
-
-    // MARK: - Commands
+    func close() { connection.cancel() }
 
     func login(username: String, password: String) async throws {
-        let welcome = try await command(nil) // 220 greeting
-        guard welcome.hasPrefix("220") else { throw FTPClient.FTPError.connection("unexpected greeting \(welcome.prefix(3))") }
-        let userReply = try await command("USER \(username)")
-        if userReply.hasPrefix("230") {
-            return // logged in without a password
-        }
-        guard userReply.hasPrefix("331") else { throw FTPClient.FTPError.login }
-        let passReply = try await command("PASS \(password)")
-        guard passReply.hasPrefix("230") else { throw FTPClient.FTPError.login }
+        guard (try await command(nil)).hasPrefix("220") else { throw FTPClient.FTPError.connection("unexpected greeting") }
+        let user = try await command("USER \(username)")
+        if user.hasPrefix("230") { return }
+        guard user.hasPrefix("331"), (try await command("PASS \(password)")).hasPrefix("230") else { throw FTPClient.FTPError.login }
     }
 
-    /// Sends a command and awaits its complete response. FTP replies may
-    /// span multiple lines: `XXX-` starts a block that runs until a `XXX `
-    /// line with the same code.
     @discardableResult
-    func command(_ command: String?) async throws -> String {
-        if let command {
-            send(command)
+    func command(_ text: String?) async throws -> String {
+        try Task.checkCancellation()
+        if let text {
+            guard !text.utf8.contains(where: { $0 == 13 || $0 == 10 || $0 == 0 }) else { throw FTPClient.FTPError.badURL }
+            let _: Void = try await ftpWait(deadline: deadline, cancel: { self.connection.cancel() }) {
+                self.connection.send(Data((text + "\r\n").utf8), completion: $0)
+            }
         }
         return try await readReply()
     }
 
-    /// Reads one complete reply (multi-line aware).
     private func readReply() async throws -> String {
         let first = try await readLine()
+        let bytes = Array(first.utf8)
+        guard bytes.count >= 3, bytes.prefix(3).allSatisfy({ (48...57).contains($0) }) else { throw FTPClient.FTPError.connection("invalid reply") }
+        guard bytes.count >= 4, bytes[3] == 45 else { return first }
+        let code = String(first.prefix(3))
         var lines = [first]
-        // A valid reply starts with three digits; a dash right after them
-        // opens a multi-line block.
-        guard first.count >= 4 else { return first }
-        let code = first.prefix(3)
-        guard code.allSatisfy(\.isNumber), first[first.index(first.startIndex, offsetBy: 3)] == "-" else {
-            return first
-        }
+        var count = first.utf8.count
         while true {
             let line = try await readLine()
+            count += line.utf8.count
+            guard count <= replyLimit else { throw FTPClient.FTPError.responseTooLarge }
             lines.append(line)
-            // The block ends at "XXX " (or a bare "XXX") with the same code.
-            if line.hasPrefix(code) && (line.count == 3 || line[line.index(line.startIndex, offsetBy: 3)] == " ") {
-                return lines.joined(separator: "\n")
-            }
+            if line == code || line.hasPrefix(code + " ") { return lines.joined(separator: "\n") }
         }
-    }
-
-    private func send(_ command: String) {
-        let data = Data((command + "\r\n").utf8)
-        connection.send(content: data, completion: .contentProcessed { _ in })
     }
 
     private func readLine() async throws -> String {
         while true {
-            if let line = takeLineFromBuffer() { return line }
-            try await waitForData()
-        }
-    }
-
-    private func takeLineFromBuffer() -> String? {
-        guard let range = buffer.range(of: Data("\r\n".utf8)) else { return nil }
-        let lineData = buffer[buffer.startIndex..<range.lowerBound]
-        let line = String(data: Data(lineData), encoding: .utf8) ?? ""
-        buffer.removeSubrange(buffer.startIndex..<range.upperBound)
-        return line
-    }
-
-    private func waitForData() async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { content, _, isComplete, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else if let content {
-                    self.buffer.append(content)
-                    continuation.resume()
-                } else if isComplete {
-                    continuation.resume(throwing: FTPClient.FTPError.connection("connection closed"))
-                } else {
-                    continuation.resume()
-                }
+            try Task.checkCancellation()
+            guard deadline.timeIntervalSinceNow > 0 else { throw FTPClient.FTPError.timeout }
+            if let range = buffer.range(of: Data("\r\n".utf8)) {
+                let data = Data(buffer[..<range.lowerBound])
+                buffer.removeSubrange(buffer.startIndex..<range.upperBound)
+                guard let line = String(data: data, encoding: .utf8) else { throw FTPClient.FTPError.connection("invalid reply encoding") }
+                return line
             }
+            guard !eof else { throw FTPClient.FTPError.connection("connection closed during reply") }
+            let (chunk, done): (Data, Bool) = try await ftpWait(deadline: deadline, cancel: { self.connection.cancel() }) {
+                self.connection.receive(maximumLength: 64 * 1024, completion: $0)
+            }
+            guard buffer.count + chunk.count <= replyLimit else { throw FTPClient.FTPError.responseTooLarge }
+            buffer.append(chunk)
+            eof = done
         }
     }
 
-    // MARK: - Data connection (PASV)
-
-    /// Lists a directory over a PASV data connection. Tries MLSD first,
-    /// falls back to LIST when the server rejects it.
     func listDirectory(path: String) async throws -> String {
-        try await command("TYPE I")
-        let pasvReply = try await command("PASV")
-        guard pasvReply.hasPrefix("227"), let (pasvHost, port) = parsePASV(pasvReply) else {
-            throw FTPClient.FTPError.connection("server does not support PASV")
+        guard (try await command("TYPE I")).hasPrefix("2") else { throw FTPClient.FTPError.listing }
+        for verb in ["MLSD", "LIST"] {
+            let pasv = try await command("PASV")
+            guard pasv.hasPrefix("227"), let port = parsePASV(pasv) else { throw FTPClient.FTPError.connection("server does not support PASV") }
+            // PASV addresses are hints (often a private/0.0.0.0 address), not
+            // permission to connect to arbitrary third-party hosts.
+            let data = try await FTPDataConnection(connection: factory(controlHost, port), deadline: deadline)
+            defer { data.cancel() }
+            let reply = try await command("\(verb) \(path)")
+            if verb == "MLSD", reply.hasPrefix("5") { continue }
+            if reply.hasPrefix("2") { return "" } // already-completed empty transfer
+            guard reply.hasPrefix("1") else { throw FTPClient.FTPError.listing }
+            let listing = try await data.readAll()
+            let completion = try await command(nil)
+            guard completion.hasPrefix("226") || completion.hasPrefix("250") else { throw FTPClient.FTPError.listing }
+            return listing
         }
-        let host = dataHost(pasvHost)
-
-        // Open the data connection before issuing the list command.
-        let data = try await DataConnection(host: host, port: port)
-
-        let mlsdReply = try await command("MLSD \(path)")
-        if mlsdReply.hasPrefix("5") {
-            // Server doesn't know MLSD — drop this data connection and retry
-            // with LIST on a fresh one.
-            data.cancel()
-            let pasv2 = try await command("PASV")
-            guard pasv2.hasPrefix("227"), let (pasvHost2, port2) = parsePASV(pasv2) else {
-                throw FTPClient.FTPError.connection("server does not support PASV")
-            }
-            let data2 = try await DataConnection(host: dataHost(pasvHost2), port: port2)
-            let listReply = try await command("LIST \(path)")
-            guard listReply.hasPrefix("1") || listReply.hasPrefix("2") else {
-                data2.cancel()
-                throw FTPClient.FTPError.listing
-            }
-            let raw = try await data2.readAll()
-            _ = try? await command(nil) // 226 transfer complete
-            return raw
-        }
-        guard mlsdReply.hasPrefix("1") || mlsdReply.hasPrefix("2") else {
-            data.cancel()
-            throw FTPClient.FTPError.listing
-        }
-        let raw = try await data.readAll()
-        _ = try? await command(nil) // 226 transfer complete
-        return raw
+        throw FTPClient.FTPError.listing
     }
 
-    /// NAT'd servers advertise 0.0.0.0 (or the control host itself) in PASV
-    /// replies; the data connection goes to the control connection's host.
-    private func dataHost(_ pasvHost: String) -> String {
-        if pasvHost == "0.0.0.0" || pasvHost.isEmpty { return controlHost }
-        return pasvHost
-    }
-
-    /// Parses "227 Entering Passive Mode (h1,h2,h3,h4,p1,p2)".
-    private func parsePASV(_ reply: String) -> (String, Int)? {
-        guard let open = reply.lastIndex(of: "("), let close = reply.lastIndex(of: ")"),
-              open < close else { return nil }
-        let numbers = reply[reply.index(after: open)..<close]
-            .split(separator: ",")
-            .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
-        guard numbers.count == 6 else { return nil }
-        let host = numbers[0...3].map(String.init).joined(separator: ".")
+    private func parsePASV(_ reply: String) -> Int? {
+        guard let open = reply.lastIndex(of: "("), let close = reply.lastIndex(of: ")"), open < close else { return nil }
+        let fields = reply[reply.index(after: open)..<close].split(separator: ",", omittingEmptySubsequences: false)
+        guard fields.count == 6 else { return nil }
+        let numbers = fields.compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+        guard numbers.count == 6, numbers.allSatisfy({ (0...255).contains($0) }) else { return nil }
         let port = numbers[4] * 256 + numbers[5]
-        return (host, port)
+        return port == 0 ? nil : port
     }
 }
 
-/// A one-shot PASV data connection that reads until EOF.
-private final class DataConnection {
-    private let connection: NWConnection
-    private let queue = DispatchQueue(label: "dev.brushllm.player.ftp.data")
-
-    init(host: String, port: Int) async throws {
-        let conn = NWConnection(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: UInt16(clamping: port))!, using: .tcp)
-        self.connection = conn
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            let once = ResumeOnce()
-            conn.stateUpdateHandler = { state in
-                switch state {
-                case .ready:
-                    once.resume(continuation, throwing: nil)
-                case .failed(let error):
-                    once.resume(continuation, throwing: error)
-                default:
-                    break
-                }
+private final class FTPDataConnection {
+    private let connection: any FTPConnection
+    private let deadline: Date
+    private let queue = DispatchQueue(label: "dev.brushllm.player.ftp.data", qos: .utility)
+    init(connection: any FTPConnection, deadline: Date) async throws {
+        self.connection = connection
+        self.deadline = deadline
+        do {
+            let _: Void = try await ftpWait(deadline: deadline, cancel: { connection.cancel() }) {
+                connection.start(queue: self.queue, completion: $0)
             }
-            conn.start(queue: queue)
-        }
+        } catch { connection.cancel(); throw error }
     }
-
-    func cancel() {
-        connection.cancel()
-    }
-
+    func cancel() { connection.cancel() }
     func readAll() async throws -> String {
         var data = Data()
         while true {
-            let (chunk, done) = try await receiveChunk()
+            try Task.checkCancellation()
+            let (chunk, done): (Data, Bool) = try await ftpWait(deadline: deadline, cancel: { self.connection.cancel() }) {
+                self.connection.receive(maximumLength: 256 * 1024, completion: $0)
+            }
+            guard data.count + chunk.count <= 16 * 1024 * 1024 else { throw FTPClient.FTPError.responseTooLarge }
             data.append(chunk)
             if done {
-                connection.cancel()
-                return String(data: data, encoding: .utf8) ?? ""
-            }
-        }
-    }
-
-    private func receiveChunk() async throws -> (Data, Bool) {
-        try await withCheckedThrowingContinuation { continuation in
-            connection.receive(minimumIncompleteLength: 1, maximumLength: 256 * 1024) { content, _, isComplete, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume(returning: (content ?? Data(), isComplete))
-                }
+                guard let text = String(data: data, encoding: .utf8) else { throw FTPClient.FTPError.listing }
+                return text
             }
         }
     }

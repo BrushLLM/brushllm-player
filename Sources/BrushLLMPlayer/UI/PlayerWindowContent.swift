@@ -120,10 +120,10 @@ struct PlayerWindowContent: View {
         VideoViewRepresentable(player: player)
             .background(Color.black)
             .overlay {
-                if player.isIdle {
-                    idleView
-                } else if let error = player.loadErrorMessage {
+                if let error = player.loadErrorMessage {
                     errorView(error)
+                } else if player.isIdle {
+                    idleView
                 }
             }
             .overlay(alignment: .top) {

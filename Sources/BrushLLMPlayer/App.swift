@@ -67,12 +67,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         OpenRequests.shared.add(urls)
     }
 
+    private var isTerminating = false
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !isTerminating else { return .terminateLater }
+        isTerminating = true
+        PlayerCore.sharedForSettings?.shutdown()
+        Task { @MainActor in
+            async let smb = SMBClient.shutdown(timeout: 3)
+            async let discs = DiscImageResource.shutdown(timeout: 3)
+            _ = await (smb, discs)
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
-        // Swift scene state may not be released before process exit, so shut
-        // mpv down explicitly — this is what triggers watch-later saving.
-        PlayerCore.sharedForSettings?.mpv.shutdown()
+        PlayerCore.sharedForSettings?.shutdown()
         PlaybackStore.shared.flush()
-        SMBClient.unmountAll()
     }
 }
 
@@ -137,7 +149,7 @@ struct BrushLLMPlayerCommands: Commands {
                 player.togglePlay()
             }
             .keyboardShortcut(.space, modifiers: [])
-            .disabled(player.isIdle)
+            .disabled(player.isIdle && player.playlist.isEmpty)
 
             Button(L("menu.stop", "Stop")) {
                 player.stop()
@@ -310,11 +322,7 @@ struct BrushLLMPlayerCommands: Commands {
             } else {
                 ForEach(history.prefix(10)) { entry in
                     Button(entry.title) {
-                        if entry.path.hasPrefix("http"), let url = URL(string: entry.path) {
-                            player.openURL(url)
-                        } else {
-                            player.open(URL(fileURLWithPath: entry.path))
-                        }
+                        player.reopen(entry)
                     }
                 }
                 Divider()

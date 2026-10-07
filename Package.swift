@@ -28,6 +28,12 @@ let package = Package(
                 // warnings, including CAOpenGLLayer's own.
                 .unsafeFlags(["-Xcc", "-DGL_SILENCE_DEPRECATION"])
             ]
+        ),
+        .testTarget(
+            name: "BrushLLMPlayerTests",
+            dependencies: ["BrushLLMPlayer"],
+            path: "Tests/BrushLLMPlayerTests",
+            swiftSettings: [.unsafeFlags(["-swift-version", "5"])]
         )
     ]
 )

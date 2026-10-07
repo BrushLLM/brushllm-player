@@ -5,9 +5,11 @@ import Libmpv
 /// Events surfaced to the app layer. All events are delivered on the main thread.
 enum MPVEvent {
     case propertyChange(name: String, value: MPVPropertyValue?)
-    case startFile
+    case startFile(entryID: Int)
+    case loadHook(id: UInt64)
+    case unloadHook(id: UInt64)
     case fileLoaded
-    case endFile(reason: mpv_end_file_reason, errorCode: Int32)
+    case endFile(entryID: Int, reason: mpv_end_file_reason, errorCode: Int32)
     case logMessage(prefix: String, level: String, text: String)
     case shutdown
 }
@@ -38,6 +40,7 @@ final class MPVController {
     /// Serializes render-context lifecycle against the GL draw path: the context
     /// is (re)created on the main thread while draws run on the GL queue.
     private let renderLock = NSLock()
+    private var renderingCGLContext: CGLContextObj?
 
     /// Receives every event on the main thread.
     var eventHandler: ((MPVEvent) -> Void)?
@@ -76,7 +79,7 @@ final class MPVController {
 
     /// Applies options, registers the wakeup callback and observers, then
     /// initializes the mpv core. Must be called exactly once, before any playback.
-    func start(hardwareDecoding: Bool = true) {
+    func start(hardwareDecoding: Bool = true, headless: Bool = false) {
         guard let mpv else { return }
 
         // Embedded-player defaults: never read user config files, never load Lua
@@ -92,7 +95,8 @@ final class MPVController {
         setOption("sub-auto", AppSettings.shared.autoLoadSubtitles ? "exact" : "no")
         setOption("audio-file-auto", "no")
         setOption("cover-art-auto", "no")
-        setOption("vo", "libmpv")
+        setOption("vo", headless ? "null" : "libmpv")
+        if headless { setOption("ao", "null") }
         setOption("hwdec", hardwareDecoding ? "auto-safe" : "no")
         // Direct rendering (decoder writes straight into VO buffers) runs a
         // buffer-allocation callback through mpv's dispatch — which deadlocks
@@ -118,14 +122,16 @@ final class MPVController {
         // User-Agent from settings (browser UA by default: many CDNs reject
         // the default "libmpv"/"Lavf" agents outright).
         setOption("user-agent", AppSettings.shared.userAgent)
-        // Resume playback where the user left off (mpv watch-later files).
-        // config=no means mpv has no default state directory — set one explicitly.
-        setOption("save-position-on-quit", "yes")
+        // Isolate legacy watch-later lookup from the user's mpv configuration.
+        // Resume is keyed by the app's logical media identity, never a signed URL.
+        setOption("save-position-on-quit", "no")
         let appSupport = (NSSearchPathForDirectoriesInDomains(.applicationSupportDirectory, .userDomainMask, true).first
                           ?? NSTemporaryDirectory()) + "/BrushLLM Player"
         let watchLaterDir = appSupport + "/watch_later"
-        try? FileManager.default.createDirectory(atPath: watchLaterDir, withIntermediateDirectories: true)
-        setOption("watch-later-directory", watchLaterDir)
+        if !headless {
+            try? FileManager.default.createDirectory(atPath: watchLaterDir, withIntermediateDirectories: true)
+            setOption("watch-later-directory", watchLaterDir)
+        }
         // Screenshots are taken from the GL framebuffer by PlayerCore and
         // saved to the user-configured folder — no mpv screenshot options
         // (they would create a second, differently-named directory).
@@ -149,15 +155,25 @@ final class MPVController {
         }
 
         chk(mpv_initialize(mpv), "mpv_initialize")
+        chk(mpv_hook_add(mpv, 0, "on_load", 0), "on_load hook")
+        chk(mpv_hook_add(mpv, 0, "on_unload", 0), "on_unload hook")
     }
 
     /// Tears down the render context first (required before destroying the core),
     /// then the core itself. Blocks until the core has fully shut down.
     func shutdown() {
-        guard let mpv else { return }
+        guard let handle = mpv else { return }
+        mpv_set_wakeup_callback(handle, nil, nil)
+        eventQueue.sync {
+            self.mpv = nil
+        }
         uninitRendering()
-        mpv_terminate_destroy(mpv)
-        self.mpv = nil
+        mpv_terminate_destroy(handle)
+    }
+
+    func continueLoadHook(_ id: UInt64) {
+        guard let mpv else { return }
+        chk(mpv_hook_continue(mpv, id), "continue on_load")
     }
 
     // MARK: - Rendering
@@ -173,11 +189,12 @@ final class MPVController {
         renderLock.lock()
         defer { renderLock.unlock() }
         guard let mpv else { return }
-        if renderContext != nil {
-            mpv_render_context_set_update_callback(renderContext, nil, nil)
-            mpv_render_context_free(renderContext)
+        if let old = renderContext {
+            freeRenderingContext(old)
             renderContext = nil
         }
+        renderingCGLContext = layer.cglContext
+        CGLSetCurrentContext(layer.cglContext)
         let apiType = UnsafeMutableRawPointer(mutating: (MPV_RENDER_API_TYPE_OPENGL as NSString).utf8String)
         var glInitParams = mpv_opengl_init_params(
             get_proc_address: { _, name in
@@ -213,9 +230,17 @@ final class MPVController {
         renderLock.lock()
         defer { renderLock.unlock() }
         guard let renderContext else { return }
-        mpv_render_context_set_update_callback(renderContext, nil, nil)
-        mpv_render_context_free(renderContext)
+        freeRenderingContext(renderContext)
         self.renderContext = nil
+        renderingCGLContext = nil
+    }
+
+    private func freeRenderingContext(_ context: OpaquePointer) {
+        let previous = CGLGetCurrentContext()
+        if let gl = renderingCGLContext { CGLSetCurrentContext(gl) }
+        defer { CGLSetCurrentContext(previous) }
+        mpv_render_context_set_update_callback(context, nil, nil)
+        mpv_render_context_free(context)
     }
 
     /// Whether mpv has a new frame ready; consumes the update flags.
@@ -388,8 +413,23 @@ final class MPVController {
             DebugLog.log("[\(prefix)] \(level): \(text)")
 
         case MPV_EVENT_START_FILE:
+            guard let data = event.pointee.data else { return }
+            let entryID = Int(data.assumingMemoryBound(to: mpv_event_start_file.self).pointee.playlist_entry_id)
             DispatchQueue.main.async { [weak self] in
-                self?.eventHandler?(.startFile)
+                self?.eventHandler?(.startFile(entryID: entryID))
+            }
+
+        case MPV_EVENT_HOOK:
+            guard let data = event.pointee.data else { return }
+            let hook = data.assumingMemoryBound(to: mpv_event_hook.self).pointee
+            let id = hook.id
+            let name = String(cString: hook.name)
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                if let handler = self.eventHandler {
+                    if name == "on_unload" { handler(.unloadHook(id: id)) }
+                    else { handler(.loadHook(id: id)) }
+                } else { self.continueLoadHook(id) }
             }
 
         case MPV_EVENT_FILE_LOADED:
@@ -402,8 +442,9 @@ final class MPVController {
             let endFile = data.assumingMemoryBound(to: mpv_event_end_file.self).pointee
             let reason = endFile.reason
             let errorCode = endFile.error
+            let entryID = Int(endFile.playlist_entry_id)
             DispatchQueue.main.async { [weak self] in
-                self?.eventHandler?(.endFile(reason: reason, errorCode: errorCode))
+                self?.eventHandler?(.endFile(entryID: entryID, reason: reason, errorCode: errorCode))
             }
 
         case MPV_EVENT_SHUTDOWN:
@@ -416,7 +457,7 @@ final class MPVController {
         }
     }
 
-    private static func parsePropertyValue(_ property: mpv_event_property) -> MPVPropertyValue? {
+    static func parsePropertyValue(_ property: mpv_event_property) -> MPVPropertyValue? {
         guard let data = property.data else { return nil }
         switch property.format {
         case MPV_FORMAT_FLAG:
@@ -427,7 +468,8 @@ final class MPVController {
         case MPV_FORMAT_DOUBLE:
             return .double(data.assumingMemoryBound(to: Double.self).pointee)
         case MPV_FORMAT_STRING:
-            return .string(String(cString: data.assumingMemoryBound(to: CChar.self)))
+            guard let string = data.assumingMemoryBound(to: UnsafePointer<CChar>?.self).pointee else { return nil }
+            return .string(String(cString: string))
         default:
             return nil
         }

@@ -24,16 +24,18 @@ struct HistoryPanel: View {
                 .scrollContentBackground(.hidden)
             }
         }
+        .overlay(alignment: .bottom) {
+            if let error = store.lastError {
+                Text(error).font(.caption).foregroundStyle(.red).padding(8)
+                    .background(BrushLLMPlayerTheme.panelMaterial)
+            }
+        }
     }
 
     private func row(_ entry: HistoryEntry) -> some View {
         HStack(spacing: 0) {
             Button {
-                if entry.path.hasPrefix("http"), let url = URL(string: entry.path) {
-                    player.openURL(url)
-                } else {
-                    player.open(URL(fileURLWithPath: entry.path))
-                }
+                player.reopen(entry)
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "clock.arrow.circlepath")
@@ -130,7 +132,7 @@ struct BookmarksPanel: View {
     private func row(_ bookmark: Bookmark) -> some View {
         HStack(spacing: 0) {
             Button {
-                player.seek(to: bookmark.time)
+                player.openBookmark(bookmark)
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "bookmark.fill")

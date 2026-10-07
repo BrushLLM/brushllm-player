@@ -103,10 +103,7 @@ struct PlaylistPanel: View {
                             .listRowBackground(Color.clear)
                     }
                     .onMove { source, destination in
-                        // Drag-and-drop moves a single row in practice.
-                        if let from = source.first {
-                            player.movePlaylistItem(from: from, to: destination)
-                        }
+                        player.movePlaylistItems(from: source, to: destination)
                     }
                     .onDelete { offsets in
                         for index in offsets.sorted(by: >) {
