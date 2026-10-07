@@ -228,3 +228,21 @@ html, body, #root {
 .empty-state .hint {
   font-size: 14px;
 }
+
+.player-error, .connection-status {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  z-index: 1;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: rgba(40, 40, 45, 0.95);
+  color: var(--text);
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.player-error {
+  background: rgba(115, 30, 35, 0.95);
+}

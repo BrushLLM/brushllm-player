@@ -1,151 +1,235 @@
 import Foundation
 
-/// One entry in the playback history.
 struct HistoryEntry: Identifiable, Codable, Equatable {
     var id: String { path }
-    /// File path or URL string.
-    let path: String
+    var path: String
+    var media: MediaReference?
     var title: String
     var duration: Double
-    /// Playback position when the file was last left, in seconds.
     var position: Double
     var lastPlayedAt: Date
     var playCount: Int
+
+    var reference: MediaReference { media ?? .legacy(path) }
 }
 
-/// A named playback position within a file.
 struct Bookmark: Identifiable, Codable, Equatable {
     var id: String { "\(path)#\(String(format: "%.2f", time))" }
-    /// File path or URL string the bookmark belongs to.
-    let path: String
+    var path: String
+    var media: MediaReference?
     var title: String
-    /// Bookmark position in seconds.
     var time: Double
     var note: String
     var createdAt: Date
+
+    var reference: MediaReference { media ?? .legacy(path) }
 }
 
-/// Persistent store for playback history and bookmarks.
-///
-/// JSON file in Application Support with atomic writes; history is capped so
-/// the file stays small. mpv's own `watch-later` handles automatic resume of
-/// the exact playback position — this store powers the history/bookmark UI.
-/// All mutations happen on the main thread; the debounced save task hops
-/// back via MainActor.run, so the unchecked conformance is safe.
 final class PlaybackStore: ObservableObject, @unchecked Sendable {
-
     static let shared = PlaybackStore()
 
     @Published private(set) var history: [HistoryEntry] = []
     @Published private(set) var bookmarks: [Bookmark] = []
+    @Published private(set) var lastError: String?
 
     private let fileURL: URL
+    private let secretStore: any SecretStore
+    private let secretService = "dev.brushllm.player.playback"
     private let maxHistoryEntries = 1000
     private var saveTask: Task<Void, Never>?
+    private var writesDisabled = false
+    private var migrationBackup: String?
 
     private struct Payload: Codable {
+        var version: Int? = 2
         var history: [HistoryEntry] = []
         var bookmarks: [Bookmark] = []
     }
 
-    private init() {
-        let appSupport = (NSSearchPathForDirectoriesInDomains(.applicationSupportDirectory, .userDomainMask, true).first
-                          ?? NSTemporaryDirectory()) + "/BrushLLM Player"
-        try? FileManager.default.createDirectory(atPath: appSupport, withIntermediateDirectories: true)
-        fileURL = URL(fileURLWithPath: appSupport + "/playback.json")
+    init(fileURL: URL? = nil, secretStore: any SecretStore = KeychainSecretStore()) {
+        let support = (NSSearchPathForDirectoriesInDomains(.applicationSupportDirectory, .userDomainMask, true).first
+                       ?? NSTemporaryDirectory()) + "/BrushLLM Player"
+        self.fileURL = fileURL ?? URL(fileURLWithPath: support + "/playback.json")
+        self.secretStore = secretStore
         load()
     }
 
-    // MARK: - History
+    func protect(_ reference: MediaReference) throws -> MediaReference {
+        guard reference.requiresProtection else { return reference }
+        let account = "url.\(MediaReference.digest(reference.location))"
+        try secretStore.set(Data(reference.location.utf8), account: account, service: secretService)
+        return MediaReference(kind: .protectedURL, location: account, name: reference.displayName)
+    }
 
-    /// Records that a file started playing.
-    func recordPlay(path: String, title: String, duration: Double) {
-        let key = path
-        if let index = history.firstIndex(where: { $0.path == key }) {
-            history[index].title = title
-            history[index].duration = duration
-            history[index].lastPlayedAt = Date()
-            history[index].playCount += 1
-        } else {
-            history.insert(HistoryEntry(path: path, title: title, duration: duration,
-                                        position: 0, lastPlayedAt: Date(), playCount: 1), at: 0)
-            if history.count > maxHistoryEntries {
-                history.removeLast(history.count - maxHistoryEntries)
-            }
+    func originalReference(_ reference: MediaReference) throws -> MediaReference {
+        guard reference.kind == .protectedURL else { return reference }
+        guard let data = try secretStore.data(account: reference.location, service: secretService),
+              let location = String(data: data, encoding: .utf8), let url = URL(string: location) else {
+            throw CocoaError(.fileReadNoSuchFile)
         }
-        scheduleSave()
+        return .url(url)
     }
 
-    /// Updates the saved position of the currently playing file.
+    func recordPlay(reference: MediaReference, title: String, duration: Double) {
+        guard !writesDisabled else { return }
+        do {
+            let media = try protect(reference)
+            let safeTitle = URLPrivacy.redact(title)
+            if let index = history.firstIndex(where: { $0.path == media.key }) {
+                var entry = history.remove(at: index)
+                entry.media = media
+                entry.title = safeTitle
+                entry.duration = finite(duration)
+                entry.lastPlayedAt = Date()
+                entry.playCount += 1
+                history.insert(entry, at: 0)
+            } else {
+                history.insert(HistoryEntry(path: media.key, media: media, title: safeTitle,
+                                            duration: finite(duration), position: 0,
+                                            lastPlayedAt: Date(), playCount: 1), at: 0)
+            }
+            if history.count > maxHistoryEntries { history.removeLast(history.count - maxHistoryEntries) }
+            scheduleSave()
+        } catch { lastError = error.localizedDescription }
+    }
+
+    func recordPlay(path: String, title: String, duration: Double) {
+        recordPlay(reference: .legacy(path), title: title, duration: duration)
+    }
+
     func updatePosition(path: String, position: Double) {
-        guard let index = history.firstIndex(where: { $0.path == path }) else { return }
-        history[index].position = position
+        guard !writesDisabled, let index = history.firstIndex(where: { $0.path == path }) else { return }
+        history[index].position = finite(position)
         scheduleSave()
     }
 
-    /// Removes history entries; nil removes everything.
+    func position(for reference: MediaReference) -> Double? {
+        history.first { $0.path == reference.key }?.position
+    }
+
     func removeHistory(at offsets: IndexSet) {
+        guard !writesDisabled else { return }
         history.remove(atOffsets: offsets)
         scheduleSave()
     }
 
     func clearHistory() {
+        guard !writesDisabled else { return }
         history.removeAll()
         scheduleSave()
-    }
-
-    // MARK: - Bookmarks
-
-    var bookmarksForCurrentFile: [Bookmark] {
-        bookmarks
     }
 
     func bookmarks(for path: String) -> [Bookmark] {
         bookmarks.filter { $0.path == path }.sorted { $0.time < $1.time }
     }
 
+    func addBookmark(reference: MediaReference, title: String, time: Double, note: String = "") {
+        guard !writesDisabled, time.isFinite, time >= 0 else { return }
+        do {
+            let media = try protect(reference)
+            let bookmark = Bookmark(path: media.key, media: media, title: URLPrivacy.redact(title),
+                                    time: time, note: URLPrivacy.redact(note), createdAt: Date())
+            guard !bookmarks.contains(where: { $0.id == bookmark.id }) else { return }
+            bookmarks.append(bookmark)
+            scheduleSave()
+        } catch { lastError = error.localizedDescription }
+    }
+
     func addBookmark(path: String, title: String, time: Double, note: String = "") {
-        let bookmark = Bookmark(path: path, title: title, time: time, note: note, createdAt: Date())
-        guard !bookmarks.contains(where: { $0.id == bookmark.id }) else { return }
-        bookmarks.append(bookmark)
-        scheduleSave()
+        addBookmark(reference: .legacy(path), title: title, time: time, note: note)
     }
 
     func removeBookmarks(at offsets: IndexSet) {
+        guard !writesDisabled else { return }
         bookmarks.remove(atOffsets: offsets)
         scheduleSave()
     }
 
-    // MARK: - Persistence
-
     private func load() {
-        guard let data = try? Data(contentsOf: fileURL),
-              let payload = try? JSONDecoder().decode(Payload.self, from: data) else { return }
-        history = payload.history
-        bookmarks = payload.bookmarks
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
+        do {
+            let data = try Data(contentsOf: fileURL)
+            var payload = try JSONDecoder().decode(Payload.self, from: data)
+            guard payload.version == nil || payload.version == 1 || payload.version == 2 else {
+                throw CocoaError(.fileReadUnsupportedScheme)
+            }
+            var changed = false
+            history = payload.history.map { entry in
+                var display = entry
+                display.title = URLPrivacy.redact(display.title)
+                return display
+            }.sorted { $0.lastPlayedAt > $1.lastPlayedAt }
+            bookmarks = payload.bookmarks.map { bookmark in
+                var display = bookmark
+                display.title = URLPrivacy.redact(display.title)
+                display.note = URLPrivacy.redact(display.note)
+                return display
+            }
+            for index in payload.history.indices {
+                let original = payload.history[index].reference
+                let media = try protect(original)
+                if media != original || payload.history[index].media == nil {
+                    payload.history[index].media = media
+                    payload.history[index].path = media.key
+                    payload.history[index].title = URLPrivacy.redact(payload.history[index].title)
+                    changed = true
+                }
+            }
+            for index in payload.bookmarks.indices {
+                let original = payload.bookmarks[index].reference
+                let media = try protect(original)
+                if media != original || payload.bookmarks[index].media == nil {
+                    payload.bookmarks[index].media = media
+                    payload.bookmarks[index].path = media.key
+                    payload.bookmarks[index].title = URLPrivacy.redact(payload.bookmarks[index].title)
+                    payload.bookmarks[index].note = URLPrivacy.redact(payload.bookmarks[index].note)
+                    changed = true
+                }
+            }
+            if changed {
+                let account = "migration-backup.\(MediaReference.digest(fileURL.path))"
+                try secretStore.set(data, account: account, service: secretService)
+                migrationBackup = account
+            }
+            history = payload.history.sorted { $0.lastPlayedAt > $1.lastPlayedAt }
+            bookmarks = payload.bookmarks
+            if changed { saveNow() }
+            if lastError != nil { writesDisabled = true }
+        } catch {
+            // An unreadable source must never be replaced by an empty store.
+            writesDisabled = true
+            lastError = error.localizedDescription
+        }
     }
 
-    /// Debounced save: coalesces bursts of position updates into one write.
-    /// References the singleton directly — a weak self capture is a mutable
-    /// capture that Swift 6.0 concurrency checking rejects in Task closures.
     private func scheduleSave() {
         saveTask?.cancel()
-        saveTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 500_000_000)
+        saveTask = Task { @MainActor [weak self] in
+            do { try await Task.sleep(nanoseconds: 500_000_000) } catch { return }
             guard !Task.isCancelled else { return }
-            PlaybackStore.shared.saveNow()
+            self?.saveNow()
         }
     }
 
     private func saveNow() {
-        let payload = Payload(history: history, bookmarks: bookmarks)
-        guard let data = try? JSONEncoder().encode(payload) else { return }
-        try? data.write(to: fileURL, options: .atomic)
+        guard !writesDisabled else { return }
+        do {
+            let payload = Payload(history: history, bookmarks: bookmarks)
+            let data = try JSONEncoder().encode(payload)
+            try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(),
+                                                    withIntermediateDirectories: true)
+            try data.write(to: fileURL, options: .atomic)
+            let backup = migrationBackup ?? "migration-backup.\(MediaReference.digest(fileURL.path))"
+            try secretStore.delete(account: backup, service: secretService)
+            migrationBackup = nil
+            lastError = nil
+        } catch { lastError = error.localizedDescription }
     }
 
-    /// Flushes pending writes immediately (called on quit).
     func flush() {
         saveTask?.cancel()
         saveNow()
     }
+
+    private func finite(_ value: Double) -> Double { value.isFinite ? max(value, 0) : 0 }
 }

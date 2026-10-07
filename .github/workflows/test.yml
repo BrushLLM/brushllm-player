@@ -1,0 +1,50 @@
+name: Regression tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift regression tests
+        run: swift test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tauri/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit --incremental false
+      - run: npm test
+
+  rust:
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: tauri/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install test player
+        run: |
+          brew install mpv
+          printf 'BRUSHPLAYER_TEST_MPV=%s/bin/mpv\n' "$(brew --prefix)" >> "$GITHUB_ENV"
+      - run: cargo test --locked
+        env:
+          TAURI_CONFIG: '{"bundle":{"resources":[]}}'

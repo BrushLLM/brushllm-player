@@ -20,7 +20,7 @@ final class VideoLayer: CAOpenGLLayer {
     /// Serializes `display()` between the GL queue and the main thread.
     private let displayLock = NSRecursiveLock()
 
-    private let cglContext: CGLContextObj
+    let cglContext: CGLContextObj
     private let cglPixelFormat: CGLPixelFormatObj
     private let bufferDepth: GLint
 

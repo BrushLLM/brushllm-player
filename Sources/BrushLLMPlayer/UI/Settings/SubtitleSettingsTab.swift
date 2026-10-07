@@ -8,7 +8,7 @@ struct SubtitleSettingsTab: View {
     private let colorSwatches: [(String, String, String)] = [
         // (id, hex, localization key)
         ("white", "#FFFFFFFF", "subtitle.color.white"),
-        ("yellow", "#FFFFE000", "subtitle.color.yellow"),
+        ("yellow", "#FFE000FF", "subtitle.color.yellow"),
         ("violet", "#893CEDFF", "subtitle.color.violet"),
         ("mint", "#2AEFC8FF", "subtitle.color.mint"),
         ("black", "#000000FF", "subtitle.color.black"),
@@ -99,14 +99,8 @@ struct SubtitleSettingsTab: View {
 extension Color {
     /// Parses "#RRGGBB" / "#RRGGBBAA" hex strings.
     init(hexString: String) {
-        var value: UInt64 = 0
-        let cleaned = hexString.hasPrefix("#") ? String(hexString.dropFirst()) : hexString
-        Scanner(string: cleaned).scanHexInt64(&value)
-        let hasAlpha = cleaned.count > 6
-        let red = Double((value >> 24) & 0xFF) / 255
-        let green = Double((value >> 16) & 0xFF) / 255
-        let blue = Double((value >> 8) & 0xFF) / 255
-        let alpha = hasAlpha ? Double(value & 0xFF) / 255 : 1
-        self.init(.sRGB, red: red, green: green, blue: blue, opacity: alpha)
+        if let color = SubtitleColor(hex: hexString) {
+            self.init(.sRGB, red: color.red, green: color.green, blue: color.blue, opacity: color.alpha)
+        } else { self = .clear }
     }
 }

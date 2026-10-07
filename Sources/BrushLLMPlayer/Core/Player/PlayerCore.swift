@@ -15,6 +15,8 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     let mpv = MPVController()
 
     private var cancellables: Set<AnyCancellable> = []
+    private let playbackStore: PlaybackStore
+    private let headless: Bool
 
     // MARK: - Published playback state
 
@@ -41,7 +43,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
 
     /// User-facing settings mirrored into mpv properties.
     @Published var volume: Double = 100 {
-        didSet { mpv.setDouble("volume", volume) }
+        didSet { if !isApplyingFromMPV { mpv.setDouble("volume", volume) } }
     }
     @Published var isMuted = false {
         didSet { if !isApplyingFromMPV { mpv.setFlag("mute", isMuted) } }
@@ -194,10 +196,14 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         didSet { mpv.setDouble("sub-pos", subtitlePosition) }
     }
     @Published var subtitleColorHex: String = "#FFFFFFFF" {
-        didSet { mpv.setString("sub-color", subtitleColorHex) }
+        didSet {
+            if let color = SubtitleColor(hex: subtitleColorHex) { mpv.setString("sub-color", color.mpvValue) }
+        }
     }
     @Published var subtitleBorderColorHex: String = "#000000FF" {
-        didSet { mpv.setString("sub-border-color", subtitleBorderColorHex) }
+        didSet {
+            if let color = SubtitleColor(hex: subtitleBorderColorHex) { mpv.setString("sub-border-color", color.mpvValue) }
+        }
     }
 
     /// The current hover preview thumbnail (generated on demand at the
@@ -216,6 +222,18 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
 
     /// The path/URL of the file currently being played (for history/bookmarks).
     private(set) var currentPath: String?
+    private var currentReference: MediaReference?
+    private var queueReferences: [String: MediaReference] = [:]
+    private var activeEntryID: Int?
+    private var loadGeneration = UUID()
+    private var loadTask: Task<Void, Never>?
+    private var activeHookID: UInt64?
+    private var requestedSeek: [String: Double] = [:]
+    private var activeStreamPath: String?
+    private var discResources: [String: DiscImageResource] = [:]
+    private var lastPlaybackPosition: Double = 0
+    private var recordingID: UUID?
+    private var isShuttingDown = false
 
     /// True while applying a property change that CAME FROM mpv: the didSet
     /// write-backs must be suppressed, otherwise every event echoes a
@@ -226,13 +244,15 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     /// Periodic history position updates.
     private var historyTimer: Timer?
 
-    init() {
-        Self.sharedForSettings = self
+    init(playbackStore: PlaybackStore = .shared, headless: Bool = false) {
+        self.playbackStore = playbackStore
+        self.headless = headless
+        if !headless { Self.sharedForSettings = self }
         let settings = AppSettings.shared
         mpv.eventHandler = { [weak self] event in
             self?.handleEvent(event)
         }
-        mpv.start(hardwareDecoding: settings.hardwareDecoding)
+        mpv.start(hardwareDecoding: settings.hardwareDecoding, headless: headless)
         settings.applyTo(player: self)
 
         // Hardware decoding can be toggled in settings while playing; mpv
@@ -285,177 +305,94 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
             }
             .store(in: &cancellables)
 
-        observeWindowNotifications()
+        playbackStore.$bookmarks
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] bookmarks in
+                guard let self, let path = self.currentPath else { return }
+                self.currentFileBookmarks = bookmarks.filter { $0.path == path }.sorted { $0.time < $1.time }
+            }
+            .store(in: &cancellables)
+        if !headless { observeWindowNotifications() }
     }
 
     deinit {
         bufferingTimer?.invalidate()
         historyTimer?.invalidate()
-        PlaybackStore.shared.flush()
+        playbackStore.flush()
         mpv.eventHandler = nil
         mpv.shutdown()
     }
 
     // MARK: - Actions
 
-    func open(_ url: URL) {
-        loadErrorMessage = nil
-        resolvedPlaylistURLs.removeAll()
-        // Local files play from their path; remote URLs from the full string.
-        let target = url.isFileURL ? url.path : url.absoluteString
-        DebugLog.log("open: \(target)")
-        // ISO images are disc filesystems: route through libbluray (bd://),
-        // falling back to the DVD demuxer.
-        if url.isFileURL && url.pathExtension.lowercased() == "iso" {
-            openDiscImage(at: url.path)
-            return
-        }
-        mpv.command("loadfile", [target, "replace"])
+    func open(_ url: URL) { open(.url(url)) }
+
+    func open(_ reference: MediaReference, at time: Double? = nil) {
+        guard !isShuttingDown else { return }
+        do {
+            let media = try playbackStore.protect(reference)
+            stopHistoryUpdates()
+            stopRecording()
+            cancelPendingLoad()
+            loadErrorMessage = nil
+            currentReference = nil
+            currentPath = nil
+            activeEntryID = nil
+            activeStreamPath = nil
+            queueReferences.removeAll()
+            requestedSeek.removeAll()
+            if let time, time.isFinite { requestedSeek[media.key] = max(time, 0) }
+            let target = register(media)
+            mpv.command("loadfile", [target, "replace"])
+        } catch { loadErrorMessage = error.localizedDescription }
     }
 
-    /// The device node of a disc image we mounted (detached when another
-    /// file is opened).
-    private var mountedDiscDevice: String?
+    private func register(_ reference: MediaReference) -> String {
+        let target = "brushplayer://media/\(UUID().uuidString)"
+        queueReferences[target] = reference
+        return target
+    }
 
-    /// VOB paths of the currently playing disc EDL — used to probe the real
-    /// total duration (mpv's EDL duration estimate is unreliable for VOBs).
-    private var discVobPaths: [String]?
-
-    /// Opens a disc image (ISO). MPVKit's libmpv is built without the bd://
-    /// protocol handler, so the image is mounted with hdiutil and the main
-    /// video stream (BDMV .m2ts / VIDEO_TS .VOB) plays directly.
-    private func openDiscImage(at path: String) {
-        detachMountedDisc()
-        DebugLog.log("open ISO: mounting \(path)")
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
-            process.arguments = ["attach", path, "-nobrowse", "-readonly"]
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = Pipe()
-            do {
-                try process.run()
-                process.waitUntilExit()
-                let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                // Output lines look like "/dev/disk4s1\tApple_HFS\t/Volumes/NAME".
-                var device = ""
-                var mountPoint = ""
-                for line in output.split(separator: "\n").reversed() {
-                    let parts = line.split(separator: "\t").map(String.init)
-                    if parts.count >= 3, parts[2].hasPrefix("/Volumes/") {
-                        mountPoint = parts[2]
-                        device = parts[0]
-                        break
-                    }
-                }
-                DispatchQueue.main.async {
-                    self?.mountedDiscDevice = device.isEmpty ? nil : device
-                    self?.playMountedDisc(at: mountPoint, isoPath: path)
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self?.loadErrorMessage = L("player.iso-failed", "Could not open the disc image")
-                    DebugLog.log("ISO mount failed: \(error.localizedDescription)")
-                }
-            }
+    private func cancelPendingLoad() {
+        loadGeneration = UUID()
+        loadTask?.cancel()
+        loadTask = nil
+        if let hook = activeHookID {
+            activeHookID = nil
+            mpv.continueLoadHook(hook)
         }
     }
 
-    /// Plays the main feature from a mounted disc.
-    ///
-    /// DVD (VIDEO_TS): the movie is split across sequential VOB files
-    /// (VTS_XX_1.VOB, VTS_XX_2.VOB, …). VLC-style: find the title set with
-    /// the most content and load all its VOBs as a playlist so they play
-    /// continuously. Chapter count is read from the IFO's PTT_SRPT table
-    /// and chapters are distributed across the total duration.
-    ///
-    /// Blu-ray (BDMV/STREAM): the main feature is usually the largest
-    /// single .m2ts file.
-    private func playMountedDisc(at mountPoint: String, isoPath: String) {
-        guard !mountPoint.isEmpty, FileManager.default.fileExists(atPath: mountPoint) else {
-            loadErrorMessage = L("player.iso-failed", "Could not open the disc image")
-            return
-        }
-        let fm = FileManager.default
+    func reopen(_ entry: HistoryEntry) { open(entry.reference, at: entry.position) }
 
-        // Blu-ray: largest .m2ts in BDMV/STREAM
-        let bdStreamDir = mountPoint + "/BDMV/STREAM"
-        if let files = try? fm.contentsOfDirectory(atPath: bdStreamDir) {
-            var candidates: [(path: String, size: UInt64)] = []
-            for file in files {
-                let ext = (file as NSString).pathExtension.lowercased()
-                if ext == "m2ts" || ext == "mts" {
-                    let size = (try? fm.attributesOfItem(atPath: bdStreamDir + "/" + file)[.size] as? UInt64) ?? 0
-                    candidates.append((bdStreamDir + "/" + file, size))
-                }
-            }
-            if let main = candidates.max(by: { $0.size < $1.size }) {
-                DebugLog.log("ISO (BD): playing \(main.path) (\(main.size) bytes)")
-                mpv.command("loadfile", [main.path, "replace"])
-                return
-            }
-        }
+    func openBookmark(_ bookmark: Bookmark) {
+        if !isIdle, currentReference?.key == bookmark.path { seek(to: bookmark.time) }
+        else { open(bookmark.reference, at: bookmark.time) }
+    }
 
-        // DVD: collect sequential VOBs per title set (VTS_XX_Y, Y >= 1)
-        let videoTsDir = mountPoint + "/VIDEO_TS"
-        if let files = try? fm.contentsOfDirectory(atPath: videoTsDir) {
-            // Group VOBs by title set number, sorted by sequence number
-            var titleSets: [String: [(seq: Int, path: String, size: UInt64)]] = [:]
-            for file in files {
-                let ext = (file as NSString).pathExtension.lowercased()
-                guard ext == "vob" else { continue }
-                // VTS_01_2.VOB → titleSet="VTS_01", seq=2
-                let parts = file.split(separator: "_")
-                guard parts.count >= 3 else { continue }
-                let titleSet = String(parts[0]) + "_" + String(parts[1])
-                let seqStr = parts[2].split(separator: ".").first.map(String.init) ?? "0"
-                let seq = Int(seqStr) ?? 0
-                // Y=0 is the menu VOB, skip it
-                guard seq >= 1 else { continue }
-                let size = (try? fm.attributesOfItem(atPath: videoTsDir + "/" + file)[.size] as? UInt64) ?? 0
-                titleSets[titleSet, default: []].append((seq, videoTsDir + "/" + file, size))
-            }
-            // Sort each title set by sequence number
-            for (key, _) in titleSets {
-                titleSets[key]?.sort { $0.seq < $1.seq }
-            }
-            // Pick the title set with the largest total size (the main movie)
-            guard let mainTitle = titleSets.max(by: { lhs, rhs in
-                lhs.value.reduce(0, { $0 + $1.size }) < rhs.value.reduce(0, { $0 + $1.size })
-            }) else {
-                loadErrorMessage = L("player.iso-no-video", "No video found on the disc image")
-                DebugLog.log("ISO mounted but no video streams at \(mountPoint)")
-                return
-            }
-            let vobs = mainTitle.value
-            DebugLog.log("ISO (DVD): title set \(mainTitle.key), \(vobs.count) VOBs, total \(vobs.reduce(0, { $0 + $1.size })) bytes")
-            // Concatenate all VOBs into one seamless video via an EDL file —
-            // a single progress bar, a single duration, no gaps between VOBs.
-            let edlPath = NSTemporaryDirectory() + "brushplayer_disc.edl"
-            var edl = "# mpv EDL v0\n"
-            for vob in vobs {
-                edl += "\(vob.path)\n"
-            }
-            do {
-                try edl.data(using: .utf8)?.write(to: URL(fileURLWithPath: edlPath))
-            } catch {
-                DebugLog.log("ISO (DVD): EDL write failed: \(error.localizedDescription)")
-                return
-            }
-            discVobPaths = vobs.map(\.path)
-            mpv.command("loadfile", [edlPath, "replace"])
-            return
-        }
-
-        loadErrorMessage = L("player.iso-no-video", "No video found on the disc image")
-        DebugLog.log("ISO mounted but no video streams at \(mountPoint)")
+    func shutdown() {
+        guard !isShuttingDown else { return }
+        isShuttingDown = true
+        if !headless { DiscImageResource.cancelPendingMounts(timeout: 3) }
+        stopHistoryUpdates()
+        playbackStore.flush()
+        stopRecording()
+        cancelPendingLoad()
+        titleWatchdog?.invalidate()
+        bufferingTimer?.invalidate()
+        thumbnailMPV.shutdown()
+        mpv.eventHandler = nil
+        mpv.shutdown()
+        for resource in discResources.values { resource.release() }
+        discResources.removeAll()
     }
 
     /// Probes each VOB's duration with AVURLAsset and overrides the total.
     /// mpv's EDL duration for concatenated VOBs is inflated because of
     /// MPEG-2 variable bitrate estimation.
     private func probeDiscDuration(_ vobPaths: [String]) {
+        let generation = loadGeneration
+        let path = currentPath
         Task.detached(priority: .utility) { [weak self] in
             var total: Double = 0
             for path in vobPaths {
@@ -475,22 +412,11 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
                 }
             }
             DispatchQueue.main.async { [weak self] in
-                guard let self, total > 0, total < self.duration else { return }
+                guard let self, self.loadGeneration == generation, self.currentPath == path,
+                      total > 0, total < self.duration else { return }
                 DebugLog.log("ISO (DVD): real duration \(Int(total))s (mpv reported \(Int(self.duration))s)")
                 self.duration = total
             }
-        }
-    }
-
-    /// Detaches a previously mounted disc image.
-    private func detachMountedDisc() {
-        guard let device = mountedDiscDevice else { return }
-        mountedDiscDevice = nil
-        DispatchQueue.global(qos: .utility).async {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
-            process.arguments = ["detach", device, "-quiet"]
-            try? process.run()
         }
     }
 
@@ -504,20 +430,36 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     }
 
     /// Appends to the playlist without interrupting playback.
-    func enqueue(_ url: URL) {
-        let target = url.isFileURL ? url.path : url.absoluteString
-        mpv.command("loadfile", [target, "append"])
+    func enqueue(_ url: URL) { _ = enqueue(.url(url)) }
+
+    @discardableResult
+    func enqueue(_ reference: MediaReference) -> Bool {
+        do {
+            let media = try playbackStore.protect(reference)
+            mpv.command("loadfile", [register(media), "append"])
+            return true
+        } catch {
+            loadErrorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    @discardableResult
+    func enqueue(_ references: [MediaReference]) -> Int {
+        references.reduce(0) { $0 + (enqueue($1) ? 1 : 0) }
     }
 
     /// Appends many URLs to the playlist. Returns the number enqueued.
     @discardableResult
     func enqueue(_ urls: [URL]) -> Int {
-        for url in urls { enqueue(url) }
-        return urls.count
+        enqueue(urls.map(MediaReference.url))
     }
 
     func togglePlay() {
-        guard !isIdle else { return }
+        if isIdle {
+            if let index = currentPlaylistIndex ?? (playlist.isEmpty ? nil : 0) { playPlaylistIndex(index) }
+            return
+        }
         DebugLog.log("togglePlay: \(isPaused ? "pause" : "play")")
         mpv.setFlag("pause", !isPaused)
     }
@@ -534,6 +476,9 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     }
 
     func stop() {
+        stopHistoryUpdates()
+        stopRecording()
+        cancelPendingLoad()
         mpv.command("stop", ["keep-playlist"])
     }
 
@@ -550,27 +495,40 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     // MARK: - Playlist
 
     func playlistNext() {
+        stopHistoryUpdates()
+        cancelPendingLoad()
         mpv.command("playlist-next", ["weak"])
     }
 
     func playlistPrevious() {
+        stopHistoryUpdates()
+        cancelPendingLoad()
         mpv.command("playlist-prev", ["weak"])
     }
 
     func playPlaylistIndex(_ index: Int) {
+        guard playlist.indices.contains(index) else { return }
+        stopHistoryUpdates()
+        stopRecording()
+        cancelPendingLoad()
         mpv.command("playlist-play-index", [String(index)])
     }
 
     func removePlaylistIndex(_ index: Int) {
+        guard playlist.indices.contains(index) else { return }
+        if playlist[index].id == activeEntryID { cancelPendingLoad() }
         mpv.command("playlist-remove", [String(index)])
     }
 
-    func movePlaylistItem(from source: Int, to destination: Int) {
-        // mpv's playlist-move semantics: move index1 before index2; when moving
-        // down, the destination shifts by one after removal.
-        var target = destination
-        if source < destination { target += 1 }
-        mpv.command("playlist-move", [String(source), String(target)])
+    func movePlaylistItems(from source: IndexSet, to destination: Int) {
+        var order = Array(playlist.indices)
+        let desired = PlaylistOrder.moving(order.count, from: source, to: destination)
+        for target in desired.indices {
+            guard let current = order.firstIndex(of: desired[target]), current != target else { continue }
+            mpv.command("playlist-move", [String(current), String(target)])
+            let item = order.remove(at: current)
+            order.insert(item, at: target)
+        }
     }
 
     func clearPlaylist() {
@@ -639,7 +597,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd-HHmmss"
-        let path = directory + "/BrushLLMPlayer-" + formatter.string(from: Date()) + ".png"
+        let path = directory + "/BrushLLMPlayer-" + formatter.string(from: Date()) + "-" + UUID().uuidString + ".png"
 
         guard let videoLayer else {
             DebugLog.log("screenshot: no video layer attached")
@@ -657,7 +615,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
                 return
             }
             do {
-                try png.write(to: URL(fileURLWithPath: path))
+                try png.write(to: URL(fileURLWithPath: path), options: .withoutOverwriting)
                 DebugLog.log("screenshot saved: \(path)")
             } catch {
                 DebugLog.log("screenshot write error: \(error.localizedDescription)")
@@ -676,11 +634,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     // MARK: - Network playback
 
     /// Opens a network URL (https media file, m3u8/HLS, …).
-    func openURL(_ url: URL) {
-        loadErrorMessage = nil
-        DebugLog.log("openURL: \(url.absoluteString)")
-        mpv.command("loadfile", [url.absoluteString, "replace"])
-    }
+    func openURL(_ url: URL) { open(url) }
 
     // MARK: - External subtitles
 
@@ -705,7 +659,9 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd-HHmmss"
-        let path = directory + "/BrushLLMPlayer-recording-" + formatter.string(from: Date()) + ".mkv"
+        let id = UUID()
+        let path = directory + "/BrushLLMPlayer-recording-" + formatter.string(from: Date()) + "-" + id.uuidString + ".mkv"
+        recordingID = id
         mpv.setString("stream-record", path)
         isRecording = true
         DebugLog.log("recording started: \(path)")
@@ -713,7 +669,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         // Verify the recording actually produces data.
         let checkPath = path
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
-            guard let self, self.isRecording else { return }
+            guard let self, self.isRecording, self.recordingID == id else { return }
             let size = (try? FileManager.default.attributesOfItem(atPath: checkPath)[.size] as? Int64) ?? 0
             if size == 0 {
                 self.stopRecording()
@@ -724,7 +680,9 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     }
 
     func stopRecording() {
-        mpv.setString("stream-record", "no")
+        guard isRecording else { return }
+        recordingID = nil
+        mpv.setString("stream-record", "")
         isRecording = false
         DebugLog.log("recording stopped")
     }
@@ -733,16 +691,16 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
 
     /// Bookmarks a named position in the current file.
     func addBookmark() {
-        guard !isIdle, let path = currentPath else { return }
-        PlaybackStore.shared.addBookmark(path: path, title: mediaTitle.isEmpty ? fileName : mediaTitle,
+        guard !isIdle, let media = currentReference else { return }
+        playbackStore.addBookmark(reference: media, title: mediaTitle.isEmpty ? fileName : mediaTitle,
                                          time: position)
-        currentFileBookmarks = PlaybackStore.shared.bookmarks(for: path)
+        currentFileBookmarks = playbackStore.bookmarks(for: media.key)
         DebugLog.log("bookmark added at \(position)")
     }
 
     func bookmarksForCurrentFile() -> [Bookmark] {
         guard let path = currentPath else { return [] }
-        return PlaybackStore.shared.bookmarks(for: path)
+        return playbackStore.bookmarks(for: path)
     }
 
     // MARK: - Mini window (PiP-lite) & fullscreen
@@ -988,6 +946,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     private let hoverLock = NSLock()
     /// Prevents concurrent generations (one at a time).
     private var isGenerating = false
+    private var thumbnailGeneration = UUID()
 
     /// Thread-safe read/write for latestHoverPosition.
     private var safeLatestPosition: Double {
@@ -1009,21 +968,31 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         // Only one generation at a time; the next hover triggers after.
         guard !isGenerating else { return }
         isGenerating = true
+        let generation = thumbnailGeneration
+        let path = activeStreamPath
+        let lease = currentPath.flatMap { discResources[$0]?.retainConsumer() }
+        let thumbnailPlayer = lease == nil ? thumbnailMPV : ThumbnailMPV()
 
         DispatchQueue.global(qos: .userInteractive).async { [weak self] in
+            defer {
+                if let lease {
+                    thumbnailPlayer.shutdown()
+                    lease.release()
+                }
+            }
             // Limit iterations to prevent infinite loops if the mouse
             // never stops moving.
             var iterations = 0
             while let self, iterations < 10 {
                 iterations += 1
                 let target = self.safeLatestPosition
-                let image = self.thumbnailMPV.captureFrame(at: target)
+                let image = thumbnailPlayer.captureFrame(at: target, path: path)
 
                 // Adopt the result on the main thread (async to avoid
                 // deadlock if main is waiting on this queue).
                 let isLatest = self.safeLatestPosition
                 DispatchQueue.main.async { [weak self] in
-                    guard let self else { return }
+                    guard let self, self.thumbnailGeneration == generation else { return }
                     if abs(self.safeLatestPosition - target) < 0.5 {
                         self.hoverThumbnail = image
                         self.cachedPosition = target
@@ -1034,7 +1003,8 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
                 if abs(isLatest - target) < 0.5 { break }
             }
             DispatchQueue.main.async { [weak self] in
-                self?.isGenerating = false
+                guard let self, self.thumbnailGeneration == generation else { return }
+                self.isGenerating = false
             }
         }
     }
@@ -1042,51 +1012,84 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     private func loadThumbnails(for path: String) {
         // Load the file into the headless thumbnail instance so it's ready
         // to seek and capture frames on hover.
+        thumbnailGeneration = UUID()
+        isGenerating = false
         hoverThumbnail = nil
         cachedPosition = -1
-        let filePath = path
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            self?.thumbnailMPV.loadFile(filePath)
+        safeLatestPosition = -1
+    }
+
+    private func prepareLoad(_ hookID: UInt64) {
+        guard !isShuttingDown else { mpv.continueLoadHook(hookID); return }
+        let generation = loadGeneration
+        let entryID = activeEntryID
+        let raw = mpv.getString("path") ?? ""
+        let reference = queueReferences[raw] ?? MediaReference.legacy(raw)
+        activeHookID = hookID
+        loadTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer {
+                if self.activeHookID == hookID {
+                    self.activeHookID = nil
+                    self.loadTask = nil
+                    self.mpv.continueLoadHook(hookID)
+                }
+            }
+            do {
+                let media = try playbackStore.protect(reference)
+                let original = try playbackStore.originalReference(media)
+                let target: String
+                var resource: DiscImageResource?
+                switch original.kind {
+                case .localFile:
+                    if ["iso", "iso9660"].contains(URL(fileURLWithPath: original.location).pathExtension.lowercased()) {
+                        if let mounted = self.discResources[media.key] {
+                            resource = mounted
+                        } else {
+                            resource = try await DiscImageResource.mount(original.location)
+                        }
+                        target = resource!.streamPath
+                    } else { target = original.location }
+                case .remoteURL:
+                    target = original.location
+                case .server:
+                    guard let source = MediaServerStore.shared.sources.first(where: { $0.id == original.sourceID }) else {
+                        throw CocoaError(.fileReadNoSuchFile)
+                    }
+                    let item = MediaItem(id: original.location, name: original.name ?? "Media", isDirectory: false,
+                                         size: 0, mediaType: original.mediaType)
+                    guard let url = await MediaServerBrowser.playbackURL(source: source, item: item),
+                          MediaServerStore.shared.sources.contains(source) else {
+                        throw CocoaError(.fileReadUnknown)
+                    }
+                    target = url.isFileURL ? url.path : url.absoluteString
+                case .protectedURL:
+                    throw CocoaError(.fileReadCorruptFile)
+                }
+                guard !Task.isCancelled, !self.isShuttingDown,
+                      self.loadGeneration == generation, self.activeEntryID == entryID,
+                      self.activeHookID == hookID else {
+                    if let resource, self.discResources[media.key] == nil { resource.release() }
+                    return
+                }
+                if let resource { self.discResources[media.key] = resource }
+                self.currentReference = media
+                self.currentPath = media.key
+                self.activeStreamPath = target
+                self.mpv.setString("stream-open-filename", target)
+            } catch {
+                guard !Task.isCancelled, !self.isShuttingDown, self.loadGeneration == generation,
+                      self.activeEntryID == entryID, self.activeHookID == hookID else { return }
+                self.loadErrorMessage = error.localizedDescription
+                self.mpv.setString("stream-open-filename", "/dev/null")
+            }
         }
     }
 
-    /// Lazy 302 resolution for playlist entries. Entries are enqueued with
-    /// their original WebDAV URL (credentials embedded) because signed CDN
-    /// URLs expire within minutes — resolving at enqueue time would 403 by
-    /// the time mpv reaches the entry. When mpv STARTS an entry, this
-    /// resolves the redirect once and replaces the entry in place, so
-    /// pause/seek re-opens the final address instead of re-redirecting.
-    private var resolvedPlaylistURLs: Set<String> = []
-
-    private func resolvePendingWebDAVEntry() {
-        let playlist = mpv.playlist
-        let index = mpv.getInt("playlist-pos") ?? -1
-        guard index >= 0, index < playlist.count else { return }
-        let rawPath = playlist[index].filename
-
-        // Only WebDAV URLs with embedded credentials need resolution; local
-        // paths, plain http and already-resolved URLs pass through.
-        guard rawPath.contains("://"), rawPath.contains("@"),
-              let url = URL(string: rawPath) else { return }
-        guard !resolvedPlaylistURLs.contains(rawPath) else { return }
-        resolvedPlaylistURLs.insert(rawPath)
-
-        // Find the source whose origin this URL belongs to.
-        let sources = MediaServerStore.shared.sources.filter { $0.kind == .webdav }
-        guard let source = sources.first(where: { src in
-            WebDAVClient.origin(of: src).map { rawPath.hasPrefix($0) } ?? false
-        }) else { return }
-        let password = MediaServerStore.shared.password(for: source)
-
-        Task { @MainActor in
-            let resolved = await WebDAVClient.resolvePlaybackURL(
-                url, source: source, password: password,
-                userAgent: AppSettings.shared.userAgent)
-            // Only replace when a redirect actually resolved to something new.
-            if resolved.absoluteString != rawPath {
-                mpv.command("loadfile", [resolved.absoluteString, "replace"])
-                DebugLog.log("playlist 302: entry \(index) resolved")
-            }
+    private func releaseUnusedDiscs() {
+        let live = Set(mpv.playlist.compactMap { queueReferences[$0.filename]?.key })
+        for key in Array(discResources.keys) where !live.contains(key) && currentPath != key {
+            discResources.removeValue(forKey: key)?.release()
         }
     }
 
@@ -1096,7 +1099,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         historyTimer?.invalidate()
         historyTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             guard let self, !self.isIdle, let path = self.currentPath else { return }
-            PlaybackStore.shared.updatePosition(path: path, position: self.position)
+            playbackStore.updatePosition(path: path, position: self.position)
         }
     }
 
@@ -1117,8 +1120,11 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     private func stopHistoryUpdates() {
         historyTimer?.invalidate()
         historyTimer = nil
-        if let path = currentPath, !isIdle {
-            PlaybackStore.shared.updatePosition(path: path, position: position)
+        if let path = currentPath {
+            let livePosition = mpv.getDouble("time-pos")
+            let savedPosition = livePosition.flatMap { $0.isFinite ? max($0, 0) : nil } ?? lastPlaybackPosition
+            lastPlaybackPosition = savedPosition
+            playbackStore.updatePosition(path: path, position: savedPosition)
         }
     }
 
@@ -1272,11 +1278,28 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         case .propertyChange(let name, let value):
             handlePropertyChange(name, value)
 
-        case .startFile:
+        case .startFile(let entryID):
+            stopHistoryUpdates()
+            stopRecording()
+            cancelPendingLoad()
+            activeEntryID = entryID
+            currentReference = nil
+            currentPath = nil
+            activeStreamPath = nil
+            lastPlaybackPosition = 0
+            isScrubbing = false
+            loadThumbnails(for: "")
             isBuffering = true
             loadErrorMessage = nil
             startBufferingTimer()
-            resolvePendingWebDAVEntry()
+
+        case .loadHook(let id):
+            prepareLoad(id)
+
+        case .unloadHook(let id):
+            defer { mpv.continueLoadHook(id) }
+            stopHistoryUpdates()
+            stopRecording()
 
         case .fileLoaded:
             isBuffering = false
@@ -1285,36 +1308,50 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
             // Snapshot state that only makes sense once a file is loaded.
             duration = mpv.getDouble("duration") ?? 0
             hwdecCurrent = nonEmpty(mpv.getString("hwdec-current"))
-            mediaTitle = mpv.getString("media-title") ?? ""
-            fileName = mpv.getString("filename") ?? ""
-            currentPath = mpv.getString("path") ?? fileName
-            // mpv's EDL duration estimate is unreliable for VOB files
-            // (variable bitrate MPEG-2); probe the real total from the VOBs.
-            if let vobPaths = discVobPaths, fileName.hasSuffix(".edl") {
-                DebugLog.log("ISO (DVD): probing \(vobPaths.count) VOBs for real duration")
-                probeDiscDuration(vobPaths)
-            } else if discVobPaths != nil {
-                DebugLog.log("ISO (DVD): probe skipped, fileName=\(fileName)")
+            guard let media = currentReference else { break }
+            let title = mpv.getString("media-title") ?? ""
+            mediaTitle = title.isEmpty || title.contains("brushplayer://") ? media.displayName : URLPrivacy.redact(title)
+            fileName = media.displayName
+            currentPath = media.key
+            if let disc = discResources[media.key], !disc.vobPaths.isEmpty {
+                probeDiscDuration(disc.vobPaths)
             }
             refreshTracks()
             refreshPlaylist()
             refreshChapters()
-            PlaybackStore.shared.recordPlay(path: currentPath ?? fileName,
+            releaseUnusedDiscs()
+            let explicitSeek = requestedSeek.removeValue(forKey: media.key)
+            let resume = playbackStore.position(for: media)
+            playbackStore.recordPlay(reference: media,
                                             title: mediaTitle.isEmpty ? fileName : mediaTitle,
                                             duration: duration)
-            startHistoryUpdates()
-            if let path = currentPath {
-                loadThumbnails(for: path)
-                currentFileBookmarks = PlaybackStore.shared.bookmarks(for: path)
+            if let explicitSeek { seek(to: explicitSeek) }
+            else if let resume, resume > 0, duration == 0 || resume < duration - min(2, duration * 0.05) {
+                seek(to: resume)
             }
+            startHistoryUpdates()
+            loadThumbnails(for: activeStreamPath ?? "")
+            currentFileBookmarks = playbackStore.bookmarks(for: media.key)
             DebugLog.log("fileLoaded: \(fileName), duration=\(duration), hwdec=\(hwdecCurrent ?? "nil"), audio=\(audioTracks.count), sub=\(subtitleTracks.count), playlist=\(playlist.count)")
 
-        case .endFile(let reason, let errorCode):
+        case .endFile(let entryID, let reason, let errorCode):
+            guard activeEntryID == entryID else { break }
+            if let path = currentPath {
+                playbackStore.updatePosition(path: path, position: lastPlaybackPosition)
+            }
+            stopHistoryUpdates()
+            stopRecording()
+            let failedReference = currentReference
+            currentPath = nil
+            currentReference = nil
+            activeStreamPath = nil
             isBuffering = false
             stopBufferingTimer()
-            if reason == MPV_END_FILE_REASON_ERROR {
-                let message = String(cString: mpv_error_string(errorCode))
-                loadErrorMessage = message
+            releaseUnusedDiscs()
+            if reason == MPV_END_FILE_REASON_ERROR, loadErrorMessage == nil {
+                if failedReference?.kind == .protectedURL {
+                    loadErrorMessage = L("player.saved-link-failed", "The saved link may have expired. Reconnect to the media server or open a fresh URL.")
+                } else { loadErrorMessage = String(cString: mpv_error_string(errorCode)) }
             }
 
         case .logMessage:
@@ -1334,7 +1371,12 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         case "pause":
             if case .flag(let paused)? = value { isPaused = paused }
         case "time-pos":
-            if case .double(let pos)? = value, !isScrubbing { position = max(pos, 0) }
+            if case .double(let pos)? = value, pos.isFinite {
+                lastPlaybackPosition = max(pos, 0)
+                if !isScrubbing { position = lastPlaybackPosition }
+            }
+        case "volume":
+            if case .double(let level)? = value, level.isFinite { volume = level }
         case "duration":
             if case .double(let dur)? = value { duration = max(dur, 0) }
         case "mute":
@@ -1355,14 +1397,19 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
                     hwdecCurrent = nil
                     hoverThumbnail = nil
                     currentFileBookmarks = []
-                    discVobPaths = nil
-                    thumbnailMPV.shutdown()
+                    thumbnailGeneration = UUID()
+                    isGenerating = false
+                    isScrubbing = false
+                    stopRecording()
+                    releaseUnusedDiscs()
+                    DispatchQueue.global(qos: .utility).async { [thumbnailMPV] in thumbnailMPV.shutdown() }
                 }
             }
         case "filename":
-            if case .string(let name)? = value { fileName = name }
+            if let media = currentReference { fileName = media.displayName }
+            else if case .string(let name)? = value { fileName = URLPrivacy.redact(name) }
         case "media-title":
-            if case .string(let title)? = value { mediaTitle = title }
+            if case .string(let title)? = value, !title.contains("brushplayer://") { mediaTitle = URLPrivacy.redact(title) }
         case "hwdec-current":
             if case .string(let hwdec)? = value { hwdecCurrent = nonEmpty(hwdec) }
         case "track-list":
@@ -1428,7 +1475,11 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     }
 
     private func refreshPlaylist() {
-        playlist = mpv.playlist
+        playlist = mpv.playlist.map { item in
+            PlaylistItem(id: item.id, filename: item.filename,
+                         title: queueReferences[item.filename]?.displayName ?? item.title,
+                         isCurrent: item.isCurrent, isPlaying: item.isPlaying)
+        }
         currentPlaylistIndex = playlist.firstIndex(where: \.isCurrent)
     }
 

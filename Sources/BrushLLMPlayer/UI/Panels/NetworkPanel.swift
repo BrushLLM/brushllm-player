@@ -333,6 +333,10 @@ private struct ServersTab: View {
     /// True while a folder's contents are being fetched for the playlist.
     @State private var browserAddingFolder = false
     @State private var errorMessage: String?
+    @State private var browseTask: Task<Void, Never>?
+    @State private var folderTask: Task<Void, Never>?
+    @State private var requestID = UUID()
+    @State private var folderRequestID = UUID()
 
     private var browsingSource: MediaServerSource? {
         store.sources.first { $0.id == browsingSourceID }
@@ -358,12 +362,14 @@ private struct ServersTab: View {
                     errorMessage: errorMessage,
                     onReload: reload,
                     onExit: {
+                        cancelBrowsing()
                         MediaServerBrowser.disconnect(source: source)
                         browsingSourceID = nil
                     },
-                    onPlay: { url in
+                    onPlay: { reference in
+                        cancelBrowsing()
+                        PlayerCore.sharedForSettings.open(reference)
                         dismiss()
-                        onPlay(url)
                     },
                     onAddFolderToPlaylist: { folder in
                         browserAddingFolder = true
@@ -372,38 +378,39 @@ private struct ServersTab: View {
                     addingFolder: browserAddingFolder
                 )
             } else {
-                serverList
+                VStack {
+                    if let errorMessage {
+                        Text(errorMessage).font(.caption).foregroundStyle(.red).padding()
+                    }
+                    serverList
+                }
             }
         }
+        .onDisappear { cancelBrowsing() }
     }
 
     /// Adds a folder's playable files to the playlist: lists the folder,
     /// filters playable extensions, builds playback URLs, enqueues them,
     /// then opens the playlist sidebar so the result is visible.
     private func addFolderToPlaylist(source: MediaServerSource, folder: MediaItem) {
-        Task { @MainActor in
-            defer { Task { @MainActor in browserAddingFolder = false } }
+        folderTask?.cancel()
+        let id = UUID()
+        folderRequestID = id
+        folderTask = Task { @MainActor in
+            defer { if folderRequestID == id { browserAddingFolder = false } }
             do {
                 let children = try await MediaServerBrowser.list(source: source, path: folder.id)
-                let playable = children.filter { item in
-                    !item.isDirectory
-                    && !item.name.hasPrefix(".")
-                    && MediaTypes.playableExtensions.contains(
-                        URL(fileURLWithPath: item.name).pathExtension.lowercased())
-                }
-                var urls: [URL] = []
-                for item in playable {
-                    if let url = await MediaServerBrowser.playbackURL(source: source, item: item) {
-                        urls.append(url)
-                    }
-                }
-                let count = PlayerCore.sharedForSettings.enqueue(urls)
+                guard !Task.isCancelled, folderRequestID == id, browsingSource == source else { return }
+                let playable = AppSettings.shared.mediaSort.apply(children, ascending: AppSettings.shared.mediaSortAscending)
+                    .filter { !$0.name.hasPrefix(".") && $0.isPlayable(for: source.kind) }
+                let references = playable.map { MediaReference.server(source, item: $0) }
+                let count = PlayerCore.sharedForSettings.enqueue(references)
                 if count > 0 {
                     NotificationCenter.default.post(name: .brushPlayerShowPlaylist, object: nil)
-                }
-                DebugLog.log("add-folder: \(count) of \(children.count) items enqueued from \(folder.name)")
+                } else { errorMessage = L("webdav.empty-folder", "Empty folder") }
             } catch {
-                DebugLog.log("add-folder failed: \(error)")
+                guard !Task.isCancelled, folderRequestID == id else { return }
+                errorMessage = error.localizedDescription
             }
         }
     }
@@ -470,8 +477,9 @@ private struct ServersTab: View {
             .buttonStyle(.plain)
             .help(L("webdav.edit", "Edit"))
             Button {
-                MediaServerBrowser.disconnect(source: source)
-                store.remove(source)
+                if store.remove(source) {
+                    MediaServerBrowser.disconnect(source: source)
+                } else { errorMessage = store.lastError?.localizedDescription }
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 14))
@@ -540,29 +548,41 @@ private struct ServersTab: View {
     // MARK: Browsing
 
     private func enterBrowser(_ source: MediaServerSource) {
+        cancelBrowsing()
         browsingSourceID = source.id
         pathStack = [MediaServerBrowser.rootPath(of: source)]
         reload()
     }
 
+    private func cancelBrowsing() {
+        requestID = UUID()
+        folderRequestID = UUID()
+        browseTask?.cancel()
+        folderTask?.cancel()
+        isLoading = false
+        browserAddingFolder = false
+    }
+
     private func reload() {
         guard let source = browsingSource else { return }
+        browseTask?.cancel()
+        let id = UUID()
+        requestID = id
         isLoading = true
         errorMessage = nil
         items = []
         let path = pathStack.last ?? MediaServerBrowser.rootPath(of: source)
-        Task {
+        browseTask = Task { @MainActor in
             do {
                 let loaded = try await MediaServerBrowser.list(source: source, path: path)
-                await MainActor.run {
-                    items = loaded
-                    isLoading = false
-                }
+                guard !Task.isCancelled, requestID == id, browsingSource == source,
+                      pathStack.last == path else { return }
+                items = loaded
+                isLoading = false
             } catch {
-                await MainActor.run {
-                    errorMessage = error.localizedDescription
-                    isLoading = false
-                }
+                guard !Task.isCancelled, requestID == id, browsingSource == source else { return }
+                errorMessage = error.localizedDescription
+                isLoading = false
             }
         }
     }
@@ -578,7 +598,7 @@ private struct BrowserView: View {
     let errorMessage: String?
     let onReload: () -> Void
     let onExit: () -> Void
-    let onPlay: (URL) -> Void
+    let onPlay: (MediaReference) -> Void
     /// Adds a folder's playable files to the playlist (context menu).
     let onAddFolderToPlaylist: (MediaItem) -> Void
     /// True while the folder listing is being fetched (parent state).
@@ -730,12 +750,7 @@ private struct BrowserView: View {
                 pathStack.append(item.id)
                 onReload()
             } else {
-                // Playback URL resolution is async for Emby/Jellyfin (token).
-                Task { @MainActor in
-                    if let url = await MediaServerBrowser.playbackURL(source: source, item: item) {
-                        onPlay(url)
-                    }
-                }
+                onPlay(.server(source, item: item))
             }
         } label: {
             HStack(spacing: 8) {
@@ -771,6 +786,7 @@ private struct BrowserView: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .disabled(!item.isDirectory && !item.isPlayable(for: source.kind))
         .contextMenu {
             if item.isDirectory {
                 Button {
@@ -809,6 +825,7 @@ private struct AddServerForm: View {
     @State private var newUsername = ""
     @State private var newPassword = ""
     @State private var didPrefill = false
+    @State private var saveError: String?
 
     /// The connection string composed from the structured fields.
     private var composedBaseURL: String {
@@ -918,6 +935,9 @@ private struct AddServerForm: View {
                         }
                 }
 
+                if let saveError {
+                    Text(saveError).font(.caption).foregroundStyle(.red)
+                }
                 HStack {
                     Button(L("panel.cancel", "Cancel"), action: onCancel)
                         .buttonStyle(.plain)
@@ -1028,14 +1048,20 @@ private struct AddServerForm: View {
             source.name = newName.isEmpty ? host : newName
             source.baseURL = composedBaseURL
             source.username = newUsername
-            store.update(source, password: newPassword)
+            guard store.update(source, password: newPassword) else {
+                saveError = store.lastError?.localizedDescription
+                return
+            }
             onAdded(source)
         } else {
-            let source = store.add(kind: kind,
-                                   name: newName.isEmpty ? host : newName,
-                                   baseURL: composedBaseURL,
-                                   username: newUsername,
-                                   password: newPassword)
+            guard let source = store.add(kind: kind,
+                                         name: newName.isEmpty ? host : newName,
+                                         baseURL: composedBaseURL,
+                                         username: newUsername,
+                                         password: newPassword) else {
+                saveError = store.lastError?.localizedDescription
+                return
+            }
             onAdded(source)
         }
     }

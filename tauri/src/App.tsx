@@ -2,33 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
-interface PlayerState {
-  paused: boolean;
-  position: number;
-  duration: number;
-  idle: boolean;
-  mediaTitle: string;
-  fileName: string;
-  volume: number;
-  muted: boolean;
-  speed: number;
-  playlistCount: number;
-  playlistPos: number;
-}
-
-const initialState: PlayerState = {
-  paused: true,
-  position: 0,
-  duration: 0,
-  idle: true,
-  mediaTitle: "",
-  fileName: "",
-  volume: 100,
-  muted: false,
-  speed: 1,
-  playlistCount: 0,
-  playlistPos: -1,
-};
+import { applySnapshot, CommandGate, commandError, initialView, sameMedia, trackFraction, volumeAtClick } from "./player-state";
+import type { StateSnapshot } from "./player-state";
 
 function formatTime(seconds: number): string {
   if (!isFinite(seconds) || seconds < 0) return "0:00";
@@ -43,83 +18,128 @@ function formatTime(seconds: number): string {
 }
 
 export default function App() {
-  const [state, setState] = useState<PlayerState>(initialState);
+  const [view, setView] = useState(initialView);
+  const viewRef = useRef(initialView);
+  const [invokeError, setInvokeError] = useState<{ generation: number; message: string } | null>(null);
   const [scrubbing, setScrubbing] = useState(false);
   const [scrubPosition, setScrubPosition] = useState(0);
   const trackRef = useRef<HTMLDivElement>(null);
+  const dragCleanup = useRef<(() => void) | null>(null);
+  const mounted = useRef(false);
+  const commandGate = useRef(new CommandGate());
+  const state = view.player;
 
-  // Listen for mpv property changes
-  useEffect(() => {
-    const unlisten = listen<{ name: string; value: unknown }>("mpv-property", (event) => {
-      const { name, value } = event.payload;
-      setState((prev) => {
-        const next = { ...prev };
-        switch (name) {
-          case "pause": next.paused = value as boolean; break;
-          case "time-pos": if (!scrubbingRef.current) next.position = Math.max(value as number, 0); break;
-          case "duration": next.duration = Math.max(value as number, 0); break;
-          case "idle-active": next.idle = value as boolean; break;
-          case "media-title": next.mediaTitle = (value as string) || ""; break;
-          case "filename": next.fileName = (value as string) || ""; break;
-          case "volume": next.volume = value as number; break;
-          case "mute": next.muted = value as boolean; break;
-          case "speed": next.speed = value as number; break;
-          case "playlist-count": next.playlistCount = value as number; break;
-          case "playlist-pos": next.playlistPos = value as number; break;
-        }
-        return next;
-      });
-    });
-    return () => { unlisten.then((fn) => fn()); };
+  const acceptSnapshot = useCallback((snapshot: StateSnapshot) => {
+    const next = applySnapshot(viewRef.current, snapshot);
+    if (next === viewRef.current) return;
+    if (!sameMedia(next, viewRef.current) || !next.connected) {
+      dragCleanup.current?.();
+      setScrubbing(false);
+      commandGate.current.invalidate();
+      setInvokeError(null);
+    }
+    viewRef.current = next;
+    setView(next);
   }, []);
+  const showError = useCallback((error: unknown, fallback: number, sequence: number) => {
+    const parsed = commandError(error);
+    const generation = parsed.generation ?? fallback;
+    // An old request failing after a reconnect cannot poison the new session.
+    if (mounted.current && commandGate.current.accepts(sequence) && generation >= viewRef.current.generation) {
+      setInvokeError({ generation, message: parsed.message });
+    }
+  }, []);
+  const runCommand = useCallback(async (command: string, args?: Record<string, unknown>) => {
+    const generation = viewRef.current.generation;
+    const sequence = commandGate.current.begin();
+    setInvokeError(null);
+    try {
+      await invoke(command, args);
+      if (mounted.current && commandGate.current.accepts(sequence)) setInvokeError(null);
+    }
+    catch (error) { showError(error, generation, sequence); }
+  }, [showError]);
 
-  const scrubbingRef = useRef(false);
-  useEffect(() => { scrubbingRef.current = scrubbing; }, [scrubbing]);
+  useEffect(() => {
+    mounted.current = true;
+    let cancelled = false;
+    let unlisten: (() => void) | undefined;
+    let sequence = commandGate.current.begin();
+    void (async () => {
+      try {
+        // Listener registration is awaited before readiness/snapshot acquisition.
+        const stop = await listen<StateSnapshot>("mpv-state", (event) => {
+          if (!cancelled) acceptSnapshot(event.payload);
+        });
+        if (cancelled) { stop(); return; }
+        unlisten = stop;
+        sequence = commandGate.current.begin();
+        const snapshot = await invoke<StateSnapshot>("player_ready");
+        if (!cancelled) acceptSnapshot(snapshot);
+      } catch (error) {
+        if (!cancelled) showError(error, viewRef.current.generation, sequence);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      mounted.current = false;
+      commandGate.current.invalidate();
+      unlisten?.();
+      dragCleanup.current?.();
+    };
+  }, [acceptSnapshot, showError]);
+
+  const error = invokeError && invokeError.generation >= view.generation ? invokeError.message : view.error;
 
   const effectivePosition = scrubbing ? scrubPosition : state.position;
   const progress = state.duration > 0 ? Math.min(effectivePosition / state.duration, 1) : 0;
 
-  // Progress bar scrubbing
-  const handleTrackClick = useCallback((e: React.MouseEvent) => {
-    if (!trackRef.current || state.duration <= 0) return;
-    const rect = trackRef.current.getBoundingClientRect();
-    const fraction = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
-    invoke("seek", { position: fraction * state.duration });
-  }, [state.duration]);
-
+  // Progress scrubbing sends one acknowledged seek at mouse-up. Geometry is
+  // bounded and a reconnect/unmount cancels the old gesture.
   const handleTrackMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!trackRef.current || state.duration <= 0) return;
-    setScrubbing(true);
+    if (!trackRef.current || state.duration <= 0 || !view.ready || state.idle) return;
     const rect = trackRef.current.getBoundingClientRect();
-    const fraction = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+    const fraction = trackFraction(e.clientX, rect.left, rect.width);
+    if (fraction === null) return;
+    dragCleanup.current?.();
+    setScrubbing(true);
     setScrubPosition(fraction * state.duration);
-
+    const media = { generation: view.generation, mediaEpoch: view.mediaEpoch };
     const onMouseMove = (e: MouseEvent) => {
-      const fraction = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
-      setScrubPosition(fraction * state.duration);
+      const fraction = trackFraction(e.clientX, rect.left, rect.width);
+      if (fraction !== null) setScrubPosition(fraction * state.duration);
     };
-    const onMouseUp = (e: MouseEvent) => {
-      const fraction = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
-      setScrubbing(false);
-      invoke("seek", { position: fraction * state.duration });
+    const cleanup = () => {
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
+      dragCleanup.current = null;
     };
+    const onMouseUp = (e: MouseEvent) => {
+      const fraction = trackFraction(e.clientX, rect.left, rect.width);
+      setScrubbing(false);
+      cleanup();
+      if (fraction !== null && sameMedia(media, viewRef.current) && viewRef.current.connected) {
+        void runCommand("seek", { position: fraction * state.duration });
+      }
+    };
+    dragCleanup.current = cleanup;
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
-  }, [state.duration]);
+  }, [state.duration, state.idle, view.ready, view.generation, view.mediaEpoch, runCommand]);
 
-  const togglePlay = () => invoke("toggle_pause");
-  const seekRelative = (s: number) => invoke("seek_relative", { seconds: s });
-  const setVolume = (v: number) => invoke("set_property", { name: "volume", value: String(v) });
-  const setSpeed = (s: number) => invoke("set_property", { name: "speed", value: String(s) });
-  const toggleMute = () => invoke("set_property", { name: "mute", value: state.muted ? "no" : "yes" });
+  const togglePlay = () => runCommand("toggle_pause");
+  const seekRelative = (s: number) => runCommand("seek_relative", { seconds: s });
+  const setVolume = (v: number) => runCommand("set_property", { name: "volume", value: String(v) });
+  const setSpeed = (s: number) => runCommand("set_property", { name: "speed", value: String(s) });
+  const toggleMute = () => runCommand("set_property", { name: "mute", value: state.muted ? "no" : "yes" });
 
   return (
     <div className="app">
-      <div className="video-area" onDoubleClick={() => invoke("send_command", { args: ["cycle", "fullscreen"] })}>
+      <div className="video-area" onDoubleClick={() => runCommand("send_command", { args: ["cycle", "fullscreen"] })}>
+        {error && <div className="player-error" role="alert">{error}</div>}
+        {!view.connected && !error && <div className="connection-status" role="status">Open a file to connect or restart the player</div>}
         {state.idle && (
-          <div className="empty-state" onClick={() => invoke("open_file_dialog")} style={{ cursor: "pointer" }}>
+          <div className="empty-state" onClick={() => runCommand("open_file_dialog")} style={{ cursor: "pointer" }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <rect x="2" y="5" width="20" height="14" rx="2" />
               <polygon points="10,9 16,12 10,15" fill="currentColor" />
@@ -135,7 +155,6 @@ export default function App() {
           <div
             ref={trackRef}
             className="progress-track"
-            onClick={handleTrackClick}
             onMouseDown={handleTrackMouseDown}
           >
             <div className="progress-bg">
@@ -147,22 +166,22 @@ export default function App() {
         </div>
 
         <div className="button-row">
-          <button className="tool-btn" onClick={() => invoke("open_file_dialog")} title="Open…">📂</button>
-          <button className="tool-btn" onClick={() => invoke("send_command", { args: ["playlist-prev", "weak"] })} disabled={state.playlistCount < 2} title="Previous">
+          <button className="tool-btn" onClick={() => runCommand("open_file_dialog")} title="Open…">📂</button>
+          <button className="tool-btn" onClick={() => runCommand("send_command", { args: ["playlist-prev", "weak"] })} disabled={state.playlistCount < 2 || !view.ready} title="Previous">
             ⏮
           </button>
           <button
             className={`play-btn ${!state.paused ? "playing" : ""}`}
             onClick={togglePlay}
-            disabled={state.idle}
+            disabled={state.idle || !view.ready}
             title={state.paused ? "Play" : "Pause"}
           >
             {state.paused ? "▶" : "⏸"}
           </button>
-          <button className="tool-btn" onClick={() => invoke("send_command", { args: ["playlist-next", "weak"] })} disabled={state.playlistCount < 2} title="Next">
+          <button className="tool-btn" onClick={() => runCommand("send_command", { args: ["playlist-next", "weak"] })} disabled={state.playlistCount < 2 || !view.ready} title="Next">
             ⏭
           </button>
-          <button className="tool-btn" onClick={() => invoke("stop_playback")} disabled={state.idle} title="Stop">
+          <button className="tool-btn" onClick={() => runCommand("stop_playback")} disabled={state.idle || !view.ready} title="Stop">
             ⏹
           </button>
           <button className="tool-btn" onClick={() => seekRelative(-5)} title="Back 5s">«</button>
@@ -190,9 +209,8 @@ export default function App() {
             <div
               className="volume-slider"
               onClick={(e) => {
-                const rect = (e.target as HTMLElement).getBoundingClientRect();
-                const fraction = (e.clientX - rect.left) / rect.width;
-                setVolume(Math.round(fraction * 130));
+                const volume = volumeAtClick(e);
+                if (volume !== null) void setVolume(volume);
               }}
             >
               <div className="volume-fill" style={{ width: `${(state.volume / 130) * 100}%` }} />

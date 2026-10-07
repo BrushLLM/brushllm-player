@@ -118,8 +118,14 @@ final class ThumbnailMPV {
 
     /// Renders the frame at the exact time into an off-screen buffer and
     /// returns it as an NSImage. Synchronous — call from a background queue.
-    func captureFrame(at time: Double) -> NSImage? {
+    func captureFrame(at time: Double, path: String? = nil) -> NSImage? {
         processingQueue.sync {
+            guard time.isFinite else { return nil }
+            if let path, let handle = ensureInstance(), loadedPath != path {
+                loadedPath = path
+                send(handle, ["loadfile", path, "replace"])
+                waitForLoaded(handle)
+            }
             guard let handle = ensureInstance(), let renderContext, loadedPath != nil else {
                 DebugLog.log("thumb: not ready (instance/path)")
                 return nil
@@ -167,22 +173,25 @@ final class ThumbnailMPV {
     /// `mpv_render_context_render`, so the stack pointers below stay valid for
     /// the whole call (this is the documented usage pattern for the SW API).
     private func renderOnce(_ ctx: OpaquePointer, width: Int, height: Int, stride: Int, pixels: inout [UInt8]) -> Bool {
-        var size: [CInt] = [Int32(width), Int32(height)]
-        var formatName = "rgb0"
+        let size: [CInt] = [Int32(width), Int32(height)]
         var strideValue = stride
-        var ok = false
-        pixels.withUnsafeMutableBytes { rawBuffer in
-            guard let base = rawBuffer.baseAddress else { return }
-            var params = [
-                mpv_render_param(type: MPV_RENDER_PARAM_SW_SIZE, data: &size),
-                mpv_render_param(type: MPV_RENDER_PARAM_SW_FORMAT, data: &formatName),
-                mpv_render_param(type: MPV_RENDER_PARAM_SW_STRIDE, data: &strideValue),
-                mpv_render_param(type: MPV_RENDER_PARAM_SW_POINTER, data: base),
-                mpv_render_param(),
-            ]
-            ok = mpv_render_context_render(ctx, &params) >= 0
+        return pixels.withUnsafeMutableBytes { rawBuffer in
+            guard let base = rawBuffer.baseAddress else { return false }
+            return size.withUnsafeBufferPointer { sizeBuffer in
+                "rgb0".withCString { format in
+                    withUnsafeMutablePointer(to: &strideValue) { stridePointer in
+                        var params = [
+                            mpv_render_param(type: MPV_RENDER_PARAM_SW_SIZE, data: UnsafeMutableRawPointer(mutating: sizeBuffer.baseAddress)),
+                            mpv_render_param(type: MPV_RENDER_PARAM_SW_FORMAT, data: UnsafeMutableRawPointer(mutating: format)),
+                            mpv_render_param(type: MPV_RENDER_PARAM_SW_STRIDE, data: stridePointer),
+                            mpv_render_param(type: MPV_RENDER_PARAM_SW_POINTER, data: base),
+                            mpv_render_param(),
+                        ]
+                        return mpv_render_context_render(ctx, &params) >= 0
+                    }
+                }
+            }
         }
-        return ok
     }
 
     private func send(_ handle: OpaquePointer, _ args: [String]) {

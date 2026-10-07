@@ -361,7 +361,7 @@ struct ControlBar: View {
                 }
         }
         .buttonStyle(.plain)
-        .disabled(player.isIdle)
+        .disabled(player.isIdle && player.playlist.isEmpty)
         .help(player.isPaused ? L("controls.play", "Play") : L("controls.pause", "Pause"))
     }
 
