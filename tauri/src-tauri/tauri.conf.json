@@ -43,20 +43,14 @@
         "installMode": "perMachine",
         "languages": [
           "English",
-          "SimpChinese",
-          "TradChinese",
-          "Japanese",
-          "Korean",
           "German",
           "Spanish",
           "French",
           "PortugueseBR",
-          "Italian",
-          "Dutch",
-          "Polish",
-          "Turkish",
-          "Indonesian",
-          "Vietnamese"
+          "Japanese",
+          "SimpChinese",
+          "TradChinese",
+          "Korean"
         ],
         "displayLanguageSelector": true
       }

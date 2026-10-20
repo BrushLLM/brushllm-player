@@ -12,17 +12,11 @@ enum Localization {
     /// `code == nil` means "follow the system language".
     static let supportedLanguages: [LanguageOption] = [
         .init(code: nil, key: "settings.language.system"),
-        .init(code: "de", key: nil),
         .init(code: "en", key: nil),
+        .init(code: "de", key: nil),
         .init(code: "es", key: nil),
         .init(code: "fr", key: nil),
-        .init(code: "id", key: nil),
-        .init(code: "it", key: nil),
-        .init(code: "nl", key: nil),
-        .init(code: "pl", key: nil),
         .init(code: "pt-BR", key: nil),
-        .init(code: "tr", key: nil),
-        .init(code: "vi", key: nil),
         .init(code: "ja", key: nil),
         .init(code: "zh-Hans", key: nil),
         .init(code: "zh-Hant", key: nil),
@@ -46,17 +40,11 @@ enum Localization {
         }
 
         private static let endonyms: [String: String] = [
-            "de": "Deutsch",
             "en": "English",
+            "de": "Deutsch",
             "es": "Español",
             "fr": "Français",
-            "id": "Bahasa Indonesia",
-            "it": "Italiano",
-            "nl": "Nederlands",
-            "pl": "Polski",
             "pt-BR": "Português (Brasil)",
-            "tr": "Türkçe",
-            "vi": "Tiếng Việt",
             "ja": "日本語",
             "zh-Hans": "简体中文",
             "zh-Hant": "繁體中文",
