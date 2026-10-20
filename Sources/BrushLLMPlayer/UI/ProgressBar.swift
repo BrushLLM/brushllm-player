@@ -70,13 +70,13 @@ struct ProgressBar: View {
                     abMarker(x: CGFloat(b / duration) * width, y: barY + barHeight / 2, label: "B")
                 }
 
-                // Bookmark markers (lemon yellow)
+                // Bookmark markers (accent)
                 ForEach(bookmarks) { bookmark in
                     if duration > 0 {
                         let x = CGFloat(bookmark.time / duration) * width
                         Image(systemName: "bookmark.fill")
                             .font(.system(size: 7, weight: .bold))
-                            .foregroundStyle(BrushPalette.lemon)
+                            .foregroundStyle(BrushLLMPlayerTheme.accent)
                             .position(x: x, y: barY - 2)
                     }
                 }
@@ -129,11 +129,11 @@ struct ProgressBar: View {
     private func abMarker(x: CGFloat, y: CGFloat, label: String) -> some View {
         ZStack {
             Rectangle()
-                .fill(BrushPalette.orange)
+                .fill(BrushLLMPlayerTheme.accent)
                 .frame(width: 2, height: 14)
             Text(label)
                 .font(.system(size: 7, weight: .bold, design: .rounded))
-                .foregroundStyle(BrushPalette.orange)
+                .foregroundStyle(BrushLLMPlayerTheme.accent)
                 .offset(y: -9)
         }
         .position(x: x, y: y)

@@ -89,12 +89,12 @@ struct ControlBar: View {
                 .lineLimit(1)
                 .fixedSize()
             muteButton
-            iconButton("pip.exit", help: L("controls.pip-exit", "Exit Mini Window"),
-                       active: true) {
+            PlayerIconButton(icon: "pip.exit", help: L("controls.pip-exit", "Exit Mini Window"),
+                             active: true) {
                 player.toggleMiniWindow()
             }
-            iconButton("arrow.up.left.and.arrow.down.right",
-                       help: L("controls.fullscreen", "Toggle Full Screen")) {
+            PlayerIconButton(icon: "arrow.up.left.and.arrow.down.right",
+                             help: L("controls.fullscreen", "Toggle Full Screen")) {
                 player.toggleFullscreen()
             }
         }
@@ -109,14 +109,15 @@ struct ControlBar: View {
 
     private var progressRow: some View {
         HStack(spacing: 10) {
-            // Time labels: never wrap, fixed single-line.
+            // Time labels: never wrap, fixed single-line. 52pt covers
+            // hour-scale times ("1:23:45") in every language.
             Text(formatTime(player.position))
                 .font(.system(size: 11, weight: .medium))
                 .monospacedDigit()
                 .foregroundStyle(BrushLLMPlayerTheme.controlText)
                 .lineLimit(1)
                 .fixedSize()
-                .frame(minWidth: 44, alignment: .trailing)
+                .frame(minWidth: 52, alignment: .trailing)
 
             ProgressBar(
                 position: player.position,
@@ -163,7 +164,7 @@ struct ControlBar: View {
                 .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
                 .lineLimit(1)
                 .fixedSize()
-                .frame(minWidth: 44, alignment: .leading)
+                .frame(minWidth: 52, alignment: .leading)
         }
     }
 
@@ -220,26 +221,26 @@ struct ControlBar: View {
             // (live-resize layout cost is dominated by re-measuring this
             // bar's ~25 buttons per tick).
             HStack(spacing: 2) {
-                iconButton("folder", help: L("menu.open", "Open…")) {
+                PlayerIconButton(icon: "folder", help: L("menu.open", "Open…")) {
                     OpenMediaPanel.present { urls in player.open(urls) }
                 }
-                iconButton("backward.end.fill", help: L("menu.previous", "Previous"),
-                           disabled: player.playlist.count < 2) {
+                PlayerIconButton(icon: "backward.end.fill", help: L("menu.previous", "Previous"),
+                                  disabled: player.playlist.count < 2) {
                     player.playlistPrevious()
                 }
                 playPauseButton
-                iconButton("forward.end.fill", help: L("menu.next", "Next"),
-                           disabled: player.playlist.count < 2) {
+                PlayerIconButton(icon: "forward.end.fill", help: L("menu.next", "Next"),
+                                  disabled: player.playlist.count < 2) {
                     player.playlistNext()
                 }
-                iconButton("stop.fill", help: L("menu.stop", "Stop"), disabled: player.isIdle) {
+                PlayerIconButton(icon: "stop.fill", help: L("menu.stop", "Stop"), disabled: player.isIdle) {
                     player.stop()
                 }
                 if !player.chapters.isEmpty {
-                    iconButton("backward.end.fill.tv", help: L("menu.previous-chapter", "Previous Chapter")) {
+                    PlayerIconButton(icon: "backward.end.fill.tv", help: L("menu.previous-chapter", "Previous Chapter")) {
                         player.previousChapter()
                     }
-                    iconButton("forward.end.fill.tv", help: L("menu.next-chapter", "Next Chapter")) {
+                    PlayerIconButton(icon: "forward.end.fill.tv", help: L("menu.next-chapter", "Next Chapter")) {
                         player.nextChapter()
                     }
                 }
@@ -280,26 +281,26 @@ struct ControlBar: View {
         videoSettingsButton
         audioEffectsButton
         if includeSecondary {
-            iconButton("camera.fill", help: L("menu.screenshot", "Screenshot"),
-                       disabled: player.isIdle) {
+            PlayerIconButton(icon: "camera.fill", help: L("menu.screenshot", "Screenshot"),
+                             disabled: player.isIdle) {
                 player.screenshot()
             }
             abLoopButton
         }
         volumeControl
-        iconButton("list.bullet", help: L("controls.playlist", "Playlist"),
-                   active: isPlaylistVisible) {
+        PlayerIconButton(icon: "list.bullet", help: L("controls.playlist", "Playlist"),
+                         active: isPlaylistVisible) {
             togglePlaylist()
         }
         // Window control group: on-top / mini / fullscreen.
         windowGroupDivider
         onTopButton
-        iconButton("pip.enter", help: L("controls.pip", "Mini Window"),
-                   active: player.isMiniWindow) {
+        PlayerIconButton(icon: "pip.enter", help: L("controls.pip", "Mini Window"),
+                          active: player.isMiniWindow) {
             player.toggleMiniWindow()
         }
-        iconButton("arrow.up.left.and.arrow.down.right",
-                   help: L("controls.fullscreen", "Toggle Full Screen")) {
+        PlayerIconButton(icon: "arrow.up.left.and.arrow.down.right",
+                         help: L("controls.fullscreen", "Toggle Full Screen")) {
             player.toggleFullscreen()
         }
     }
@@ -307,17 +308,9 @@ struct ControlBar: View {
     /// Network settings — opens the WebDAV browser / network panel
     /// (server management, playback and the User-Agent setting).
     private var networkButton: some View {
-        Button {
+        PlayerIconButton(icon: "network", help: L("controls.network", "Network")) {
             NotificationCenter.default.post(name: .brushPlayerShowWebDAV, object: nil)
-        } label: {
-            Image(systemName: "network")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-                .frame(width: 28, height: 28)
-                .contentShape(.rect)
         }
-        .buttonStyle(.plain)
-        .help(L("controls.network", "Network"))
     }
 
     /// Thin separator marking the window-control group at the far right.
@@ -328,40 +321,24 @@ struct ControlBar: View {
             .padding(.horizontal, 4)
     }
 
-    // MARK: - Standard icon button
-
-    /// One size for every small icon: 13pt symbol inside a 28×28 hit target.
-    private func iconButton(_ icon: String, help: String, active: Bool = false,
-                            disabled: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(active ? BrushLLMPlayerTheme.accent : BrushLLMPlayerTheme.controlTextSecondary)
-                .frame(width: 28, height: 28)
-                .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .disabled(disabled)
-        .help(help)
-    }
-
     private var playPauseButton: some View {
         Button {
             player.togglePlay()
         } label: {
             Image(systemName: player.isPaused ? "play.fill" : "pause.fill")
-                .font(.system(size: 15, weight: .semibold))
-                // Brand violet fill with the light glyph (kept distinct from
-                // the lemon accent used for selections).
+                .font(.system(size: DesignIcon.play, weight: .semibold))
                 .foregroundStyle(BrushLLMPlayerTheme.controlText)
                 .frame(width: 32, height: 28)
                 .background {
-                    RoundedRectangle(cornerRadius: 7)
-                        .fill(BrushPalette.violet.opacity(player.isPaused ? 0.85 : 0.3))
+                    // Neutral emphasis: white fill marks the continuous
+                    // chrome language; the accent is reserved for selection.
+                    RoundedRectangle(cornerRadius: DesignRadius.row)
+                        .fill(Color.white.opacity(0.12))
                 }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressedDimButtonStyle())
         .disabled(player.isIdle && player.playlist.isEmpty)
+        .opacity(player.isIdle && player.playlist.isEmpty ? BrushLLMPlayerTheme.disabledOpacity : 1)
         .help(player.isPaused ? L("controls.play", "Play") : L("controls.pause", "Pause"))
     }
 
@@ -407,7 +384,7 @@ struct ControlBar: View {
                 .frame(width: 28, height: 28)
                 .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressedDimButtonStyle())
         .help(L("panel.tracks.subtitle", "Subtitles"))
         .popover(isPresented: $subtitlePanelVisible, arrowEdge: .bottom) {
             TrackPanel(player: player, initialSection: .subtitle)
@@ -420,12 +397,12 @@ struct ControlBar: View {
             audioPanelVisible.toggle()
         } label: {
             Image(systemName: "headphones")
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: DesignIcon.toolbar, weight: .medium))
                 .foregroundStyle(player.currentAudioTrack != nil ? BrushLLMPlayerTheme.accent : BrushLLMPlayerTheme.controlTextSecondary)
                 .frame(width: 28, height: 28)
                 .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressedDimButtonStyle())
         .help(L("panel.tracks.audio", "Audio"))
         .popover(isPresented: $audioPanelVisible, arrowEdge: .bottom) {
             TrackPanel(player: player, initialSection: .audio)
@@ -440,7 +417,7 @@ struct ControlBar: View {
         let label = Text("A⇄B")
             .font(.system(size: 11, weight: .semibold))
             .monospacedDigit()
-            .foregroundStyle(player.abLoopA != nil || player.abLoopB != nil ? BrushPalette.orange : BrushLLMPlayerTheme.controlTextSecondary)
+            .foregroundStyle(player.abLoopA != nil || player.abLoopB != nil ? BrushLLMPlayerTheme.accent : BrushLLMPlayerTheme.controlTextSecondary)
             .frame(width: 36, height: 28)
             .contentShape(.rect)
         if forSnapshot {
@@ -473,7 +450,7 @@ struct ControlBar: View {
             videoPanelVisible.toggle()
         } label: {
             Image(systemName: "tv")
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: DesignIcon.toolbar, weight: .medium))
                 .foregroundStyle(videoPanelVisible || player.aspectMode != .fit
                                  || player.isCropActive || player.videoRotation != 0
                                  || player.hdrEnabled
@@ -481,7 +458,7 @@ struct ControlBar: View {
                 .frame(width: 28, height: 28)
                 .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressedDimButtonStyle())
         .help(L("controls.video-settings", "Video settings"))
         .popover(isPresented: $videoPanelVisible, arrowEdge: .bottom) {
             VideoSettingsPanel(player: player)
@@ -494,13 +471,13 @@ struct ControlBar: View {
             audioEffectsPanelVisible.toggle()
         } label: {
             Image(systemName: "slider.vertical.3")
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: DesignIcon.toolbar, weight: .medium))
                 .foregroundStyle(player.eqEnabled || player.audioDelay != 0 || player.videoDelay != 0
                                  ? BrushLLMPlayerTheme.accent : BrushLLMPlayerTheme.controlTextSecondary)
                 .frame(width: 28, height: 28)
                 .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressedDimButtonStyle())
         .help(L("controls.audio-effects", "Audio Effects"))
         .popover(isPresented: $audioEffectsPanelVisible, arrowEdge: .bottom) {
             AudioEffectsPanel(player: player)
@@ -509,32 +486,20 @@ struct ControlBar: View {
 
     /// Always-on-top toggle (window control group).
     private var onTopButton: some View {
-        Button {
+        PlayerIconButton(icon: player.isOnTop ? "pin.fill" : "pin",
+                         help: L("video.ontop", "Always on Top"),
+                         active: player.isOnTop) {
             player.isOnTop.toggle()
-        } label: {
-            Image(systemName: player.isOnTop ? "pin.fill" : "pin")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(player.isOnTop ? BrushLLMPlayerTheme.accent : BrushLLMPlayerTheme.controlTextSecondary)
-                .frame(width: 28, height: 28)
-                .contentShape(.rect)
         }
-        .buttonStyle(.plain)
-        .help(L("video.ontop", "Always on Top"))
     }
 
     /// Mute toggle.
     private var muteButton: some View {
-        Button {
+        PlayerIconButton(icon: player.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
+                         iconSize: 12, width: 24,
+                         help: player.isMuted ? L("controls.unmute", "Unmute") : L("controls.mute", "Mute")) {
             player.isMuted.toggle()
-        } label: {
-            Image(systemName: player.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-                .frame(width: 24, height: 28)
-                .contentShape(.rect)
         }
-        .buttonStyle(.plain)
-        .help(player.isMuted ? L("controls.unmute", "Unmute") : L("controls.mute", "Mute"))
     }
 
     /// Mute button + compact custom slider with a small knob.

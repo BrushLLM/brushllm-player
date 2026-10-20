@@ -55,38 +55,56 @@ struct PlaylistPanel: View {
 
     // MARK: - Header (tab picker)
 
+    /// Tabs adapt to localization length: full icon+label when they fit the
+    /// sidebar, icon-only otherwise (e.g. German "Wiedergabeliste"). The
+    /// selected tab uses the accent capsule — one selection language across
+    /// the whole app.
     private var header: some View {
-        HStack(spacing: 4) {
-            ForEach(SidebarTab.allCases) { candidate in
-                Button {
-                    tab = candidate
-                } label: {
-                    HStack(spacing: 3) {
-                        Image(systemName: candidate.icon)
-                            .font(.system(size: 9, weight: .bold))
-                        Text(candidate.title)
-                            .font(.system(size: 11, weight: tab == candidate ? .bold : .regular))
-                            .lineLimit(1)
-                    }
-                    // Sidebar tabs highlight in mint (distinct from the lemon
-                    // selection accent used inside the panels).
-                    .foregroundStyle(tab == candidate ? BrushLLMPlayerTheme.onAccent : BrushLLMPlayerTheme.controlTextSecondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 4)
-                    .background {
-                        if tab == candidate {
-                            Capsule().fill(BrushPalette.mint)
-                        }
-                    }
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 4) {
+                ForEach(SidebarTab.allCases) { candidate in
+                    tabButton(candidate, showLabel: true)
                 }
-                .buttonStyle(.plain)
-                .lineLimit(1)
-                .fixedSize()
+                Spacer(minLength: 2)
             }
-            Spacer(minLength: 2)
+            .fixedSize()
+            HStack(spacing: 4) {
+                ForEach(SidebarTab.allCases) { candidate in
+                    tabButton(candidate, showLabel: false)
+                }
+                Spacer(minLength: 2)
+            }
+            .fixedSize()
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
+    }
+
+    private func tabButton(_ candidate: SidebarTab, showLabel: Bool) -> some View {
+        Button {
+            tab = candidate
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: candidate.icon)
+                    .font(.system(size: 9, weight: .bold))
+                if showLabel {
+                    Text(candidate.title)
+                        .font(.system(size: 11, weight: tab == candidate ? .bold : .regular))
+                        .lineLimit(1)
+                }
+            }
+            .foregroundStyle(tab == candidate ? BrushLLMPlayerTheme.onAccent : BrushLLMPlayerTheme.controlTextSecondary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
+            .background {
+                if tab == candidate {
+                    Capsule().fill(BrushLLMPlayerTheme.accent)
+                }
+            }
+            .contentShape(.rect)
+        }
+        .buttonStyle(PressedDimButtonStyle())
+        .help(candidate.title)
     }
 
     // MARK: - Playlist
@@ -94,7 +112,8 @@ struct PlaylistPanel: View {
     private var playlistContent: some View {
         Group {
             if player.playlist.isEmpty {
-                emptyState(L("panel.playlist.empty", "Playlist is empty"))
+                EmptyStateView(icon: "music.note.list",
+                               message: L("panel.playlist.empty", "Playlist is empty"))
             } else {
                 List {
                     ForEach(player.playlist) { item in
@@ -119,11 +138,11 @@ struct PlaylistPanel: View {
 
     private func playlistRow(_ item: PlaylistItem) -> some View {
         HStack(spacing: 0) {
-            Button {
+            SelectableRow(selected: item.isCurrent, action: {
                 if let index = player.playlist.firstIndex(where: { $0.id == item.id }) {
                     player.playPlaylistIndex(index)
                 }
-            } label: {
+            }) {
                 HStack(spacing: 8) {
                     if item.isPlaying {
                         Image(systemName: "waveform")
@@ -136,16 +155,6 @@ struct PlaylistPanel: View {
                         .foregroundStyle(item.isCurrent ? BrushLLMPlayerTheme.onAccent : BrushLLMPlayerTheme.controlTextSecondary)
                         .lineLimit(1)
                     Spacer()
-                }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
-                .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .background {
-                if item.isCurrent {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(BrushLLMPlayerTheme.accent)
                 }
             }
 
@@ -170,25 +179,13 @@ struct PlaylistPanel: View {
         .help(L("panel.delete", "Delete"))
     }
 
-    private func emptyState(_ message: String) -> some View {
-        VStack {
-            Spacer()
-            Text(message)
-                .font(.callout)
-                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-                .multilineTextAlignment(.center)
-                .padding()
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-    }
-
     // MARK: - Chapters
 
     private var chaptersContent: some View {
         Group {
             if player.chapters.isEmpty {
-                emptyState(L("panel.chapters.none", "No chapters"))
+                EmptyStateView(icon: "list.and.film",
+                               message: L("panel.chapters.none", "No chapters"))
             } else {
                 List {
                     ForEach(player.chapters) { chapter in
@@ -204,9 +201,9 @@ struct PlaylistPanel: View {
     }
 
     private func chapterRow(_ chapter: ChapterInfo) -> some View {
-        Button {
+        SelectableRow(selected: player.currentChapter == chapter.index, action: {
             player.seekToChapter(chapter.index)
-        } label: {
+        }) {
             HStack(spacing: 8) {
                 Text(chapter.title)
                     .font(.callout)
@@ -218,16 +215,6 @@ struct PlaylistPanel: View {
                     .font(.system(size: 11))
                     .monospacedDigit()
                     .foregroundStyle(player.currentChapter == chapter.index ? BrushLLMPlayerTheme.onAccent : BrushLLMPlayerTheme.controlTextSecondary)
-            }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .background {
-            if player.currentChapter == chapter.index {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(BrushLLMPlayerTheme.accent)
             }
         }
     }
@@ -293,13 +280,7 @@ struct PlaylistPanel: View {
     }
 
     private func footerButton(icon: String, help: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-        }
-        .buttonStyle(.plain)
-        .help(help)
+        PlayerIconButton(icon: icon, help: help, action: action)
     }
 
     private var loopIcon: String {

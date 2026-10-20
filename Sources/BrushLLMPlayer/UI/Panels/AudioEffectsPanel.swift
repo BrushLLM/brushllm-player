@@ -35,23 +35,20 @@ struct AudioEffectsPanel: View {
 
                 // MARK: A/V sync
 
-                Text(L("video.sync", "A/V Sync"))
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
+                PanelSection(title: L("video.sync", "A/V Sync")) {
+                    delayRow(L("video.audio-delay", "Audio delay"), value: $player.audioDelay)
+                    delayRow(L("video.video-delay", "Video delay"), value: $player.videoDelay)
 
-                delayRow(L("video.audio-delay", "Audio delay"), value: $player.audioDelay)
-                delayRow(L("video.video-delay", "Video delay"), value: $player.videoDelay)
-
-                Button {
-                    player.resetDelays()
-                } label: {
-                    Text(L("video.delay-reset", "Reset"))
-                        .font(.caption)
-                        .foregroundStyle(BrushLLMPlayerTheme.accent)
+                    Button {
+                        player.resetDelays()
+                    } label: {
+                        Text(L("video.delay-reset", "Reset"))
+                            .font(.caption)
+                            .foregroundStyle(BrushLLMPlayerTheme.accent)
+                    }
+                    .buttonStyle(PressedDimButtonStyle())
+                    .padding(.top, 2)
                 }
-                .buttonStyle(.plain)
-                .padding(.top, 2)
             }
             .padding(12)
         }
@@ -91,7 +88,7 @@ struct AudioEffectsPanel: View {
                     Capsule().fill(BrushLLMPlayerTheme.accent.opacity(0.14))
                 }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressedDimButtonStyle())
     }
 
     // MARK: - A/V sync

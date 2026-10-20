@@ -137,7 +137,7 @@ struct PlayerWindowContent: View {
                         if player.bufferingSeconds > 10 {
                             Text(L("player.slow-load-hint", "Still loading… check file access permissions in System Settings → Privacy & Security"))
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
                                 .multilineTextAlignment(.center)
                                 .frame(maxWidth: 360)
                                 .padding(.horizontal, 12)
@@ -271,7 +271,11 @@ struct PlayerWindowContent: View {
             }
             Text(L("player.open-hint", "Open a media file to start playing"))
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
+            Button(L("menu.open", "Open…")) {
+                OpenMediaPanel.present { urls in player.open(urls) }
+            }
+            .buttonStyle(AccentProminentButtonStyle())
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(.rect)
@@ -284,16 +288,16 @@ struct PlayerWindowContent: View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 40, weight: .light))
-                .foregroundStyle(BrushPalette.orange)
+                .foregroundStyle(BrushPalette.warning)
             Text(L("player.load-failed", "Could not play this file"))
                 .font(.headline)
             Text(message)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
                 .lineLimit(3)
         }
         .padding(24)
-        .background(BrushLLMPlayerTheme.controlMaterial, in: .rect(cornerRadius: 14))
+        .background(BrushLLMPlayerTheme.controlMaterial, in: .rect(cornerRadius: DesignRadius.sheet))
         .padding(40)
     }
 }

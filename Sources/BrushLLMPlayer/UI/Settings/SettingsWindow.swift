@@ -278,7 +278,7 @@ private struct PlaybackSettingsTab: View {
             Section(L("settings.playback", "Playback")) {
                 LabeledContent(L("settings.playback.volume", "Default volume")) {
                     Slider(value: $settings.defaultVolume, in: 0...130)
-                        .tint(BrushPalette.violet)
+                        .tint(BrushLLMPlayerTheme.accent)
                         .frame(width: 220)
                     Text("\(Int(settings.defaultVolume))")
                         .monospacedDigit()
@@ -287,7 +287,7 @@ private struct PlaybackSettingsTab: View {
                 }
 
                 Toggle(L("settings.playback.muted", "Start muted"), isOn: $settings.startMuted)
-                    .toggleStyle(ThemedSwitchToggleStyle(onColor: BrushPalette.violet))
+                    .toggleStyle(ThemedSwitchToggleStyle())
 
                 Picker(L("settings.playback.loop", "Default loop mode"), selection: $settings.loopMode) {
                     Text(L("loop.off", "No Loop")).tag(LoopMode.off)
@@ -309,13 +309,13 @@ private struct VideoSettingsTab: View {
         Form {
             Section(L("settings.video", "Video")) {
                 Toggle(L("settings.video.hwdec", "Hardware decoding (VideoToolbox)"), isOn: $settings.hardwareDecoding)
-                    .toggleStyle(ThemedSwitchToggleStyle(onColor: BrushPalette.violet))
+                    .toggleStyle(ThemedSwitchToggleStyle())
                 Text(L("settings.video.hwdec.hint", "Accelerates decoding of H.264, H.265 and AV1."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text(L("settings.video.hwdec.note", "Applies immediately; if playback misbehaves, reopen the file."))
                     .font(.caption)
-                    .foregroundStyle(BrushPalette.violet)
+                    .foregroundStyle(.secondary)
             }
         }
     }

@@ -91,46 +91,6 @@ struct NetworkPanel: View {
     }
 }
 
-// MARK: - Shared pieces
-
-/// Glass card treatment for input groups: white/5 fill, 12pt radius,
-/// white/10 hairline; a focused card gets a subtle brand-violet edge.
-struct GlassCard: ViewModifier {
-    var focused: Bool = false
-
-    func body(content: Content) -> some View {
-        content
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white.opacity(0.05))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(focused ? BrushPalette.violet.opacity(0.55) : Color.white.opacity(0.1),
-                                  lineWidth: 1)
-            }
-    }
-}
-
-/// Primary action button: solid brand violet with a bold white label —
-/// the panel's single prominent-action style.
-struct VioletProminentButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 13, weight: .bold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 7)
-            .background {
-                RoundedRectangle(cornerRadius: 7)
-                    .fill(BrushPalette.violet)
-            }
-            .opacity(configuration.isPressed ? 0.8 : 1)
-    }
-}
-
 // MARK: - Tab 1: Stream URL
 
 private struct StreamTab: View {
@@ -171,7 +131,7 @@ private struct StreamTab: View {
                 Button(action: play) {
                     Text(L("panel.url.open", "Play"))
                 }
-                .buttonStyle(VioletProminentButtonStyle())
+                .buttonStyle(AccentProminentButtonStyle())
                 .disabled(trimmedURL.isEmpty)
                 .opacity(trimmedURL.isEmpty ? 0.45 : 1)
             }
@@ -265,14 +225,14 @@ private struct StreamTab: View {
                 } label: {
                     Text(L("network.user-agent-reset", "Reset"))
                         .font(.caption)
-                        .foregroundStyle(BrushPalette.violet300)
+                        .foregroundStyle(BrushLLMPlayerTheme.accent)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressedDimButtonStyle())
             }
             .modifier(GlassCard())
             Text(L("network.user-agent-hint", "Sent with every network request; a browser UA passes most CDNs."))
                 .font(.system(size: 10))
-                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary.opacity(0.7))
+                .foregroundStyle(BrushLLMPlayerTheme.controlTextHint)
         }
     }
 
@@ -308,7 +268,7 @@ private struct StreamTab: View {
             }
             Text(L("network.buffer-hint", "The demuxer thread buffers ahead of playback; larger values smooth unstable networks."))
                 .font(.system(size: 10))
-                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary.opacity(0.7))
+                .foregroundStyle(BrushLLMPlayerTheme.controlTextHint)
         }
     }
 }
@@ -446,14 +406,7 @@ private struct ServersTab: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(BrushLLMPlayerTheme.controlText)
                         .lineLimit(1)
-                    Text(source.kind.rawValue.uppercased())
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(BrushPalette.violet300)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1.5)
-                        .background {
-                            Capsule().fill(BrushPalette.violet.opacity(0.18))
-                        }
+                    KindBadge(text: source.kind.rawValue)
                 }
                 Text(Self.hostLabel(of: source))
                     .font(.system(size: 11))
@@ -465,7 +418,7 @@ private struct ServersTab: View {
             Button(L("webdav.connect-server", "Connect")) {
                 enterBrowser(source)
             }
-            .buttonStyle(VioletProminentButtonStyle())
+            .buttonStyle(AccentProminentButtonStyle())
             Button {
                 editingSource = source
                 showAddForm = true
@@ -518,19 +471,11 @@ private struct ServersTab: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "server.rack")
-                .font(.system(size: 40, weight: .light))
-                .foregroundStyle(BrushPalette.violet.opacity(0.7))
-            Text(L("media.empty", "No media servers configured"))
-                .font(.callout)
-                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-            Button(L("webdav.add", "Add Server…")) {
-                showAddForm = true
-            }
-            .buttonStyle(VioletProminentButtonStyle())
+        EmptyStateView(icon: "server.rack",
+                       message: L("media.empty", "No media servers configured"),
+                       actionTitle: L("webdav.add", "Add Server…")) {
+            showAddForm = true
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// scheme://host[:port] of a source, for the card subtitle.
@@ -674,22 +619,12 @@ private struct BrowserView: View {
     @ViewBuilder
     private var content: some View {
         if let errorMessage {
-            VStack(spacing: 10) {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 26))
-                    .foregroundStyle(BrushPalette.orange)
-                Text(errorMessage)
-                    .font(.callout)
-                    .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-                Button(L("webdav.retry", "Retry")) { onReload() }
-                    .buttonStyle(VioletProminentButtonStyle())
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ErrorStateView(message: errorMessage,
+                           retryTitle: L("webdav.retry", "Retry"),
+                           retry: onReload)
         } else if items.isEmpty && !isLoading {
-            Text(L("webdav.empty-folder", "Empty folder"))
-                .font(.callout)
-                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            EmptyStateView(icon: "folder",
+                           message: L("webdav.empty-folder", "Empty folder"))
         } else {
             ScrollView {
                 VStack(spacing: 4) {
@@ -744,49 +679,42 @@ private struct BrowserView: View {
         }
     }
 
+    /// One browser row. The row itself is the play affordance — no per-row
+    /// play badge (every row carrying one was visual noise); hover fill
+    /// provides the feedback instead.
     private func row(_ item: MediaItem) -> some View {
-        Button {
-            if item.isDirectory {
-                pathStack.append(item.id)
-                onReload()
-            } else {
-                onPlay(.server(source, item: item))
+        BrowserRowButton(
+            disabled: !item.isDirectory && !item.isPlayable(for: source.kind),
+            action: {
+                if item.isDirectory {
+                    pathStack.append(item.id)
+                    onReload()
+                } else {
+                    onPlay(.server(source, item: item))
+                }
             }
-        } label: {
+        ) {
             HStack(spacing: 8) {
                 Image(systemName: icon(for: item))
-                    .font(.system(size: 12))
-                    .foregroundStyle(BrushPalette.violet300)
+                    .font(.system(size: DesignIcon.inline))
+                    .foregroundStyle(item.isDirectory
+                                     ? BrushPalette.violet300
+                                     : BrushLLMPlayerTheme.controlTextSecondary)
                 Text(item.name)
                     .font(.callout)
                     .foregroundStyle(BrushLLMPlayerTheme.controlText)
                     .lineLimit(1)
                 Spacer()
-                if !item.isDirectory {
-                    if item.size > 0 {
-                        Text(ByteCountFormatter.string(fromByteCount: item.size, countStyle: .file))
-                            .font(.system(size: 10))
-                            .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-                    }
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 22, height: 22)
-                        .background {
-                            Circle().fill(BrushPalette.violet)
-                        }
+                if !item.isDirectory && item.size > 0 {
+                    Text(ByteCountFormatter.string(fromByteCount: item.size, countStyle: .file))
+                        .font(.system(size: 10))
+                        .monospacedDigit()
+                        .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
                 }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.white.opacity(0.03))
-            }
-            .contentShape(.rect)
         }
-        .buttonStyle(.plain)
-        .disabled(!item.isDirectory && !item.isPlayable(for: source.kind))
         .contextMenu {
             if item.isDirectory {
                 Button {
@@ -804,6 +732,34 @@ private struct BrowserView: View {
         if item.isDirectory { return "folder.fill" }
         if source.kind == .emby || source.kind == .jellyfin { return "film" }
         return "doc"
+    }
+}
+
+/// Browser list row: hover fill, pressed dimming, visible disabled state.
+struct BrowserRowButton<Content: View>: View {
+    var disabled: Bool = false
+    let action: () -> Void
+    @ViewBuilder var content: Content
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            content
+                .background {
+                    if isHovering && !disabled {
+                        RoundedRectangle(cornerRadius: DesignRadius.row)
+                            .fill(BrushLLMPlayerTheme.hoverFill)
+                    }
+                }
+                .opacity(disabled ? BrushLLMPlayerTheme.disabledOpacity : 1)
+                .contentShape(.rect)
+        }
+        .buttonStyle(PressedDimButtonStyle())
+        .disabled(disabled)
+        .onHover { hovering in
+            isHovering = hovering && !disabled
+        }
     }
 }
 
@@ -918,7 +874,7 @@ private struct AddServerForm: View {
                 }
                 Text(L("webdav.password-keychain", "The password is stored in the Keychain."))
                     .font(.system(size: 10))
-                    .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary.opacity(0.7))
+                    .foregroundStyle(BrushLLMPlayerTheme.controlTextHint)
 
                 if !newHost.trimmingCharacters(in: .whitespaces).isEmpty {
                     Text(composedBaseURL)
@@ -946,7 +902,7 @@ private struct AddServerForm: View {
                     Button(editing == nil
                            ? L("webdav.connect", "Add & Connect")
                            : L("webdav.save", "Save")) { add() }
-                        .buttonStyle(VioletProminentButtonStyle())
+                        .buttonStyle(AccentProminentButtonStyle())
                         .disabled(!requiredFieldsFilled)
                         .opacity(requiredFieldsFilled ? 1 : 0.45)
                 }
@@ -1004,7 +960,7 @@ private struct AddServerForm: View {
         }
     }
 
-    /// Capsule chips for the server type.
+    /// Capsule chips for the server type — the accent marks the selection.
     private var kindPicker: some View {
         HStack(spacing: 6) {
             ForEach(MediaServerKind.allCases) { candidate in
@@ -1013,30 +969,33 @@ private struct AddServerForm: View {
                 } label: {
                     Text(candidate.rawValue.uppercased())
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(kind == candidate ? .white : BrushLLMPlayerTheme.controlTextSecondary)
+                        .foregroundStyle(kind == candidate ? BrushLLMPlayerTheme.onAccent : BrushLLMPlayerTheme.controlTextSecondary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
                         .background {
-                            Capsule().fill(kind == candidate ? BrushPalette.violet : Color.white.opacity(0.06))
+                            Capsule().fill(kind == candidate ? BrushLLMPlayerTheme.accent : Color.white.opacity(0.06))
                         }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressedDimButtonStyle())
             }
         }
         .frame(maxWidth: .infinity)
     }
 
-    /// Label + input in one glass card row.
+    /// Label above the input, both in one glass card. Label-on-top is the
+    /// i18n-safe layout: a leading fixed-width label column truncated
+    /// longer localizations (German "Benutzername", Portuguese "Nome de
+    /// usuário").
     private func fieldRow<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
-        HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(label)
-                .font(.system(size: 12))
+                .font(.caption)
                 .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-                .frame(width: 64, alignment: .leading)
             content()
                 .font(.system(size: 13))
                 .foregroundStyle(BrushLLMPlayerTheme.controlText)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .modifier(GlassCard())
     }
 

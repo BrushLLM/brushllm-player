@@ -8,7 +8,8 @@ struct HistoryPanel: View {
     var body: some View {
         Group {
             if store.history.isEmpty {
-                emptyState(L("panel.history.empty", "No playback history yet"))
+                EmptyStateView(icon: "clock.arrow.circlepath",
+                               message: L("panel.history.empty", "No playback history yet"))
             } else {
                 List {
                     ForEach(store.history) { entry in
@@ -71,18 +72,6 @@ struct HistoryPanel: View {
     }
 
 
-    private func emptyState(_ message: String) -> some View {
-        VStack {
-            Spacer()
-            Text(message)
-                .font(.callout)
-                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-                .multilineTextAlignment(.center)
-                .padding()
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-    }
 
     private func formatTime(_ seconds: Double) -> String {
         guard seconds.isFinite, seconds >= 0 else { return "0:00" }
@@ -111,7 +100,8 @@ struct BookmarksPanel: View {
     var body: some View {
         Group {
             if store.bookmarks.isEmpty {
-                emptyState(L("panel.bookmarks.empty", "No bookmarks yet"))
+                EmptyStateView(icon: "bookmark",
+                               message: L("panel.bookmarks.empty", "No bookmarks yet"))
             } else {
                 List {
                     ForEach(store.bookmarks) { bookmark in
@@ -164,18 +154,6 @@ struct BookmarksPanel: View {
         }
     }
 
-    private func emptyState(_ message: String) -> some View {
-        VStack {
-            Spacer()
-            Text(message)
-                .font(.callout)
-                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-                .multilineTextAlignment(.center)
-                .padding()
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-    }
 
     private func formatTime(_ seconds: Double) -> String {
         let total = Int(seconds)

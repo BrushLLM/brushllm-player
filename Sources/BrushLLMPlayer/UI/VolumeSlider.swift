@@ -27,17 +27,18 @@ struct VolumeSlider: View {
                     .frame(width: width, height: trackHeight)
                     .position(x: width / 2, y: height / 2)
 
-                // Fill — brand violet (kept distinct from the lemon accent)
+                // Fill — white: continuous-value chrome language, matching
+                // the progress bar (the accent is reserved for selection).
                 Capsule()
-                    .fill(BrushPalette.violet)
+                    .fill(Color.white.opacity(0.9))
                     .frame(width: max(fraction * width, trackHeight), height: trackHeight)
                     .position(x: max(fraction * width, trackHeight) / 2, y: height / 2)
 
                 // Small knob
                 Circle()
-                    .fill(BrushPalette.violet)
+                    .fill(Color.white)
                     .frame(width: 7, height: 7)
-                    .shadow(color: BrushPalette.violet.opacity(0.4), radius: 1.5)
+                    .shadow(color: .black.opacity(0.4), radius: 1.5)
                     .position(x: fraction * width, y: height / 2)
             }
             .contentShape(.rect)

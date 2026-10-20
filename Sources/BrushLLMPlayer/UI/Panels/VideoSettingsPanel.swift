@@ -28,82 +28,62 @@ struct VideoSettingsPanel: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                // MARK: Aspect
-
-                Text(L("video.aspect", "Aspect Ratio"))
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-                    .padding(.bottom, 6)
-
-                modeRow(L("video.aspect.fit", "Fit to Window"), mode: .fit)
-                modeRow(L("video.aspect.fill", "Fill Window"), mode: .fill)
-                modeRow(L("video.aspect.stretch", "Stretch to Window"), mode: .stretch)
-
-                ForEach(Self.customRatios, id: \.self) { ratio in
-                    ratioRow(ratio)
-                }
-
-                Divider().padding(.vertical, 8)
-
-                // MARK: Rotation
-
-                Text(L("video.rotate", "Rotation"))
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-                    .padding(.bottom, 6)
-
-                rotationRow
-
-                Divider().padding(.vertical, 8)
-
-                // MARK: Crop
-
-                Text(L("video.crop", "Crop"))
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-                    .padding(.bottom, 6)
-
-                cropGrid
-
-                if player.cropMode == .custom {
-                    VStack(spacing: 6) {
-                        marginRow(L("video.crop.top", "Top"), value: $player.cropTop)
-                        marginRow(L("video.crop.bottom", "Bottom"), value: $player.cropBottom)
-                        marginRow(L("video.crop.left", "Left"), value: $player.cropLeft)
-                        marginRow(L("video.crop.right", "Right"), value: $player.cropRight)
+                PanelSection(title: L("video.aspect", "Aspect Ratio")) {
+                    modeRow(L("video.aspect.fit", "Fit to Window"), mode: .fit)
+                    modeRow(L("video.aspect.fill", "Fill Window"), mode: .fill)
+                    modeRow(L("video.aspect.stretch", "Stretch to Window"), mode: .stretch)
+                    ForEach(Self.customRatios, id: \.self) { ratio in
+                        ratioRow(ratio)
                     }
-                    .padding(.top, 6)
                 }
 
                 Divider().padding(.vertical, 8)
 
-                // MARK: HDR & decoding
-
-                Toggle(isOn: $player.hdrEnabled) {
-                    Text(L("video.hdr", "HDR Output"))
-                        .font(.callout)
-                        .foregroundStyle(BrushLLMPlayerTheme.controlText)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                PanelSection(title: L("video.rotate", "Rotation")) {
+                    rotationRow
                 }
-                .toggleStyle(ThemedSwitchToggleStyle())
 
-                Toggle(isOn: $settings.hardwareDecoding) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(L("video.hwdec", "Hardware Decoding"))
+                Divider().padding(.vertical, 8)
+
+                PanelSection(title: L("video.crop", "Crop")) {
+                    cropGrid
+                    if player.cropMode == .custom {
+                        VStack(spacing: 6) {
+                            marginRow(L("video.crop.top", "Top"), value: $player.cropTop)
+                            marginRow(L("video.crop.bottom", "Bottom"), value: $player.cropBottom)
+                            marginRow(L("video.crop.left", "Left"), value: $player.cropLeft)
+                            marginRow(L("video.crop.right", "Right"), value: $player.cropRight)
+                        }
+                        .padding(.top, 6)
+                    }
+                }
+
+                Divider().padding(.vertical, 8)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Toggle(isOn: $player.hdrEnabled) {
+                        Text(L("video.hdr", "HDR Output"))
                             .font(.callout)
                             .foregroundStyle(BrushLLMPlayerTheme.controlText)
-                        if let status = hwdecStatus {
-                            Text(status)
-                                .font(.caption2)
-                                .foregroundStyle(BrushPalette.mint)
-                        }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .toggleStyle(ThemedSwitchToggleStyle())
+
+                    Toggle(isOn: $settings.hardwareDecoding) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L("video.hwdec", "Hardware Decoding"))
+                                .font(.callout)
+                                .foregroundStyle(BrushLLMPlayerTheme.controlText)
+                            if let status = hwdecStatus {
+                                Text(status)
+                                    .font(.caption2)
+                                    .foregroundStyle(BrushLLMPlayerTheme.accent)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .toggleStyle(ThemedSwitchToggleStyle())
                 }
-                .toggleStyle(ThemedSwitchToggleStyle())
             }
             .padding(12)
         }
@@ -113,68 +93,40 @@ struct VideoSettingsPanel: View {
     // MARK: - Aspect rows
 
     private func modeRow(_ label: String, mode: PlayerCore.AspectMode) -> some View {
-        Button {
+        SelectableRow(selected: player.aspectMode == mode && mode != .custom, action: {
             settings.aspectMode = mode
             player.aspectMode = mode
-        } label: {
-            HStack {
-                Text(label)
-                    .font(.callout)
-                    .fontWeight(player.aspectMode == mode && mode != .custom ? .bold : .regular)
-                    .foregroundStyle(player.aspectMode == mode && mode != .custom
-                                     ? BrushLLMPlayerTheme.onAccent
-                                     : BrushLLMPlayerTheme.controlText)
-                Spacer()
-                if player.aspectMode == mode && mode != .custom {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(BrushLLMPlayerTheme.onAccent)
-                }
-            }
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
-        .background {
-            if player.aspectMode == mode && mode != .custom {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(BrushLLMPlayerTheme.accent)
-            }
+        }) {
+            rowLabel(label,
+                     selected: player.aspectMode == mode && mode != .custom)
         }
     }
 
     private func ratioRow(_ ratio: String) -> some View {
-        Button {
+        let selected = player.aspectMode == .custom && player.aspectOverride == ratio
+        return SelectableRow(selected: selected, action: {
             settings.aspectMode = .custom
             settings.aspectOverride = ratio
             player.aspectMode = .custom
             player.aspectOverride = ratio
-        } label: {
-            HStack {
-                Text(ratio)
-                    .font(.callout)
-                    .fontWeight(player.aspectMode == .custom && player.aspectOverride == ratio ? .bold : .regular)
-                    .monospacedDigit()
-                    .foregroundStyle(player.aspectMode == .custom && player.aspectOverride == ratio
-                                     ? BrushLLMPlayerTheme.onAccent
-                                     : BrushLLMPlayerTheme.controlText)
-                Spacer()
-                if player.aspectMode == .custom && player.aspectOverride == ratio {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(BrushLLMPlayerTheme.onAccent)
-                }
-            }
-            .contentShape(.rect)
+        }) {
+            rowLabel(ratio, selected: selected)
         }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
-        .background {
-            if player.aspectMode == .custom && player.aspectOverride == ratio {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(BrushLLMPlayerTheme.accent)
+    }
+
+    /// Label + trailing checkmark inside a selectable row.
+    private func rowLabel(_ text: String, selected: Bool) -> some View {
+        HStack {
+            Text(text)
+                .font(.callout)
+                .fontWeight(selected ? .bold : .regular)
+                .monospacedDigit()
+                .foregroundStyle(selected ? BrushLLMPlayerTheme.onAccent : BrushLLMPlayerTheme.controlText)
+            Spacer()
+            if selected {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(BrushLLMPlayerTheme.onAccent)
             }
         }
     }
@@ -185,27 +137,9 @@ struct VideoSettingsPanel: View {
     private var rotationRow: some View {
         HStack(spacing: 4) {
             ForEach(Self.rotations, id: \.self) { degrees in
-                let selected = player.videoRotation == degrees
-                Button {
+                segmentButton("\(degrees)°", selected: player.videoRotation == degrees) {
                     player.videoRotation = degrees
-                } label: {
-                    Text("\(degrees)°")
-                        .font(.callout)
-                        .fontWeight(selected ? .bold : .regular)
-                        .monospacedDigit()
-                        .foregroundStyle(selected
-                                         ? BrushLLMPlayerTheme.onAccent
-                                         : BrushLLMPlayerTheme.controlText)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 3)
-                        .background {
-                            if selected {
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(BrushLLMPlayerTheme.accent)
-                            }
-                        }
                 }
-                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 2)
@@ -226,28 +160,31 @@ struct VideoSettingsPanel: View {
         let columns = [GridItem(.flexible(), spacing: 4), GridItem(.flexible(), spacing: 4), GridItem(.flexible(), spacing: 4)]
         return LazyVGrid(columns: columns, spacing: 4) {
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                Button(action: item.action) {
-                    Text(item.label)
-                        .font(.callout)
-                        .fontWeight(item.selected ? .bold : .regular)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .foregroundStyle(item.selected
-                                         ? BrushLLMPlayerTheme.onAccent
-                                         : BrushLLMPlayerTheme.controlText)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 3)
-                        .background {
-                            if item.selected {
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(BrushLLMPlayerTheme.accent)
-                            }
-                        }
-                }
-                .buttonStyle(.plain)
+                segmentButton(item.label, selected: item.selected, action: item.action)
             }
         }
         .padding(.horizontal, 2)
+    }
+
+    /// One equal-width segment in a segmented group (rotation / crop grid).
+    private func segmentButton(_ label: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.callout)
+                .fontWeight(selected ? .bold : .regular)
+                .monospacedDigit()
+                .lineLimit(1)
+                .foregroundStyle(selected ? BrushLLMPlayerTheme.onAccent : BrushLLMPlayerTheme.controlText)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 3)
+                .background {
+                    if selected {
+                        RoundedRectangle(cornerRadius: DesignRadius.row)
+                            .fill(BrushLLMPlayerTheme.accent)
+                    }
+                }
+        }
+        .buttonStyle(PressedDimButtonStyle())
     }
 
     /// One custom-crop margin slider (percent of the source dimension).

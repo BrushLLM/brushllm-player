@@ -18,27 +18,21 @@ struct TrackPanel: View {
         VStack(alignment: .leading, spacing: 0) {
             switch initialSection {
             case .audio:
-                sectionHeader(L("panel.tracks.audio", "Audio"))
-                trackRows(player.audioTracks, current: player.currentAudioTrack) { id in
-                    player.setAudioTrack(id)
+                PanelSection(title: L("panel.tracks.audio", "Audio")) {
+                    trackRows(player.audioTracks, current: player.currentAudioTrack) { id in
+                        player.setAudioTrack(id)
+                    }
                 }
             case .subtitle:
-                sectionHeader(L("panel.tracks.subtitle", "Subtitles"))
-                trackRows(player.subtitleTracks, current: player.currentSubtitleTrack) { id in
-                    player.setSubtitleTrack(id)
+                PanelSection(title: L("panel.tracks.subtitle", "Subtitles")) {
+                    trackRows(player.subtitleTracks, current: player.currentSubtitleTrack) { id in
+                        player.setSubtitleTrack(id)
+                    }
                 }
             }
         }
         .padding(12)
         .frame(minWidth: 240, maxWidth: 320)
-    }
-
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(.caption)
-            .fontWeight(.semibold)
-            .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-            .padding(.bottom, 4)
     }
 
     @ViewBuilder
@@ -62,7 +56,7 @@ struct TrackPanel: View {
     }
 
     private func trackRow(label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        SelectableRow(selected: isSelected, action: action) {
             HStack {
                 Text(label)
                     .font(.callout)
@@ -76,16 +70,39 @@ struct TrackPanel: View {
                         .foregroundStyle(BrushLLMPlayerTheme.onAccent)
                 }
             }
-            .contentShape(.rect)
         }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background {
-            if isSelected {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(BrushLLMPlayerTheme.accent)
-            }
+    }
+}
+
+// MARK: - Selectable row
+
+/// The shared selection-row pattern: accent fill when selected, hover fill
+/// otherwise, pressed dimming. Content provides its own conditional colors.
+struct SelectableRow<Content: View>: View {
+    var selected: Bool = false
+    var action: () -> Void
+    @ViewBuilder var content: Content
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            content
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background {
+                    if selected {
+                        RoundedRectangle(cornerRadius: DesignRadius.row)
+                            .fill(BrushLLMPlayerTheme.accent)
+                    } else if isHovering {
+                        RoundedRectangle(cornerRadius: DesignRadius.row)
+                            .fill(BrushLLMPlayerTheme.hoverFill)
+                    }
+                }
+                .contentShape(.rect)
         }
+        .buttonStyle(PressedDimButtonStyle())
+        .onHover { isHovering = $0 }
     }
 }
