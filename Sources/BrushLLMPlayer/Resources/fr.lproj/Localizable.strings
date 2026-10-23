@@ -1,6 +1,8 @@
 /* BrushLLMPlayer — Français */
 
 
+"player.drag-hint" = "…ou glissez des fichiers multimédias dans la fenêtre";
+
 "player.open-hint" = "Ouvrez un fichier média pour lancer la lecture";
 "player.load-failed" = "Impossible de lire ce fichier";
 
@@ -230,7 +232,6 @@
 // Native About window
 "about.menu" = "À propos de BrushLLM Player";
 "about.description" = "Un lecteur multimédia macOS basé sur mpv.";
-"about.powered-by" = "Propulsé par mpv";
 "about.license" = "Sous licence GPL v3";
 "about.github" = "Projet GitHub";
 "about.releases" = "Versions";

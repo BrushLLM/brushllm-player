@@ -1,6 +1,8 @@
 /* BrushLLMPlayer — 简体中文 */
 
 
+"player.drag-hint" = "或将媒体文件拖入窗口";
+
 "player.open-hint" = "打开媒体文件开始播放";
 "player.load-failed" = "无法播放此文件";
 
@@ -230,7 +232,6 @@
 // Native About window
 "about.menu" = "关于 BrushLLM Player";
 "about.description" = "一款由 mpv 驱动的 macOS 媒体播放器。";
-"about.powered-by" = "由 mpv 驱动";
 "about.license" = "采用 GPL v3 许可";
 "about.github" = "GitHub 项目";
 "about.releases" = "发行版本";

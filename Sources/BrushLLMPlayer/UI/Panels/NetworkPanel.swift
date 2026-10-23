@@ -76,18 +76,18 @@ struct NetworkPanel: View {
         } label: {
             Text(title)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(tab == target ? BrushLLMPlayerTheme.controlText : BrushLLMPlayerTheme.controlTextSecondary)
+                .foregroundStyle(tab == target ? BrushLLMPlayerTheme.onAccent : BrushLLMPlayerTheme.controlTextSecondary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 6)
                 .background {
                     if tab == target {
-                        RoundedRectangle(cornerRadius: 7)
-                            .fill(Color.white.opacity(0.1))
+                        RoundedRectangle(cornerRadius: DesignRadius.row)
+                            .fill(BrushLLMPlayerTheme.accent)
                     }
                 }
                 .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressedDimButtonStyle())
     }
 }
 
@@ -114,7 +114,7 @@ private struct StreamTab: View {
             // Hero
             Image(systemName: "antenna.radiowaves.left.and.right")
                 .font(.system(size: 36, weight: .light))
-                .foregroundStyle(BrushPalette.violet.opacity(0.85))
+                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
             Text(L("network.tab.url", "Stream URL"))
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(BrushLLMPlayerTheme.controlText)
@@ -133,7 +133,6 @@ private struct StreamTab: View {
                 }
                 .buttonStyle(AccentProminentButtonStyle())
                 .disabled(trimmedURL.isEmpty)
-                .opacity(trimmedURL.isEmpty ? 0.45 : 1)
             }
             .modifier(GlassCard(focused: urlFocused))
             .padding(.horizontal, 28)
@@ -454,20 +453,20 @@ private struct ServersTab: View {
                 Text(L("webdav.add", "Add Server…"))
                     .font(.system(size: 13, weight: .medium))
             }
-            .foregroundStyle(BrushPalette.violet300)
+            .foregroundStyle(BrushLLMPlayerTheme.accent)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background {
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: DesignRadius.card)
                     .fill(Color.white.opacity(0.03))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(Color.white.opacity(0.1), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                        RoundedRectangle(cornerRadius: DesignRadius.card)
+                            .strokeBorder(Color.white.opacity(0.22), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
                     }
             }
             .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressedDimButtonStyle())
     }
 
     private var emptyState: some View {
@@ -904,7 +903,6 @@ private struct AddServerForm: View {
                            : L("webdav.save", "Save")) { add() }
                         .buttonStyle(AccentProminentButtonStyle())
                         .disabled(!requiredFieldsFilled)
-                        .opacity(requiredFieldsFilled ? 1 : 0.45)
                 }
                 .padding(.top, 6)
             }

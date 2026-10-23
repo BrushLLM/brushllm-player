@@ -51,6 +51,11 @@ struct PlaylistPanel: View {
             footer
         }
         .background(BrushLLMPlayerTheme.panelMaterial)
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(BrushLLMPlayerTheme.controlSeparator)
+                .frame(width: 0.5)
+        }
     }
 
     // MARK: - Header (tab picker)
@@ -166,17 +171,10 @@ struct PlaylistPanel: View {
         }
     }
 
-    /// Small trailing delete button shown on every list row.
+    /// Trailing delete button shown on every list row: 14pt glyph in a
+    /// 24×24 hit target, brightening on hover.
     private func rowDeleteButton(action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 11))
-                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary.opacity(0.55))
-                .frame(width: 20, height: 20)
-                .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .help(L("panel.delete", "Delete"))
+        HoverBrightButton(icon: "xmark.circle.fill", help: L("panel.delete", "Delete"), action: action)
     }
 
     // MARK: - Chapters
@@ -252,9 +250,11 @@ struct PlaylistPanel: View {
                 footerButton(icon: "shuffle", help: L("panel.playlist.shuffle", "Shuffle")) {
                     player.shufflePlaylist()
                 }
+                // Destructive clear gets extra separation from Shuffle.
                 footerButton(icon: "trash", help: L("panel.playlist.clear", "Clear")) {
                     player.clearPlaylist()
                 }
+                .padding(.leading, 8)
             case .chapters:
                 footerButton(icon: "backward.end.fill", help: L("menu.previous-chapter", "Previous Chapter")) {
                     player.previousChapter()
@@ -266,6 +266,7 @@ struct PlaylistPanel: View {
                 footerButton(icon: "trash", help: L("panel.history.clear", "Clear History")) {
                     PlaybackStore.shared.clearHistory()
                 }
+                .padding(.leading, 8)
             case .bookmarks:
                 footerButton(icon: "plus", help: L("menu.bookmark-add", "Add Bookmark")) {
                     player.addBookmark()
@@ -273,6 +274,7 @@ struct PlaylistPanel: View {
                 footerButton(icon: "trash", help: L("panel.bookmarks.clear", "Clear Bookmarks")) {
                     PlaybackStore.shared.removeBookmarks(at: IndexSet(integersIn: 0..<PlaybackStore.shared.bookmarks.count))
                 }
+                .padding(.leading, 8)
             }
         }
         .padding(.horizontal, 12)

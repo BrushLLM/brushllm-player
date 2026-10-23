@@ -1389,6 +1389,9 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
             if case .flag(let idle)? = value {
                 isIdle = idle
                 if idle {
+                    // Drop the stale last frame so the idle overlay sits on
+                    // black, not on the frozen final image.
+                    videoLayer?.clearFrame()
                     stopHistoryUpdates()
                     position = 0
                     duration = 0

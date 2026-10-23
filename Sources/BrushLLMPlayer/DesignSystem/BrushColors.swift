@@ -120,18 +120,32 @@ struct ThemedSwitchToggleStyle: ToggleStyle {
 /// Prominent action button: solid accent fill with bold near-black content.
 /// `.borderedProminent` + tint renders white text, which is unreadable on
 /// the lemon accent — this style keeps the high-contrast pairing.
+///
+/// Disabled renders as a neutral quiet capsule (white/8 fill, hint-colored
+/// label) — dimming the accent by opacity shifts its hue to a muddy olive,
+/// so the fill is swapped instead of faded.
 struct AccentProminentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+        AccentProminentButtonBody(label: configuration.label, isPressed: configuration.isPressed)
+    }
+}
+
+private struct AccentProminentButtonBody<Label: View>: View {
+    @Environment(\.isEnabled) private var isEnabled
+    let label: Label
+    let isPressed: Bool
+
+    var body: some View {
+        label
             .font(.callout.weight(.bold))
-            .foregroundStyle(BrushLLMPlayerTheme.onAccent)
+            .foregroundStyle(isEnabled ? BrushLLMPlayerTheme.onAccent : BrushLLMPlayerTheme.controlTextHint)
             .padding(.horizontal, 14)
             .padding(.vertical, 6)
             .background {
                 RoundedRectangle(cornerRadius: DesignRadius.row)
-                    .fill(BrushLLMPlayerTheme.accent)
+                    .fill(isEnabled ? BrushLLMPlayerTheme.accent : Color.white.opacity(0.08))
             }
-            .opacity(configuration.isPressed ? 0.75 : 1)
+            .opacity(isPressed ? 0.75 : 1)
     }
 }
 
@@ -150,7 +164,7 @@ struct GlassCard: ViewModifier {
             }
             .overlay {
                 RoundedRectangle(cornerRadius: DesignRadius.card)
-                    .strokeBorder(focused ? BrushLLMPlayerTheme.accent.opacity(0.6) : Color.white.opacity(0.1),
+                    .strokeBorder(focused ? BrushLLMPlayerTheme.accent.opacity(0.75) : Color.white.opacity(0.1),
                                   lineWidth: 1)
             }
     }

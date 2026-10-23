@@ -57,7 +57,7 @@ struct SubtitleSettingsTab: View {
                 LabeledContent(L("subtitle.color", "Text color")) {
                     swatchRow(selection: $player.subtitleColorHex)
                 }
-
+                Divider()
                 LabeledContent(L("subtitle.border-color", "Outline color")) {
                     swatchRow(selection: $player.subtitleBorderColorHex)
                 }
@@ -75,6 +75,12 @@ struct SubtitleSettingsTab: View {
                 Button {
                     selection.wrappedValue = swatch.1
                 } label: {
+                    // The checkmark flips black/white by swatch luminance —
+                    // a fixed black mark is invisible on the black swatch.
+                    // (Threshold 0.55 keeps mint/yellow on the light side.)
+                    let light = SubtitleColor(hex: swatch.1).map {
+                        $0.red * 0.299 + $0.green * 0.587 + $0.blue * 0.114 > 0.55
+                    } ?? true
                     Circle()
                         .fill(Color(hexString: swatch.1))
                         .frame(width: 16, height: 16)
@@ -85,7 +91,7 @@ struct SubtitleSettingsTab: View {
                             if selection.wrappedValue == swatch.1 {
                                 Image(systemName: "checkmark")
                                     .font(.system(size: 8, weight: .bold))
-                                    .foregroundStyle(.black.opacity(0.7))
+                                    .foregroundStyle(light ? .black.opacity(0.75) : .white)
                             }
                         }
                 }

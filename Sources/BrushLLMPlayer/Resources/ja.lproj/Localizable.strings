@@ -1,6 +1,8 @@
 /* BrushLLMPlayer — 日本語 */
 
 
+"player.drag-hint" = "…またはメディアファイルをウィンドウにドラッグ";
+
 "player.open-hint" = "メディアファイルを開いて再生を開始";
 "player.load-failed" = "このファイルを再生できませんでした";
 
@@ -230,7 +232,6 @@
 // Native About window
 "about.menu" = "BrushLLM Player について";
 "about.description" = "mpv を採用した macOS 向けメディアプレーヤーです。";
-"about.powered-by" = "mpv を搭載";
 "about.license" = "GPL v3 ライセンス";
 "about.github" = "GitHub プロジェクト";
 "about.releases" = "リリース";

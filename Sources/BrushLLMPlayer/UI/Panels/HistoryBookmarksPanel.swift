@@ -181,13 +181,5 @@ extension BookmarksPanel {
 }
 
 private func rowDelete(action: @escaping () -> Void) -> some View {
-    Button(action: action) {
-        Image(systemName: "xmark.circle.fill")
-            .font(.system(size: 11))
-            .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary.opacity(0.55))
-            .frame(width: 20, height: 20)
-            .contentShape(.rect)
-    }
-    .buttonStyle(.plain)
-    .help(L("panel.delete", "Delete"))
+    HoverBrightButton(icon: "xmark.circle.fill", help: L("panel.delete", "Delete"), action: action)
 }

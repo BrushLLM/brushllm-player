@@ -389,6 +389,7 @@ struct ControlBar: View {
         .popover(isPresented: $subtitlePanelVisible, arrowEdge: .bottom) {
             TrackPanel(player: player, initialSection: .subtitle)
         }
+    .presentationBackground(BrushLLMPlayerTheme.panelMaterial)
     }
 
     /// Audio track picker — the headphones icon.
@@ -407,6 +408,7 @@ struct ControlBar: View {
         .popover(isPresented: $audioPanelVisible, arrowEdge: .bottom) {
             TrackPanel(player: player, initialSection: .audio)
         }
+    .presentationBackground(BrushLLMPlayerTheme.panelMaterial)
     }
 
     /// A-B loop: quick menu to set point A, point B, or clear. The text label
@@ -463,6 +465,7 @@ struct ControlBar: View {
         .popover(isPresented: $videoPanelVisible, arrowEdge: .bottom) {
             VideoSettingsPanel(player: player)
         }
+    .presentationBackground(BrushLLMPlayerTheme.panelMaterial)
     }
 
     /// Audio effects popover — equalizer and A/V sync delay adjustment.
@@ -482,6 +485,7 @@ struct ControlBar: View {
         .popover(isPresented: $audioEffectsPanelVisible, arrowEdge: .bottom) {
             AudioEffectsPanel(player: player)
         }
+    .presentationBackground(BrushLLMPlayerTheme.panelMaterial)
     }
 
     /// Always-on-top toggle (window control group).
@@ -507,7 +511,7 @@ struct ControlBar: View {
         HStack(spacing: 4) {
             muteButton
             VolumeSlider(value: $player.volume, range: 0...130)
-                .frame(width: 62)
+                .frame(width: 72)
                 .help(L("controls.volume", "Volume"))
         }
     }

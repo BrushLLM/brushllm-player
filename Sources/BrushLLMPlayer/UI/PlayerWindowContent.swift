@@ -272,6 +272,9 @@ struct PlayerWindowContent: View {
             Text(L("player.open-hint", "Open a media file to start playing"))
                 .font(.callout)
                 .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
+            Text(L("player.drag-hint", "…or drag media files into the window"))
+                .font(.caption)
+                .foregroundStyle(BrushLLMPlayerTheme.controlTextHint)
             Button(L("menu.open", "Open…")) {
                 OpenMediaPanel.present { urls in player.open(urls) }
             }

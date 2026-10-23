@@ -52,6 +52,33 @@ struct PressedDimButtonStyle: ButtonStyle {
     }
 }
 
+// MARK: - Hover-bright icon button
+
+/// Quiet icon-only button (list-row deletes and similar tertiary actions):
+/// 14pt glyph in a 24×24 hit target, dimmed at rest and brightening on
+/// hover so it reads as clickable without competing with row content.
+struct HoverBrightButton: View {
+    let icon: String
+    let help: String
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundStyle(isHovering ? BrushLLMPlayerTheme.controlText
+                                            : BrushLLMPlayerTheme.controlTextHint)
+                .frame(width: 24, height: 24)
+                .contentShape(.rect)
+        }
+        .buttonStyle(PressedDimButtonStyle())
+        .help(help)
+        .onHover { isHovering = $0 }
+    }
+}
+
 // MARK: - Panel section
 
 /// A titled section inside a popover/panel: caption header + content with

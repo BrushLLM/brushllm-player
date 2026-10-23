@@ -1,6 +1,8 @@
 /* BrushLLMPlayer — 한국어 */
 
 
+"player.drag-hint" = "…또는 미디어 파일을 창으로 드래그하세요";
+
 "player.open-hint" = "미디어 파일을 열어 재생을 시작하세요";
 "player.load-failed" = "이 파일을 재생할 수 없습니다";
 
@@ -230,7 +232,6 @@
 // Native About window
 "about.menu" = "BrushLLM Player 정보";
 "about.description" = "mpv로 구동되는 macOS 미디어 플레이어입니다.";
-"about.powered-by" = "mpv 기반";
 "about.license" = "GPL v3 라이선스";
 "about.github" = "GitHub 프로젝트";
 "about.releases" = "릴리스";

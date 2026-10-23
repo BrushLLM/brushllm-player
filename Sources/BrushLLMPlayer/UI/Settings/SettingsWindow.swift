@@ -1,11 +1,10 @@
 import SwiftUI
 import AppKit
 
-/// Native macOS About window.
+/// Native macOS About window — dark, matching the player's cinema identity.
 struct AboutWindow: View {
     private static let projectURL = URL(string: "https://github.com/BrushLLM/brushllm-player")!
     private static let licenseURL = URL(string: "https://github.com/BrushLLM/brushllm-player/blob/main/LICENSE")!
-    @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
         VStack(spacing: 14) {
@@ -23,6 +22,7 @@ struct AboutWindow: View {
 
             Text(L("app.name", "BrushLLM Player"))
                 .font(.title2.weight(.semibold))
+                .foregroundStyle(.primary)
             Text("v\(UpdateChecker.currentVersion)")
                 .font(.callout)
                 .foregroundStyle(.secondary)
@@ -33,33 +33,36 @@ struct AboutWindow: View {
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: 280)
 
-            VStack(spacing: 4) {
-                Text(L("about.powered-by", "Powered by mpv"))
-                Text(L("about.license", "Licensed under GPL v3"))
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            Text(L("about.license", "Licensed under GPL v3"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
+            // Equal-width link buttons so the row reads as one aligned group.
             HStack(spacing: 10) {
-                Button(L("about.github", "GitHub Project")) {
+                linkButton(L("about.github", "GitHub Project")) {
                     NSWorkspace.shared.open(Self.projectURL)
                 }
-                Button(L("about.releases", "Releases")) {
+                linkButton(L("about.releases", "Releases")) {
                     NSWorkspace.shared.open(UpdateChecker.releasePageURL)
                 }
-                Button(L("about.license-link", "Full license")) {
+                linkButton(L("about.license-link", "Full license")) {
                     NSWorkspace.shared.open(Self.licenseURL)
                 }
             }
             .buttonStyle(.bordered)
-
-            Button(L("panel.cancel", "Close")) {
-                dismissWindow(id: "about")
-            }
-            .keyboardShortcut(.cancelAction)
+            .tint(BrushLLMPlayerTheme.accent)
+            .padding(.top, 4)
         }
         .padding(28)
         .frame(width: 360)
+        .preferredColorScheme(.dark)
+    }
+
+    /// One equal-width link button so the row reads as an aligned group
+    /// regardless of translation length.
+    private func linkButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .frame(minWidth: 92)
     }
 }
 

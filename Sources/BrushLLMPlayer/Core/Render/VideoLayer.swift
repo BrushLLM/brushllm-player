@@ -66,6 +66,18 @@ final class VideoLayer: CAOpenGLLayer {
         fatalError("init(coder:) has not been implemented")
     }
 
+    /// Drops the retained last frame (playback ended / went idle) so the
+    /// layer shows black instead of the frozen final image under the idle
+    /// overlay. CAOpenGLLayer owns its surface (contents is ignored), so the
+    /// clear happens inside the next draw: glClear without an mpv render,
+    /// forced through the normal update path. Safe from any thread.
+    func clearFrame() {
+        clearLock.lock()
+        clearPending = true
+        clearLock.unlock()
+        update(force: true)
+    }
+
     // MARK: - Draw cycle
 
     override func canDraw(inCGLContext ctx: CGLContextObj, pixelFormat pf: CGLPixelFormatObj,
@@ -90,22 +102,33 @@ final class VideoLayer: CAOpenGLLayer {
         glClearColor(0, 0, 0, 1)
         glClear(GLbitfield(GL_COLOR_BUFFER_BIT))
 
+        // A pending clear renders pure black: skip the mpv pass entirely so
+        // no stale frame can come back through the render context.
+        let renderBlackOnly = clearLock.withLock { () -> Bool in
+            clearPending
+        }
+
         var boundFBO: GLint = 0
         glGetIntegerv(GLenum(GL_DRAW_FRAMEBUFFER_BINDING), &boundFBO)
         var viewport: [GLint] = [0, 0, 0, 0]
         glGetIntegerv(GLenum(GL_VIEWPORT), &viewport)
 
-        // AppKit may bind FBO 0 (default framebuffer) or its own FBO; remember the
-        // last non-zero one for the case where a later draw binds 0.
-        if boundFBO != 0 {
-            fbo = boundFBO
-        }
+        if !renderBlackOnly {
+            // AppKit may bind FBO 0 (default framebuffer) or its own FBO; remember the
+            // last non-zero one for the case where a later draw binds 0.
+            if boundFBO != 0 {
+                fbo = boundFBO
+            }
 
-        controller.render(fbo: boundFBO != 0 ? boundFBO : fbo,
-                          width: viewport[2],
-                          height: viewport[3],
-                          depth: bufferDepth)
+            controller.render(fbo: boundFBO != 0 ? boundFBO : fbo,
+                              width: viewport[2],
+                              height: viewport[3],
+                              depth: bufferDepth)
+        }
         glFlush()
+
+        // Consume the clear request once the black frame is on screen.
+        clearLock.withLock { clearPending = false }
 
         // Deliver a pending screenshot request with the freshly rendered frame.
         let handler = snapshotLock.withLock { () -> ((NSImage?) -> Void)? in
@@ -113,7 +136,7 @@ final class VideoLayer: CAOpenGLLayer {
             pendingSnapshotHandler = nil
             return handler
         }
-        if let handler {
+        if let handler, !renderBlackOnly {
             let image = framebufferSnapshot(width: Int(viewport[2]), height: Int(viewport[3]))
             handler(image)
         }
@@ -168,6 +191,10 @@ final class VideoLayer: CAOpenGLLayer {
 
     private let snapshotLock = NSLock()
     private var pendingSnapshotHandler: ((NSImage?) -> Void)?
+
+    /// Guards `clearPending` between the calling thread and the GL queue.
+    private let clearLock = NSLock()
+    private var clearPending = false
 
     /// Captures the next rendered frame as an `NSImage`. Forces a redraw so
     /// this works while paused. Runs on the GL queue inside `draw`.
