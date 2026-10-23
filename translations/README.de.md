@@ -1,6 +1,6 @@
 # BrushLLM Player
 
-[English](README.md) | [Deutsch](README.de.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (BR)](README.pt-BR.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md)
+[English](../README.md) | [Deutsch](README.de.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (BR)](README.pt-BR.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md)
 
 Ein Open-Source-Mediaplayer auf mpv-Basis — spielt praktisch jedes Format, streamt von WebDAV / SMB / FTP / Emby / Jellyfin und bietet eine 9-sprachige Oberfläche.
 
@@ -27,6 +27,6 @@ Aktuelle Installationspakete auf [Releases](https://github.com/BrushLLM/brushllm
 
 ## Lizenz
 
-Lizenziert unter GPL v3 (mpv / libmpv-Lizenzierung) — siehe [LICENSE](LICENSE).
+Lizenziert unter GPL v3 (mpv / libmpv-Lizenzierung) — siehe [LICENSE](../LICENSE).
 
-Entwicklung und Architektur: siehe [English](README.md).
+Entwicklung und Architektur: siehe [English](../README.md).

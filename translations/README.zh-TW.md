@@ -1,6 +1,6 @@
 # BrushLLM Player
 
-[English](README.md) | [Deutsch](README.de.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (BR)](README.pt-BR.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md)
+[English](../README.md) | [Deutsch](README.de.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (BR)](README.pt-BR.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md)
 
 一個基於 mpv 的開源跨平台媒體播放器 —— 支援幾乎所有格式，可從 WebDAV / SMB / FTP / Emby / Jellyfin 串流伺服器直接播放，內建 9 語言介面。
 
@@ -27,6 +27,6 @@
 
 ## 授權
 
-採用 GPL v3 授權（mpv / libmpv 授權條款）—— 見 [LICENSE](LICENSE)。
+採用 GPL v3 授權（mpv / libmpv 授權條款）—— 見 [LICENSE](../LICENSE)。
 
-開發與架構詳情見 [English](README.md)。
+開發與架構詳情見 [English](../README.md)。

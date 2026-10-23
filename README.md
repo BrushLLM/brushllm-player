@@ -21,7 +21,7 @@
   <img src=".github/assets/screenshot.png" width="800" alt="BrushLLM Player">
 </p>
 
-[English](README.md) | [Deutsch](README.de.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (BR)](README.pt-BR.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md)
+[English](README.md) | [Deutsch](translations/README.de.md) | [Español](translations/README.es.md) | [Français](translations/README.fr.md) | [Português (BR)](translations/README.pt-BR.md) | [日本語](translations/README.ja.md) | [简体中文](translations/README.zh-CN.md) | [繁體中文](translations/README.zh-TW.md) | [한국어](translations/README.ko.md)
 
 ---
 

@@ -1,6 +1,6 @@
 # BrushLLM Player
 
-[English](README.md) | [Deutsch](README.de.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (BR)](README.pt-BR.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md)
+[English](../README.md) | [Deutsch](README.de.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (BR)](README.pt-BR.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md)
 
 mpv ベースのオープンソース・クロスプラットフォームメディアプレイヤーです。ほぼすべての形式を再生し、WebDAV / SMB / FTP / Emby / Jellyfin から直接ストリーミングでき、9 言語の UI を搭載しています。
 
@@ -27,6 +27,6 @@ mpv ベースのオープンソース・クロスプラットフォームメデ�
 
 ## ライセンス
 
-GPL v3（mpv / libmpv のライセンス）の下で提供 — [LICENSE](LICENSE) を参照。
+GPL v3（mpv / libmpv のライセンス）の下で提供 — [LICENSE](../LICENSE) を参照。
 
-開発とアーキテクチャの詳細は [English](README.md) を参照。
+開発とアーキテクチャの詳細は [English](../README.md) を参照。

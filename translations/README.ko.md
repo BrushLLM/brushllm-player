@@ -1,6 +1,6 @@
 # BrushLLM Player
 
-[English](README.md) | [Deutsch](README.de.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (BR)](README.pt-BR.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md)
+[English](../README.md) | [Deutsch](README.de.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (BR)](README.pt-BR.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md)
 
 mpv 기반의 오픈소스 크로스 플랫폼 미디어 플레이어입니다. 거의 모든 형식을 재생하고, WebDAV / SMB / FTP / Emby / Jellyfin에서 직접 스트리밍할 수 있으며, 9개 언어 UI를 제공합니다.
 
@@ -27,6 +27,6 @@ mpv 기반의 오픈소스 크로스 플랫폼 미디어 플레이어입니다. 
 
 ## 라이선스
 
-GPL v3 라이선스(mpv / libmpv 라이선스) — [LICENSE](LICENSE)를 참조하세요.
+GPL v3 라이선스(mpv / libmpv 라이선스) — [LICENSE](../LICENSE)를 참조하세요.
 
-개발 및 아키텍처 세부 사항은 [English](README.md)를 참조하세요.
+개발 및 아키텍처 세부 사항은 [English](../README.md)를 참조하세요.
