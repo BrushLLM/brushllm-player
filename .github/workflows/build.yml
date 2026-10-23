@@ -34,7 +34,7 @@ jobs:
         run: |
           set -e
           VERSION="${GITHUB_REF_NAME#v}"
-          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.7"  # workflow_dispatch: no tag
+          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.8"  # workflow_dispatch: no tag
           APP="build/BrushLLM Player.app"
           DMG="build/BrushLLM.Player-$VERSION-arm64.dmg"
           STAGING=$(mktemp -d)
@@ -70,9 +70,10 @@ jobs:
 
           ## What's new in ${VERSION}
 
-          - **Refreshed interface** — one consistent design language across the whole app: a single lemon accent for selections and actions, hover and disabled states on every toolbar button, unified empty and error states, and text contrast raised to accessibility standards
-          - **Localization fixes** — sidebar tabs and the server form now adapt to longer translations (German, Portuguese) instead of truncating
-          - **About window** — a native About dialog on both macOS and Windows with version, credits and project links
+          - **Polished playback-end state** — when a video finishes, the screen settles on a clean black start view instead of freezing on the last frame
+          - **Interface refinements** — clearer disabled buttons, visible selection marks on the subtitle color swatches, one selection style across every tab, unified popover backgrounds, and a redesigned dark About window
+          - **Drag-and-drop hint** on the start screen — the feature was always there, now it says so
+          - **README in 9 languages** — every translation lives in its own file under docs/
 
           ## Downloads
 
