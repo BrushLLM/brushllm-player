@@ -467,3 +467,254 @@ test("language list ships the ten mac entries with endonym labels", () => {
   // static fallback is the English string.
   assert.equal(labels.system, translate("settings.language.system", "en"));
 });
+
+// --- Phase 4: media-server pure functions (server-state.ts) ---
+
+// Compiled the same way as the player-state and library-state modules above.
+const serverSource = await readFile(new URL("../src/server-state.ts", import.meta.url), "utf8");
+const serverCompiled = ts.transpileModule(serverSource, {
+  compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext },
+});
+const {
+  isPlayable, nameExtension, parseModifiedAt, sortMediaItems, compareMediaItems,
+  composeBaseUrl, requiredFieldsFilled, serverDisplayName, formFieldsFromSource,
+  hostLabel, formatItemSize,
+} = await import(`data:text/javascript;base64,${Buffer.from(serverCompiled.outputText).toString("base64")}`);
+
+/** MediaItem factory for compact fixtures. */
+const item = (overrides = {}) => ({
+  id: overrides.name ?? `id-${Math.random().toString(36).slice(2)}`,
+  name: "file",
+  isDirectory: false,
+  size: 0,
+  modifiedAt: null,
+  mediaType: null,
+  ...overrides,
+});
+
+test("isPlayable follows the mac MediaItem rule per kind", () => {
+  // Directories never play, for any kind.
+  assert.equal(isPlayable(item({ name: "Movies", isDirectory: true }), "webdav"), false);
+  assert.equal(isPlayable(item({ name: "Library", isDirectory: true, mediaType: "video" }), "emby"), false);
+  // Filesystem kinds use the extension whitelist (case-insensitive).
+  for (const kind of ["webdav", "smb", "ftp"]) {
+    assert.equal(isPlayable(item({ name: "movie.MKV" }), kind), true);
+    assert.equal(isPlayable(item({ name: "track.flac" }), kind), true);
+    assert.equal(isPlayable(item({ name: "stream.m3u8" }), kind), true);
+    assert.equal(isPlayable(item({ name: "notes.txt" }), kind), false);
+    assert.equal(isPlayable(item({ name: "archive.tar.gz" }), kind), false);
+    assert.equal(isPlayable(item({ name: "noextension" }), kind), false);
+  }
+  // Emby/Jellyfin ignore extensions and require a media type.
+  for (const kind of ["emby", "jellyfin"]) {
+    assert.equal(isPlayable(item({ name: "anything", mediaType: "video" }), kind), true);
+    assert.equal(isPlayable(item({ name: "anything", mediaType: "audio" }), kind), true);
+    assert.equal(isPlayable(item({ name: "movie.mkv", mediaType: null }), kind), false);
+  }
+});
+
+test("nameExtension mirrors NSString.pathExtension edge cases", () => {
+  assert.equal(nameExtension("movie.MKV"), "mkv");
+  assert.equal(nameExtension("a.b.c.mp4"), "mp4");
+  assert.equal(nameExtension(".hidden"), "");
+  assert.equal(nameExtension("noextension"), "");
+  assert.equal(nameExtension("trailing."), "");
+  assert.equal(nameExtension("dir/file.mkv"), "mkv");
+  assert.equal(nameExtension("dir.d/file"), "");
+});
+
+test("parseModifiedAt reads unix-seconds strings, ISO8601 and rejects garbage", () => {
+  assert.equal(parseModifiedAt("1700000000"), 1700000000);
+  assert.equal(parseModifiedAt(" 1699999999 "), 1699999999);
+  assert.equal(parseModifiedAt("-100"), -100);
+  // ISO8601 (Emby DateModified) parses to unix seconds.
+  assert.equal(parseModifiedAt("1970-01-01T00:00:30Z"), 30);
+  assert.equal(parseModifiedAt("2023-11-14T22:13:20Z"), 1700000000);
+  // Unknown forms read as null, never NaN.
+  assert.equal(parseModifiedAt(null), null);
+  assert.equal(parseModifiedAt(""), null);
+  assert.equal(parseModifiedAt("   "), null);
+  assert.equal(parseModifiedAt("not a date"), null);
+  assert.equal(parseModifiedAt("NaN"), null);
+  assert.equal(parseModifiedAt("Infinity"), null);
+});
+
+test("name sort keeps folders on top in both directions, names case-insensitive", () => {
+  const files = [item({ name: "banana.mkv" }), item({ name: "Apple.mkv" }), item({ name: "cherry.mkv" })];
+  const folders = [item({ name: "zeta", isDirectory: true }), item({ name: "Alpha", isDirectory: true })];
+  const all = [...files, ...folders];
+
+  const ascending = sortMediaItems(all, "name", true).map((entry) => entry.name);
+  assert.deepEqual(ascending, ["Alpha", "zeta", "Apple.mkv", "banana.mkv", "cherry.mkv"]);
+
+  // Descending flips names but folders stay on top (mac rule).
+  const descending = sortMediaItems(all, "name", false).map((entry) => entry.name);
+  assert.deepEqual(descending, ["zeta", "Alpha", "cherry.mkv", "banana.mkv", "Apple.mkv"]);
+});
+
+test("modified sort mixes folders and files by date; unknown dates always last", () => {
+  const entries = [
+    item({ name: "old-file", modifiedAt: "100" }),
+    item({ name: "new-folder", isDirectory: true, modifiedAt: "300" }),
+    item({ name: "mid-file", modifiedAt: "200" }),
+    item({ name: "unknown-file", modifiedAt: null }),
+    item({ name: "unknown-folder", isDirectory: true, modifiedAt: null }),
+  ];
+  const ascending = sortMediaItems(entries, "modified", true).map((entry) => entry.name);
+  assert.deepEqual(ascending, ["old-file", "mid-file", "new-folder", "unknown-file", "unknown-folder"]);
+  // Descending flips known dates; unknown entries still trail.
+  const descending = sortMediaItems(entries, "modified", false).map((entry) => entry.name);
+  assert.deepEqual(descending, ["new-folder", "mid-file", "old-file", "unknown-file", "unknown-folder"]);
+  // A known/unknown pair never falls back to a name comparison: "aaa" with a
+  // date orders before "zzz" without one in both directions.
+  const pair = [item({ name: "zzz", modifiedAt: null }), item({ name: "aaa", modifiedAt: "5" })];
+  assert.deepEqual(sortMediaItems(pair, "modified", true).map((e) => e.name), ["aaa", "zzz"]);
+  assert.deepEqual(sortMediaItems(pair, "modified", false).map((e) => e.name), ["aaa", "zzz"]);
+});
+
+test("modified sort falls back to ascending name when dates tie", () => {
+  const entries = [
+    item({ name: "b.mkv", modifiedAt: "100" }),
+    item({ name: "a.mkv", modifiedAt: "100" }),
+  ];
+  assert.deepEqual(sortMediaItems(entries, "modified", true).map((e) => e.name), ["a.mkv", "b.mkv"]);
+  // The fallback stays ascending even in descending mode (mac behavior).
+  assert.deepEqual(sortMediaItems(entries, "modified", false).map((e) => e.name), ["a.mkv", "b.mkv"]);
+});
+
+test("size sort sinks folders to the bottom in both directions", () => {
+  const entries = [
+    item({ name: "big.mkv", size: 900 }),
+    item({ name: "small.mkv", size: 100 }),
+    item({ name: "folder-new", isDirectory: true, size: 0, modifiedAt: "300" }),
+    item({ name: "folder-old", isDirectory: true, size: 0, modifiedAt: "100" }),
+  ];
+  const ascending = sortMediaItems(entries, "size", true).map((entry) => entry.name);
+  assert.deepEqual(ascending, ["small.mkv", "big.mkv", "folder-old", "folder-new"]);
+  // Descending: biggest file first, folders still last (newest first among
+  // themselves — folders compare by date, not size).
+  const descending = sortMediaItems(entries, "size", false).map((entry) => entry.name);
+  assert.deepEqual(descending, ["big.mkv", "small.mkv", "folder-new", "folder-old"]);
+});
+
+test("size sort ties fall back to the ascending name", () => {
+  const entries = [
+    item({ name: "b.mkv", size: 500 }),
+    item({ name: "a.mkv", size: 500 }),
+  ];
+  assert.deepEqual(sortMediaItems(entries, "size", true).map((e) => e.name), ["a.mkv", "b.mkv"]);
+  assert.deepEqual(sortMediaItems(entries, "size", false).map((e) => e.name), ["a.mkv", "b.mkv"]);
+});
+
+test("the comparator is total: identical names order by id", () => {
+  const left = item({ id: "x1", name: "same.mkv", size: 7, modifiedAt: "50" });
+  const right = item({ id: "x2", name: "same.mkv", size: 7, modifiedAt: "50" });
+  for (const mode of ["name", "modified", "size"]) {
+    for (const ascending of [true, false]) {
+      assert.equal(compareMediaItems(left, right, mode, ascending) < 0, true);
+      assert.equal(compareMediaItems(right, left, mode, ascending) > 0, true);
+      assert.equal(compareMediaItems(left, left, mode, ascending), 0);
+    }
+  }
+});
+
+test("composeBaseUrl assembles each kind like the mac AddServerForm", () => {
+  const fields = (overrides = {}) => ({
+    kind: "webdav", name: "NAS", scheme: "https", host: "cloud.example.com",
+    port: "5006", path: "/dav", username: "user", password: "pass", ...overrides,
+  });
+  // webdav: scheme + host + port + path.
+  assert.equal(composeBaseUrl(fields()), "https://cloud.example.com:5006/dav");
+  assert.equal(composeBaseUrl(fields({ scheme: "http", port: "", path: "" })), "http://cloud.example.com");
+  // A path without a leading slash gets one.
+  assert.equal(composeBaseUrl(fields({ path: "dav" })), "https://cloud.example.com:5006/dav");
+  // smb: host + share (the path field is the share name).
+  assert.equal(composeBaseUrl(fields({ kind: "smb", path: "media" })), "smb://cloud.example.com/media");
+  assert.equal(composeBaseUrl(fields({ kind: "smb", path: "/media" })), "smb://cloud.example.com/media");
+  assert.equal(composeBaseUrl(fields({ kind: "smb", port: "", path: "" })), "smb://cloud.example.com");
+  // ftp: fixed scheme + optional port + path.
+  assert.equal(composeBaseUrl(fields({ kind: "ftp", port: "2121", path: "/video" })), "ftp://cloud.example.com:2121/video");
+  assert.equal(composeBaseUrl(fields({ kind: "ftp", port: "", path: "" })), "ftp://cloud.example.com");
+  // emby/jellyfin: scheme + host + optional port, no path.
+  assert.equal(composeBaseUrl(fields({ kind: "emby", port: "8096", path: "/ignored" })), "https://cloud.example.com:8096");
+  assert.equal(composeBaseUrl(fields({ kind: "jellyfin", scheme: "http", port: "" })), "http://cloud.example.com");
+  // Whitespace is trimmed.
+  assert.equal(composeBaseUrl(fields({ host: "  cloud.example.com  ", port: " 5006 ", path: " /dav " })),
+    "https://cloud.example.com:5006/dav");
+});
+
+test("requiredFieldsFilled demands a host and, for SMB, a share name", () => {
+  const fields = (overrides = {}) => ({
+    kind: "webdav", name: "", scheme: "https", host: "", port: "",
+    path: "", username: "", password: "", ...overrides,
+  });
+  assert.equal(requiredFieldsFilled(fields()), false);
+  assert.equal(requiredFieldsFilled(fields({ host: "nas.example.com" })), true);
+  assert.equal(requiredFieldsFilled(fields({ host: "  " })), false);
+  // SMB needs the share too.
+  assert.equal(requiredFieldsFilled(fields({ kind: "smb", host: "192.168.1.10" })), false);
+  assert.equal(requiredFieldsFilled(fields({ kind: "smb", host: "192.168.1.10", path: "media" })), true);
+  // Emby needs nothing beyond the host.
+  assert.equal(requiredFieldsFilled(fields({ kind: "emby", host: "media.example.com" })), true);
+});
+
+test("serverDisplayName falls back to the host when the title is empty", () => {
+  const fields = (overrides = {}) => ({
+    kind: "webdav", name: "", scheme: "https", host: "nas.example.com",
+    port: "", path: "", username: "", password: "", ...overrides,
+  });
+  assert.equal(serverDisplayName(fields()), "nas.example.com");
+  assert.equal(serverDisplayName(fields({ name: "Living Room NAS" })), "Living Room NAS");
+  assert.equal(serverDisplayName(fields({ name: "   " })), "nas.example.com");
+});
+
+test("formFieldsFromSource decomposes a saved baseUrl back into form fields", () => {
+  const source = (overrides = {}) => ({
+    id: "uuid-1", kind: "webdav", name: "NAS", baseUrl: "", username: "user", password: "", ...overrides,
+  });
+  // webdav round-trip: scheme/host/port/path.
+  const webdav = formFieldsFromSource(source({ baseUrl: "https://cloud.example.com:5006/dav" }));
+  assert.deepEqual(
+    { kind: webdav.kind, scheme: webdav.scheme, host: webdav.host, port: webdav.port, path: webdav.path },
+    { kind: "webdav", scheme: "https", host: "cloud.example.com", port: "5006", path: "/dav" },
+  );
+  // smb: the path field holds the share name without the leading slash.
+  const smb = formFieldsFromSource(source({ kind: "smb", baseUrl: "smb://192.168.1.10/media" }));
+  assert.deepEqual(
+    { kind: smb.kind, host: smb.host, port: smb.port, path: smb.path },
+    { kind: "smb", host: "192.168.1.10", port: "", path: "media" },
+  );
+  // emby: no path, port parsed.
+  const emby = formFieldsFromSource(source({ kind: "emby", baseUrl: "http://media.example.com:8096" }));
+  assert.deepEqual(
+    { kind: emby.kind, scheme: emby.scheme, host: emby.host, port: emby.port, path: emby.path },
+    { kind: "emby", scheme: "http", host: "media.example.com", port: "8096", path: "" },
+  );
+  // Name/username/password prefill.
+  assert.equal(formFieldsFromSource(source({ name: "Server", username: "u", password: "p" })).name, "Server");
+  // An unparseable URL falls back to the raw string as the host.
+  const raw = formFieldsFromSource(source({ baseUrl: "not a url" }));
+  assert.equal(raw.host, "not a url");
+  // Round-trip: compose(decompose(source)) reproduces the baseUrl.
+  const roundTrip = formFieldsFromSource(source({ baseUrl: "https://cloud.example.com:5006/dav" }));
+  assert.equal(composeBaseUrl(roundTrip), "https://cloud.example.com:5006/dav");
+});
+
+test("hostLabel shows scheme host and port, falling back to the raw URL", () => {
+  const source = (baseUrl) => ({ id: "x", kind: "webdav", name: "n", baseUrl, username: "", password: "" });
+  assert.equal(hostLabel(source("https://cloud.example.com:5006/dav")), "cloud.example.com:5006");
+  assert.equal(hostLabel(source("http://192.168.1.10")), "192.168.1.10");
+  assert.equal(hostLabel(source("smb://nas/media")), "nas");
+  assert.equal(hostLabel(source("not a url")), "not a url");
+});
+
+test("formatItemSize renders binary units and hides zero or invalid sizes", () => {
+  assert.equal(formatItemSize(0), "");
+  assert.equal(formatItemSize(-5), "");
+  assert.equal(formatItemSize(Number.NaN), "");
+  assert.equal(formatItemSize(500), "500 B");
+  assert.equal(formatItemSize(1024), "1.0 KB");
+  assert.equal(formatItemSize(1024 * 1024 * 1.5), "1.5 MB");
+  assert.equal(formatItemSize(3 * 1024 ** 3), "3.0 GB");
+  assert.equal(formatItemSize(2.5 * 1024 ** 4), "2.5 TB");
+});

@@ -110,6 +110,7 @@
 "webdav.username" = "Benutzername";
 "webdav.password" = "Passwort";
 "webdav.password-keychain" = "Das Passwort wird im Schlüsselbund gespeichert.";
+"webdav.password-local" = "Das Passwort wird in der lokalen Konfigurationsdatei gespeichert.";
 "webdav.connect" = "Hinzufügen & verbinden";
 "webdav.retry" = "Erneut versuchen";
 "webdav.empty-folder" = "Leerer Ordner";

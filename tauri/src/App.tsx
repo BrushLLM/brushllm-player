@@ -22,6 +22,7 @@ import VideoSettingsMenu from "./components/VideoSettingsMenu";
 import VideoEqMenu from "./components/VideoEqMenu";
 import KeyboardHandler from "./components/KeyboardHandler";
 import SettingsPanel from "./components/SettingsPanel";
+import NetworkPanel from "./components/NetworkPanel";
 
 const GITHUB_PROJECT_URL = "https://github.com/BrushLLM/brushllm-player";
 const GITHUB_RELEASES_URL = "https://github.com/BrushLLM/brushllm-player/releases";
@@ -72,6 +73,7 @@ export default function App() {
   const [eqMenuOpen, setEqMenuOpen] = useState(false);
   const [urlOpen, setUrlOpen] = useState(false);
   const [urlInput, setUrlInput] = useState("");
+  const [networkOpen, setNetworkOpen] = useState(false);
   // Library data (history is global; bookmarks are per-file).
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
@@ -382,7 +384,7 @@ export default function App() {
   return (
     <div className="app">
       <KeyboardHandler
-        enabled={!aboutOpen && !settingsOpen && !urlOpen}
+        enabled={!aboutOpen && !settingsOpen && !urlOpen && !networkOpen}
         onAction={handleKeyAction}
         onTogglePlaylist={() => toggleSidebar("playlist")}
       />
@@ -613,6 +615,18 @@ export default function App() {
             </svg>
           </button>
           <button
+            className={`tool-btn ${networkOpen ? "active" : ""}`}
+            onClick={() => setNetworkOpen(true)}
+            aria-haspopup="dialog"
+            title={t("controls.network")}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M3.4 9 H20.6 M3.4 15 H20.6" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M12 3.4 A13 13 0 0 0 12 20.6 A13 13 0 0 0 12 3.4 Z" fill="none" stroke="currentColor" strokeWidth="1.6" />
+            </svg>
+          </button>
+          <button
             className={`tool-btn ${state.onTop ? "active" : ""}`}
             onClick={toggleOnTop}
             title={t("video.ontop")}
@@ -733,6 +747,14 @@ export default function App() {
       )}
 
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+
+      {networkOpen && (
+        <NetworkPanel
+          onClose={() => setNetworkOpen(false)}
+          onPlayUrl={(url) => void runCommand("open_url", { url })}
+          onEnqueued={() => toggleSidebar("playlist")}
+        />
+      )}
 
       {aboutOpen && (
         <div

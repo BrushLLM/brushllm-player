@@ -110,6 +110,7 @@
 "webdav.username" = "Nom d'utilisateur";
 "webdav.password" = "Mot de passe";
 "webdav.password-keychain" = "Le mot de passe est conservé dans le trousseau.";
+"webdav.password-local" = "Le mot de passe est enregistré dans le fichier de configuration local.";
 "webdav.connect" = "Ajouter et se connecter";
 "webdav.retry" = "Réessayer";
 "webdav.empty-folder" = "Dossier vide";

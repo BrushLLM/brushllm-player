@@ -110,6 +110,7 @@
 "webdav.username" = "사용자 이름";
 "webdav.password" = "비밀번호";
 "webdav.password-keychain" = "비밀번호는 키체인에 저장됩니다.";
+"webdav.password-local" = "비밀번호는 로컬 구성 파일에 저장됩니다.";
 "webdav.connect" = "추가하고 연결";
 "webdav.retry" = "다시 시도";
 "webdav.empty-folder" = "빈 폴더";

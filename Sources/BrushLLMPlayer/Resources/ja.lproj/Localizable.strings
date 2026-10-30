@@ -110,6 +110,7 @@
 "webdav.username" = "ユーザー名";
 "webdav.password" = "パスワード";
 "webdav.password-keychain" = "パスワードはキーチェーンに保存されます。";
+"webdav.password-local" = "パスワードはローカル設定ファイルに保存されます。";
 "webdav.connect" = "追加して接続";
 "webdav.retry" = "再試行";
 "webdav.empty-folder" = "空のフォルダ";

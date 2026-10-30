@@ -110,6 +110,7 @@
 "webdav.username" = "使用者名稱";
 "webdav.password" = "密碼";
 "webdav.password-keychain" = "密碼保存在鑰匙圈中。";
+"webdav.password-local" = "密碼儲存在本機設定檔中。";
 "webdav.connect" = "新增並連線";
 "webdav.retry" = "重試";
 "webdav.empty-folder" = "空資料夾";

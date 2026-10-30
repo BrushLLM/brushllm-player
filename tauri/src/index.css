@@ -1233,3 +1233,903 @@ html, body, #root {
 .settings-section .about-links {
   margin-top: 14px;
 }
+
+/* ============================================================
+   Phase 4: network modal (NetworkPanel) — stream tab, server
+   list cards, kind-aware add form and the media browser.
+   Reuses the About overlay/dialog chrome (.about-overlay /
+   .about-dialog) with the panel's own glass-card language.
+   ============================================================ */
+
+.network-dialog {
+  width: min(100%, 540px);
+  display: flex;
+  flex-direction: column;
+  max-height: min(600px, 100%);
+}
+
+.network-title {
+  font-size: 16px;
+}
+
+/* Segmented tab control: capsule pills, the active one lemon. */
+.net-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 3px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 10px;
+  background: var(--bg-card);
+}
+
+.net-tab {
+  flex: 1;
+  min-height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.1s, background 0.1s;
+}
+
+.net-tab:hover {
+  color: var(--text);
+}
+
+.net-tab.active {
+  background: var(--accent-bright);
+  color: #121212;
+}
+
+.net-tab:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+/* --- Stream tab --- */
+
+.net-stream {
+  flex: 1;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 28px 20px;
+}
+
+.net-stream-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-dim);
+}
+
+.net-stream-hero svg {
+  width: 40px;
+  height: 40px;
+}
+
+.net-stream-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.net-stream-form {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 22px;
+}
+
+.net-stream-input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  user-select: text;
+}
+
+.net-stream-input:focus {
+  outline: none;
+  border-color: var(--accent-bright);
+}
+
+.net-stream-play {
+  flex: none;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.net-stream-play:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.net-stream-play:not(:disabled):hover {
+  background: var(--accent-bright);
+  color: #121212;
+}
+
+.net-stream-paste {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 14px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.1s, background 0.1s;
+}
+
+.net-stream-paste svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+.net-stream-paste:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.net-stream-paste:focus-visible,
+.net-stream-play:focus-visible,
+.net-empty-action:focus-visible,
+.net-server-connect:focus-visible,
+.net-server-round:focus-visible,
+.net-add-card:focus-visible,
+.net-kind-chip:focus-visible,
+.net-scheme-option:focus-visible,
+.net-form-cancel:focus-visible,
+.net-form-save:focus-visible,
+.net-field-input:focus-visible,
+.net-browser-back:focus-visible,
+.net-sort-button:focus-visible,
+.net-sort-row:focus-visible,
+.net-browser-row:focus-visible,
+.net-error-retry:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+/* --- Servers tab shell --- */
+
+.net-servers {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-top: 14px;
+}
+
+.net-list-error {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 90, 90, 0.14);
+  color: #ff9c9c;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* Server cards + dashed add card. */
+.net-server-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px 2px 12px;
+}
+
+.net-server-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
+
+.net-server-icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+}
+
+.net-server-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.net-server-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.net-server-name-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.net-server-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.net-kind-badge {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-dim);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.net-server-host {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.net-server-connect {
+  flex: none;
+  min-height: 28px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.net-server-connect:hover {
+  background: var(--accent-bright);
+  color: #121212;
+}
+
+.net-server-round {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-dim);
+  opacity: 0.6;
+  cursor: pointer;
+  transition: opacity 0.1s, color 0.1s, background 0.1s;
+}
+
+.net-server-round svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.net-server-round:hover {
+  opacity: 1;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.net-add-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.1s, background 0.1s;
+}
+
+.net-add-card svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.net-add-card:hover {
+  border-color: rgba(230, 255, 0, 0.45);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Shared empty / error states (server list, browser). */
+.net-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 16px;
+  color: var(--text-dim);
+}
+
+.net-empty svg {
+  width: 40px;
+  height: 40px;
+  opacity: 0.55;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.net-empty-message {
+  font-size: 13px;
+}
+
+.net-empty-action {
+  min-height: 30px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.net-empty-action:hover {
+  background: var(--accent-bright);
+  color: #121212;
+}
+
+/* --- Add/edit form --- */
+
+.net-form {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 2px 2px 6px;
+}
+
+.net-kind-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.net-kind-chip {
+  flex: 1;
+  min-width: 64px;
+  min-height: 26px;
+  border: 0;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.1s, background 0.1s;
+}
+
+.net-kind-chip:hover {
+  color: var(--text);
+}
+
+.net-kind-chip.active {
+  background: var(--accent-bright);
+  color: #121212;
+}
+
+.net-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.net-field-label {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.net-field-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  user-select: text;
+}
+
+.net-field-input:focus {
+  outline: none;
+  border-color: var(--accent-bright);
+}
+
+.net-scheme-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 9px;
+  background: var(--bg-card);
+  width: fit-content;
+}
+
+.net-scheme-option {
+  min-height: 22px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.1s, background 0.1s;
+}
+
+.net-scheme-option.active {
+  background: var(--accent-bright);
+  color: #121212;
+  font-weight: 600;
+}
+
+.net-form-hint {
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.85;
+}
+
+.net-url-preview {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.net-form-error {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 90, 90, 0.14);
+  color: #ff9c9c;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.net-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.net-form-cancel {
+  min-height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.net-form-cancel:hover {
+  color: var(--text);
+}
+
+.net-form-save {
+  min-height: 30px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.net-form-save:not(:disabled):hover {
+  background: var(--accent-bright);
+  color: #121212;
+}
+
+.net-form-save:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* --- Browser --- */
+
+.net-browser {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-top: 14px;
+}
+
+.net-browser-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 2px 10px;
+  border-bottom: 1px solid var(--bg-card-border);
+}
+
+.net-browser-back {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.net-browser-back svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.net-browser-back:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.net-browser-kind {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+}
+
+.net-browser-kind svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.net-browser-name {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.net-browser-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.net-browser-spacer {
+  flex: none;
+  width: 6px;
+}
+
+.net-spinner {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: var(--accent-bright);
+  border-radius: 50%;
+  animation: net-spin 0.8s linear infinite;
+}
+
+@keyframes net-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Sort menu anchored under its trigger button. */
+.net-sort-anchor {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+}
+
+.net-sort-button {
+  width: 26px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.1s, background 0.1s;
+}
+
+.net-sort-button svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.net-sort-button:hover,
+.net-sort-button.active {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.net-sort-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  min-width: 150px;
+  padding: 5px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: var(--radius);
+  background: #17171c;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55);
+}
+
+.net-sort-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.net-sort-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.net-sort-arrow {
+  color: var(--accent-bright);
+  font-size: 11px;
+}
+
+/* Browser body: list / loading / error / empty. */
+.net-browser-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.net-browser-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 2px 12px;
+}
+
+.net-browser-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.net-browser-row:hover:not(.disabled) {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.net-browser-row.disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.net-browser-row-icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  display: grid;
+  place-items: center;
+  color: var(--text-dim);
+}
+
+.net-browser-row-icon svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.net-browser-row-icon.folder {
+  color: var(--accent);
+}
+
+.net-browser-row-icon.folder svg {
+  fill: currentColor;
+  stroke: none;
+}
+
+.net-browser-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.net-browser-row-size {
+  flex: none;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.net-browser-loading {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 30px 0;
+}
+
+.net-browser-loading .net-spinner {
+  width: 16px;
+  height: 16px;
+}
+
+.net-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 26px 16px;
+}
+
+.net-error-message {
+  max-width: 100%;
+  color: #ff9c9c;
+  font-size: 12.5px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.net-error-retry {
+  min-height: 28px;
+  padding: 0 16px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.1s, background 0.1s, color 0.1s;
+}
+
+.net-error-retry:hover {
+  border-color: rgba(230, 255, 0, 0.45);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--accent-bright);
+}
