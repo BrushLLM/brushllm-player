@@ -14,6 +14,9 @@ struct PlayerWindowContent: View {
     /// Whether the WebDAV browser sheet is shown.
     @State private var webDAVVisible = false
 
+    /// Whether the online-subtitle search sheet is shown.
+    @State private var subtitleSearchVisible = false
+
     /// Static snapshot of the control bar, shown while the window is being
     /// live-resized or fullscreen-animated (see PlayerCore.isLiveResizing):
     /// one image layer instead of the bar's ~100 re-laying-out layers.
@@ -90,6 +93,9 @@ struct PlayerWindowContent: View {
         .onReceive(NotificationCenter.default.publisher(for: .brushPlayerShowWebDAV)) { _ in
             webDAVVisible = true
         }
+        .onReceive(NotificationCenter.default.publisher(for: .brushPlayerShowSubtitleSearch)) { _ in
+            subtitleSearchVisible = true
+        }
         .sheet(isPresented: $webDAVVisible) {
             NetworkPanel { url in
                 player.openURL(url)
@@ -155,6 +161,11 @@ struct PlayerWindowContent: View {
             .onTapGesture {
                 player.togglePlay()
             }
+            // On a separate branch from the window-level WebDAV sheet: two
+            // sheets on the same view branch would conflict.
+            .sheet(isPresented: $subtitleSearchVisible) {
+                SubtitleSearchPanel(player: player)
+            }
     }
 
     // MARK: - Right-click menu (PotPlayer-style full menu)
@@ -192,6 +203,9 @@ struct PlayerWindowContent: View {
             Divider()
             Button(L("menu.load-subtitle", "Load Subtitle File…")) {
                 SubtitlePanel.present { url in player.loadExternalSubtitle(url) }
+            }
+            Button(L("subtitle.online", "Online Subtitles…")) {
+                player.searchOnlineSubtitles()
             }
         }
         Menu(L("menu.video", "Video")) {
@@ -412,4 +426,6 @@ extension Notification.Name {
     static let brushPlayerShowWebDAV = Notification.Name("dev.brushllm.showWebDAV")
     /// Opens the playlist sidebar (e.g. after adding a folder's files).
     static let brushPlayerShowPlaylist = Notification.Name("dev.brushllm.showPlaylist")
+    /// Opens the online-subtitle search sheet.
+    static let brushPlayerShowSubtitleSearch = Notification.Name("dev.brushllm.showSubtitleSearch")
 }

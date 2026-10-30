@@ -249,3 +249,12 @@
 // IINA port: audio output device selection
 "audio.device" = "Salida de audio";
 "audio.device-default" = "Predeterminado del sistema";
+
+// IINA port: online subtitles (Open Subtitles)
+"subtitle.online" = "Subtítulos en línea…";
+"subtitle.online-search" = "Buscar";
+"subtitle.online-none" = "Sin resultados";
+"subtitle.online-failed" = "Error en la búsqueda";
+"subtitle.online-searching" = "Buscando…";
+"subtitle.online-downloading" = "Descargando…";
+"subtitle.online-download-failed" = "Error al descargar";

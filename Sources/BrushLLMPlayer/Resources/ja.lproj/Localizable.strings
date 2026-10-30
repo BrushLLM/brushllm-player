@@ -249,3 +249,12 @@
 // IINA port: audio output device selection
 "audio.device" = "オーディオ出力";
 "audio.device-default" = "システム標準";
+
+// IINA port: online subtitles (Open Subtitles)
+"subtitle.online" = "オンライン字幕…";
+"subtitle.online-search" = "検索";
+"subtitle.online-none" = "結果なし";
+"subtitle.online-failed" = "検索に失敗しました";
+"subtitle.online-searching" = "検索中…";
+"subtitle.online-downloading" = "ダウンロード中…";
+"subtitle.online-download-failed" = "ダウンロードに失敗しました";

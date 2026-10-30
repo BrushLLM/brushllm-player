@@ -249,3 +249,12 @@
 // IINA port: audio output device selection
 "audio.device" = "音訊輸出";
 "audio.device-default" = "系統預設";
+
+// IINA port: online subtitles (Open Subtitles)
+"subtitle.online" = "線上字幕…";
+"subtitle.online-search" = "搜尋";
+"subtitle.online-none" = "無結果";
+"subtitle.online-failed" = "搜尋失敗";
+"subtitle.online-searching" = "搜尋中…";
+"subtitle.online-downloading" = "下載中…";
+"subtitle.online-download-failed" = "下載失敗";

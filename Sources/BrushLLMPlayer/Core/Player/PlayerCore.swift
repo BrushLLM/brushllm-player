@@ -755,6 +755,44 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         mpv.command("sub-add", [url.path, "select"])
     }
 
+    // MARK: - Online subtitles (Open Subtitles)
+
+    /// The local file currently playing, for online-subtitle search: the
+    /// hash needs random access to the real file, so only plain local
+    /// files qualify (streams and mounted disc images fall back to a
+    /// name/title search — IINA: "Cannot create a hash when streaming").
+    var subtitleSearchFileURL: URL? {
+        guard !isIdle, let reference = currentReference,
+              reference.kind == .localFile else { return nil }
+        return URL(fileURLWithPath: reference.location)
+    }
+
+    /// Opens the online-subtitle search sheet (the SubtitleSearchPanel
+    /// presentation listens for this notification — the NetworkPanel sheet
+    /// pattern). IINA's entry point is `OnlineSubtitle.search(forFile:)`.
+    func searchOnlineSubtitles() {
+        NotificationCenter.default.post(name: .brushPlayerShowSubtitleSearch, object: nil)
+    }
+
+    /// Downloads an Open Subtitles search result and loads it into
+    /// playback (IINA: `Subtitle.download` → `loadExternalSubFile`).
+    /// The completion runs on the main thread.
+    func downloadOnlineSubtitle(_ subtitle: OpenSubtitles.Subtitle,
+                                 completion: @escaping (Result<URL, Error>) -> Void) {
+        Task { @MainActor in
+            do {
+                let url = try await OpenSubtitles.shared.downloadSubtitleFile(subtitle)
+                guard !self.isShuttingDown else {
+                    throw CocoaError(.userActivityConnectionUnavailable)
+                }
+                self.loadExternalSubtitle(url)
+                completion(.success(url))
+            } catch {
+                completion(.failure(error))
+            }
+        }
+    }
+
     // MARK: - Recording
 
     /// Starts recording the current stream into the configured recording
