@@ -3,6 +3,7 @@
 // container styles (.pl-sidebar family).
 
 import type { Chapter } from "../player-state";
+import { useI18n } from "../i18n";
 
 export interface ChaptersPanelProps {
   chapters: Chapter[];
@@ -24,18 +25,19 @@ function formatTime(seconds: number): string {
 }
 
 export default function ChaptersPanel({ chapters, currentChapter, onSelect, embedded = false }: ChaptersPanelProps) {
+  const { t } = useI18n();
   const body = (
     <>
       {!embedded && (
         <div className="pl-header">
-          <span className="pl-title">Chapters</span>
+          <span className="pl-title">{t("panel.chapters")}</span>
           <span className="pl-count">{chapters.length}</span>
         </div>
       )}
 
       <div className="pl-list" role="list">
         {chapters.length === 0 ? (
-          <div className="pl-empty">No chapters</div>
+          <div className="pl-empty">{t("panel.chapters.none")}</div>
         ) : (
           chapters.map((chapter, index) => (
             <button
@@ -55,5 +57,5 @@ export default function ChaptersPanel({ chapters, currentChapter, onSelect, embe
     </>
   );
 
-  return embedded ? body : <aside className="pl-sidebar" aria-label="Chapters">{body}</aside>;
+  return embedded ? body : <aside className="pl-sidebar" aria-label={t("panel.chapters")}>{body}</aside>;
 }

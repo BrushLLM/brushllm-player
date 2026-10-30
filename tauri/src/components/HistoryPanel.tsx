@@ -7,6 +7,7 @@
 
 import type { HistoryEntry } from "../library-state";
 import { formatHistorySubtitle } from "../library-state";
+import { useI18n } from "../i18n";
 
 export interface HistoryPanelProps {
   entries: HistoryEntry[];
@@ -16,13 +17,14 @@ export interface HistoryPanelProps {
 }
 
 export default function HistoryPanel({ entries, onPlay, onRemove, onClear }: HistoryPanelProps) {
+  const { t } = useI18n();
   const now = Math.floor(Date.now() / 1000);
 
   return (
     <>
       <div className="pl-list" role="list">
         {entries.length === 0 ? (
-          <div className="pl-empty">No playback history yet</div>
+          <div className="pl-empty">{t("panel.history.empty")}</div>
         ) : (
           entries.map((entry) => (
             <div key={entry.path} role="listitem" className="pl-row">
@@ -51,8 +53,8 @@ export default function HistoryPanel({ entries, onPlay, onRemove, onClear }: His
                 type="button"
                 className="pl-row-delete"
                 onClick={() => onRemove(entry.path)}
-                aria-label={`Remove ${entry.title} from history`}
-                title="Delete"
+                aria-label={`${t("panel.delete")} ${entry.title}`}
+                title={t("panel.delete")}
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <line x1="6" y1="6" x2="18" y2="18" />
@@ -72,8 +74,8 @@ export default function HistoryPanel({ entries, onPlay, onRemove, onClear }: His
           className="pl-footer-btn pl-clear"
           onClick={onClear}
           disabled={entries.length === 0}
-          title="Clear history"
-          aria-label="Clear playback history"
+          title={t("panel.history.clear")}
+          aria-label={t("panel.history.clear")}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 7 H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />

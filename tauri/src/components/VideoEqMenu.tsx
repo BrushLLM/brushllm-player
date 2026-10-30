@@ -4,6 +4,7 @@
 // go through the set_property backend command.
 
 import { useEffect, useRef } from "react";
+import { useI18n } from "../i18n";
 
 export interface VideoEqMenuProps {
   /** Current mpv brightness value (-100..100). */
@@ -34,6 +35,7 @@ export default function VideoEqMenu({
   onSetProperty,
   onClose,
 }: VideoEqMenuProps) {
+  const { t } = useI18n();
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Close on Escape and on clicks outside the popup (capture phase so the
@@ -111,7 +113,7 @@ export default function VideoEqMenu({
       </button>
 
       <button type="button" className="veq-reset" onClick={resetAll}>
-        Reset
+        {t("video.delay-reset")}
       </button>
     </div>
   );

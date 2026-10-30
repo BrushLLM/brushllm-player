@@ -387,3 +387,83 @@ test("formatBookmarkTime uses the shared mm:ss / h:mm:ss clock format", () => {
   assert.equal(formatBookmarkTime(-10), "0:00");
   assert.equal(formatBookmarkTime(Number.NaN), "0:00");
 });
+
+// --- Phase 3: i18n system-language resolution (resolveSystemLanguage) ---
+
+// i18n.ts imports React (useSyncExternalStore) and the JSON tables. The test
+// compiles it with the project's TypeScript, then rewrites the two kinds of
+// static import: React's hooks become stubs (unused by resolveSystemLanguage)
+// and the JSON imports read from an injected __TABLES__ object, making the
+// module fully self-contained.
+const i18nSource = await readFile(new URL("../src/i18n.ts", import.meta.url), "utf8");
+const i18nCompiled = ts.transpileModule(i18nSource, {
+  compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext },
+}).outputText;
+const languageTables = {};
+for (const code of ["en", "de", "es", "fr", "pt-BR", "ja", "zh-Hans", "zh-Hant", "ko"]) {
+  languageTables[code] = JSON.parse(await readFile(new URL(`../src/i18n/${code}.json`, import.meta.url), "utf8"));
+}
+const dataUrl = (text) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
+const i18nModuleSource = i18nCompiled
+  .replace(/import React, { useCallback, useSyncExternalStore } from "react";?/, "const useCallback = () => {}, useSyncExternalStore = () => {};")
+  .replace(/import { useCallback, useSyncExternalStore } from "react";?/, "const useCallback = () => {}, useSyncExternalStore = () => {};")
+  .replace(/import (\w+) from "\.\/i18n\/(\w[\w-]*)\.json";?/g, 'const $1 = __TABLES__["$2"];');
+const i18nFactorySource = `const __TABLES__ = ${JSON.stringify(languageTables)};\n${i18nModuleSource}`;
+const { resolveSystemLanguage, t: translate, LANGUAGES: languageList } = await import(dataUrl(i18nFactorySource));
+
+test("resolveSystemLanguage maps browser preference lists like the mac systemLanguageCode", () => {
+  // Exact regional match.
+  assert.equal(resolveSystemLanguage(["en-US", "en"]), "en");
+  assert.equal(resolveSystemLanguage(["pt-BR", "en-US"]), "pt-BR");
+  assert.equal(resolveSystemLanguage(["de-DE", "en-US"]), "de");
+  assert.equal(resolveSystemLanguage(["fr-FR"]), "fr");
+  assert.equal(resolveSystemLanguage(["ja-JP"]), "ja");
+  assert.equal(resolveSystemLanguage(["ko-KR"]), "ko");
+  // Chinese script detection: script subtag and TW/HK/MO regions -> Hant.
+  assert.equal(resolveSystemLanguage(["zh-Hans-CN", "en-US"]), "zh-Hans");
+  assert.equal(resolveSystemLanguage(["zh-Hant-TW"]), "zh-Hant");
+  assert.equal(resolveSystemLanguage(["zh-TW"]), "zh-Hant");
+  assert.equal(resolveSystemLanguage(["zh-HK"]), "zh-Hant");
+  assert.equal(resolveSystemLanguage(["zh-MO"]), "zh-Hant");
+  assert.equal(resolveSystemLanguage(["zh"]), "zh-Hans");
+  assert.equal(resolveSystemLanguage(["zh-CN"]), "zh-Hans");
+  // Base language match ("en-US" -> "en") and regional fallback
+  // ("pt-PT" has no "pt" table, so the pt-BR prefix candidate wins).
+  assert.equal(resolveSystemLanguage(["pt-PT", "en-US"]), "pt-BR");
+  assert.equal(resolveSystemLanguage(["pt"]), "pt-BR");
+  // No match at all falls back to English.
+  assert.equal(resolveSystemLanguage(["xx-XX", "yy"]), "en");
+  assert.equal(resolveSystemLanguage([]), "en");
+  // The first preferred language wins over later entries.
+  assert.equal(resolveSystemLanguage(["es-ES", "de-DE", "en-US"]), "es");
+});
+
+test("t() translates per language and falls back to English then the key", () => {
+  assert.equal(translate("panel.playlist.empty", "en"), "Playlist is empty");
+  assert.equal(translate("panel.playlist.empty", "zh-Hans"), "播放列表为空");
+  assert.equal(translate("settings.language.system", "ja"), "システムの言語");
+  // "system" resolves through the browser preference list.
+  assert.equal(translate("panel.playlist.empty", "system"), "Playlist is empty");
+  // Missing keys fall back to English, then to the key name itself.
+  assert.equal(translate("nonexistent.key", "zh-Hans"), "nonexistent.key");
+  assert.equal(translate("nonexistent.key", "en"), "nonexistent.key");
+});
+
+test("language list ships the ten mac entries with endonym labels", () => {
+  assert.deepEqual(languageList.map(({ code }) => code), [
+    "system", "en", "de", "es", "fr", "pt-BR", "ja", "zh-Hans", "zh-Hant", "ko",
+  ]);
+  const labels = Object.fromEntries(languageList.map(({ code, label }) => [code, label]));
+  assert.equal(labels.en, "English");
+  assert.equal(labels.de, "Deutsch");
+  assert.equal(labels.es, "Español");
+  assert.equal(labels.fr, "Français");
+  assert.equal(labels["pt-BR"], "Português (Brasil)");
+  assert.equal(labels.ja, "日本語");
+  assert.equal(labels["zh-Hans"], "简体中文");
+  assert.equal(labels["zh-Hant"], "繁體中文");
+  assert.equal(labels.ko, "한국어");
+  // The "system" entry's label is resolved through t() at render time; the
+  // static fallback is the English string.
+  assert.equal(labels.system, translate("settings.language.system", "en"));
+});

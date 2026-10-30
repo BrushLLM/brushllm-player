@@ -3,6 +3,7 @@
 // (hwdec). Every value goes through the set_property backend command.
 
 import { useEffect, useRef } from "react";
+import { useI18n } from "../i18n";
 
 export interface VideoSettingsMenuProps {
   /** Current video-aspect-override value; "-1" means container default. */
@@ -34,6 +35,7 @@ export default function VideoSettingsMenu({
   onSetProperty,
   onClose,
 }: VideoSettingsMenuProps) {
+  const { t } = useI18n();
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Close on Escape and on clicks outside the popup. The listener is
@@ -64,9 +66,9 @@ export default function VideoSettingsMenu({
   const hwdecEnabled = hwdec !== "no" && hwdec !== "";
 
   return (
-    <div ref={rootRef} className="vsm-menu" role="menu" aria-label="Video settings">
-      <div className="vsm-section-title">Aspect Ratio</div>
-      <div className="vsm-option-row" role="group" aria-label="Aspect ratio">
+    <div ref={rootRef} className="vsm-menu" role="menu" aria-label={t("controls.video-settings")}>
+      <div className="vsm-section-title">{t("video.aspect")}</div>
+      <div className="vsm-option-row" role="group" aria-label={t("video.aspect")}>
         {ASPECT_OPTIONS.map((option) => (
           <button
             key={option.value}
@@ -81,8 +83,8 @@ export default function VideoSettingsMenu({
         ))}
       </div>
 
-      <div className="vsm-section-title">Rotation</div>
-      <div className="vsm-option-row" role="group" aria-label="Rotation">
+      <div className="vsm-section-title">{t("video.rotate")}</div>
+      <div className="vsm-option-row" role="group" aria-label={t("video.rotate")}>
         {ROTATION_OPTIONS.map((value) => (
           <button
             key={value}
@@ -106,7 +108,7 @@ export default function VideoSettingsMenu({
         aria-checked={hwdecEnabled}
         onClick={() => onSetProperty("hwdec", hwdecEnabled ? "no" : "auto-safe")}
       >
-        <span className="vsm-toggle-label">Hardware Decoding</span>
+        <span className="vsm-toggle-label">{t("video.hwdec")}</span>
         <span className={`vsm-switch ${hwdecEnabled ? "on" : ""}`} aria-hidden="true">
           <span className="vsm-switch-knob" />
         </span>

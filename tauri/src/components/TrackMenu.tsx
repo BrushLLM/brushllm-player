@@ -5,6 +5,7 @@
 
 import { useEffect, useRef } from "react";
 import type { Track } from "../player-state";
+import { useI18n } from "../i18n";
 
 export interface TrackMenuProps {
   kind: "audio" | "sub";
@@ -20,6 +21,7 @@ function trackLabel(track: Track, index: number): string {
 }
 
 export default function TrackMenu({ kind, tracks, currentId, onSelect, onClose }: TrackMenuProps) {
+  const { t } = useI18n();
   const rootRef = useRef<HTMLDivElement>(null);
 
   const relevant = tracks.filter((track) => track.type === kind);
@@ -51,7 +53,7 @@ export default function TrackMenu({ kind, tracks, currentId, onSelect, onClose }
       ref={rootRef}
       className="tm-menu"
       role="menu"
-      aria-label={kind === "audio" ? "Audio tracks" : "Subtitle tracks"}
+      aria-label={kind === "audio" ? t("panel.tracks.audio") : t("panel.tracks.subtitle")}
     >
       <button
         type="button"
@@ -60,7 +62,7 @@ export default function TrackMenu({ kind, tracks, currentId, onSelect, onClose }
         aria-checked={currentId === null}
         onClick={() => { onSelect(null); onClose(); }}
       >
-        <span className="tm-label">Off</span>
+        <span className="tm-label">{t("panel.tracks.off")}</span>
         <span className="tm-check" aria-hidden="true">
           {currentId === null && (
             <svg viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none"

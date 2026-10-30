@@ -5,6 +5,7 @@
 // playlist-shuffle / set_property loop-file,loop-playlist).
 
 import type { PlaylistEntry } from "../player-state";
+import { useI18n } from "../i18n";
 
 export type LoopMode = "off" | "file" | "playlist";
 
@@ -35,6 +36,7 @@ export default function PlaylistPanel({
   visible, entries, onPlay, onRemove, onClear, onShuffle,
   loopFile, loopPlaylist, onLoop, embedded = false,
 }: PlaylistPanelProps) {
+  const { t } = useI18n();
   if (!visible) return null;
 
   const loopMode: LoopMode = loopPlaylist ? "playlist" : loopFile ? "file" : "off";
@@ -45,14 +47,14 @@ export default function PlaylistPanel({
     <>
       {!embedded && (
         <div className="pl-header">
-          <span className="pl-title">Playlist</span>
+          <span className="pl-title">{t("panel.playlist.title")}</span>
           <span className="pl-count">{entries.length}</span>
         </div>
       )}
 
       <div className="pl-list" role="list">
         {entries.length === 0 ? (
-          <div className="pl-empty">Playlist is empty</div>
+          <div className="pl-empty">{t("panel.playlist.empty")}</div>
         ) : (
           entries.map((entry, index) => (
             <div
@@ -78,8 +80,8 @@ export default function PlaylistPanel({
                 type="button"
                 className="pl-row-delete"
                 onClick={() => onRemove(index)}
-                aria-label={`Remove ${displayName(entry)}`}
-                title="Remove"
+                aria-label={`${t("panel.delete")} ${displayName(entry)}`}
+                title={t("panel.delete")}
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <line x1="6" y1="6" x2="18" y2="18" />
@@ -97,9 +99,9 @@ export default function PlaylistPanel({
           className={`pl-footer-btn ${loopMode !== "off" ? "active" : ""}`}
           onClick={() => onLoop(nextLoop)}
           title={
-            loopMode === "off" ? "Loop: off" : loopMode === "file" ? "Loop: file" : "Loop: playlist"
+            loopMode === "off" ? t("loop.off") : loopMode === "file" ? t("loop.file") : t("loop.playlist")
           }
-          aria-label="Cycle loop mode"
+          aria-label={t("menu.loop")}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             {loopMode === "file" && <text x="12" y="15" textAnchor="middle" fontSize="9"
@@ -118,8 +120,8 @@ export default function PlaylistPanel({
           type="button"
           className="pl-footer-btn"
           onClick={onShuffle}
-          title="Shuffle"
-          aria-label="Shuffle playlist"
+          title={t("panel.playlist.shuffle")}
+          aria-label={t("panel.playlist.shuffle")}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M3 7 H7 L17 17 H21" fill="none" stroke="currentColor" strokeWidth="2"
@@ -140,8 +142,8 @@ export default function PlaylistPanel({
           type="button"
           className="pl-footer-btn pl-clear"
           onClick={onClear}
-          title="Clear"
-          aria-label="Clear playlist"
+          title={t("panel.playlist.clear")}
+          aria-label={t("panel.playlist.clear")}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 7 H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -155,5 +157,5 @@ export default function PlaylistPanel({
     </>
   );
 
-  return embedded ? body : <aside className="pl-sidebar" aria-label="Playlist">{body}</aside>;
+  return embedded ? body : <aside className="pl-sidebar" aria-label={t("panel.playlist.title")}>{body}</aside>;
 }

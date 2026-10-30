@@ -11,6 +11,7 @@ import type { StateSnapshot } from "./player-state";
 import type { LoopMode } from "./components/PlaylistPanel";
 import type { SidebarTab } from "./components/Sidebar";
 import type { HistoryEntry, Bookmark } from "./library-state";
+import { useI18n } from "./i18n";
 import PlaylistPanel from "./components/PlaylistPanel";
 import ChaptersPanel from "./components/ChaptersPanel";
 import HistoryPanel from "./components/HistoryPanel";
@@ -20,6 +21,7 @@ import TrackMenu from "./components/TrackMenu";
 import VideoSettingsMenu from "./components/VideoSettingsMenu";
 import VideoEqMenu from "./components/VideoEqMenu";
 import KeyboardHandler from "./components/KeyboardHandler";
+import SettingsPanel from "./components/SettingsPanel";
 
 const GITHUB_PROJECT_URL = "https://github.com/BrushLLM/brushllm-player";
 const GITHUB_RELEASES_URL = "https://github.com/BrushLLM/brushllm-player/releases";
@@ -44,12 +46,14 @@ function fileExtension(path: string): string {
 }
 
 export default function App() {
+  const { t } = useI18n();
   const [view, setView] = useState(initialView);
   const viewRef = useRef(initialView);
   const [invokeError, setInvokeError] = useState<{ generation: number; message: string } | null>(null);
   const [scrubbing, setScrubbing] = useState(false);
   const [scrubPosition, setScrubPosition] = useState(0);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [appVersion, setAppVersion] = useState<string | null>(null);
   const [versionLoading, setVersionLoading] = useState(true);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -378,21 +382,21 @@ export default function App() {
   return (
     <div className="app">
       <KeyboardHandler
-        enabled={!aboutOpen && !urlOpen}
+        enabled={!aboutOpen && !settingsOpen && !urlOpen}
         onAction={handleKeyAction}
         onTogglePlaylist={() => toggleSidebar("playlist")}
       />
 
       <div className="video-area" onDoubleClick={() => sendMpv(["cycle", "fullscreen"])}>
         {error && <div className="player-error" role="alert">{error}</div>}
-        {!view.connected && !error && <div className="connection-status" role="status">Open a file to connect or restart the player</div>}
+        {!view.connected && !error && <div className="connection-status" role="status">{t("player.open-hint")}</div>}
         {state.idle && (
           <div className="empty-state" onClick={() => runCommand("open_file_dialog")} style={{ cursor: "pointer" }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <rect x="2" y="5" width="20" height="14" rx="2" />
               <polygon points="10,9 16,12 10,15" fill="currentColor" />
             </svg>
-            <div className="hint">Open a media file to start playing</div>
+            <div className="hint">{t("player.open-hint")}</div>
           </div>
         )}
 
@@ -467,37 +471,37 @@ export default function App() {
         </div>
 
         <div className="button-row">
-          <button className="tool-btn" onClick={() => runCommand("open_file_dialog")} title="Open…">📂</button>
-          <button className="tool-btn" onClick={() => sendMpv(["playlist-prev", "weak"])} disabled={state.playlistCount < 2 || !view.ready} title="Previous">
+          <button className="tool-btn" onClick={() => runCommand("open_file_dialog")} title={t("menu.open")}>📂</button>
+          <button className="tool-btn" onClick={() => sendMpv(["playlist-prev", "weak"])} disabled={state.playlistCount < 2 || !view.ready} title={t("menu.previous")}>
             ⏮
           </button>
           <button
             className={`play-btn ${!state.paused ? "playing" : ""}`}
             onClick={togglePlay}
             disabled={state.idle || !view.ready}
-            title={state.paused ? "Play" : "Pause"}
+            title={state.paused ? t("controls.play") : t("controls.pause")}
           >
             {state.paused ? "▶" : "⏸"}
           </button>
-          <button className="tool-btn" onClick={() => sendMpv(["playlist-next", "weak"])} disabled={state.playlistCount < 2 || !view.ready} title="Next">
+          <button className="tool-btn" onClick={() => sendMpv(["playlist-next", "weak"])} disabled={state.playlistCount < 2 || !view.ready} title={t("menu.next")}>
             ⏭
           </button>
-          <button className="tool-btn" onClick={() => runCommand("stop_playback")} disabled={state.idle || !view.ready} title="Stop">
+          <button className="tool-btn" onClick={() => runCommand("stop_playback")} disabled={state.idle || !view.ready} title={t("menu.stop")}>
             ⏹
           </button>
-          <button className="tool-btn" onClick={() => seekRelative(-5)} title="Back 5s">«</button>
-          <button className="tool-btn" onClick={() => seekRelative(5)} title="Forward 5s">»</button>
-          <button className="tool-btn" onClick={() => sendMpv(["frame-back-step"])} disabled={state.idle || !view.ready || state.paused === false} title="Frame back (,)">«·</button>
-          <button className="tool-btn" onClick={() => sendMpv(["frame-step"])} disabled={state.idle || !view.ready} title="Frame forward (.)">·»</button>
+          <button className="tool-btn" onClick={() => seekRelative(-5)} title={t("menu.step-backward")}>«</button>
+          <button className="tool-btn" onClick={() => seekRelative(5)} title={t("menu.step-forward")}>»</button>
+          <button className="tool-btn" onClick={() => sendMpv(["frame-back-step"])} disabled={state.idle || !view.ready || state.paused === false} title={t("menu.frame-back-step")}>«·</button>
+          <button className="tool-btn" onClick={() => sendMpv(["frame-step"])} disabled={state.idle || !view.ready} title={t("menu.frame-step")}>·»</button>
           <button
             className={`tool-btn ${abLoopActive ? "active" : ""}`}
             onClick={toggleAbLoop}
             disabled={state.idle || !view.ready}
-            title="A-B loop (l)"
+            title={t("menu.ab-loop")}
           >
             AB
           </button>
-          <button className="tool-btn" onClick={() => runCommand("screenshot")} disabled={state.idle || !view.ready} title="Screenshot (s)">
+          <button className="tool-btn" onClick={() => runCommand("screenshot")} disabled={state.idle || !view.ready} title={t("menu.screenshot")}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 8 H8 L10 5 H14 L16 8 H20 V19 H4 Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
               <circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.6" />
@@ -514,13 +518,13 @@ export default function App() {
               const next = speeds[(idx + 1) % speeds.length];
               setSpeed(next);
             }}
-            title="Playback speed"
+            title={t("controls.speed")}
           >
             {state.speed === 1 ? "1×" : `${state.speed}×`}
           </span>
 
           <span className="menu-anchor">
-            <button className="tool-btn" onClick={() => setTrackMenu(trackMenu === "audio" ? null : "audio")} disabled={!view.ready} title="Audio tracks">
+            <button className="tool-btn" onClick={() => setTrackMenu(trackMenu === "audio" ? null : "audio")} disabled={!view.ready} title={t("panel.tracks.audio")}>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 13 Q4 5 12 5 Q20 5 20 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                 <rect x="3" y="13" width="4" height="7" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.6" />
@@ -533,7 +537,7 @@ export default function App() {
             )}
           </span>
           <span className="menu-anchor">
-            <button className={`tool-btn ${state.subtitleTrackId !== null ? "active" : ""}`} onClick={() => setTrackMenu(trackMenu === "sub" ? null : "sub")} disabled={!view.ready} title="Subtitles">
+            <button className={`tool-btn ${state.subtitleTrackId !== null ? "active" : ""}`} onClick={() => setTrackMenu(trackMenu === "sub" ? null : "sub")} disabled={!view.ready} title={t("panel.tracks.subtitle")}>
               CC
             </button>
             {trackMenu === "sub" && (
@@ -541,7 +545,7 @@ export default function App() {
                 onSelect={(id) => selectTrack("sub", id)} onClose={() => setTrackMenu(null)} />
             )}
           </span>
-          <button className="tool-btn" onClick={() => runCommand("open_subtitle_dialog")} disabled={state.idle || !view.ready} title="Load subtitle file…">
+          <button className="tool-btn" onClick={() => runCommand("open_subtitle_dialog")} disabled={state.idle || !view.ready} title={t("menu.load-subtitle")}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
               <path d="M6 14 H10 M13 14 H18 M6 10.5 H18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -549,7 +553,7 @@ export default function App() {
           </button>
 
           <span className="menu-anchor">
-            <button className={`tool-btn ${videoMenuOpen ? "active" : ""}`} onClick={() => setVideoMenuOpen(!videoMenuOpen)} title="Video settings">
+            <button className={`tool-btn ${videoMenuOpen ? "active" : ""}`} onClick={() => setVideoMenuOpen(!videoMenuOpen)} title={t("controls.video-settings")}>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <rect x="3" y="6" width="18" height="12" rx="1.8" fill="none" stroke="currentColor" strokeWidth="1.6" />
                 <path d="M9 21 H15 M12 18 V21" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -566,7 +570,7 @@ export default function App() {
             )}
           </span>
           <span className="menu-anchor">
-            <button className={`tool-btn ${eqMenuOpen ? "active" : ""}`} onClick={() => setEqMenuOpen(!eqMenuOpen)} title="Video adjustments">
+            <button className={`tool-btn ${eqMenuOpen ? "active" : ""}`} onClick={() => setEqMenuOpen(!eqMenuOpen)} title={t("controls.equalizer")}>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 4 V20 M12 4 V20 M19 4 V20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                 <circle cx="5" cy="14" r="2.2" fill="currentColor" />
@@ -587,7 +591,7 @@ export default function App() {
           </span>
 
           <div className="volume-control">
-            <button className="tool-btn" onClick={toggleMute} title={state.muted ? "Unmute" : "Mute"}>
+            <button className="tool-btn" onClick={toggleMute} title={state.muted ? t("controls.unmute") : t("controls.mute")}>
               {state.muted ? "🔇" : "🔊"}
             </button>
             <div
@@ -601,7 +605,7 @@ export default function App() {
             </div>
           </div>
 
-          <button className="tool-btn" onClick={() => setUrlOpen(true)} title="Open URL…">
+          <button className="tool-btn" onClick={() => setUrlOpen(true)} title={t("menu.open-url")}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M10 14 Q12 12 14 14 T18 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
               <path d="M14 10 Q12 12 10 10 T6 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -611,7 +615,7 @@ export default function App() {
           <button
             className={`tool-btn ${state.onTop ? "active" : ""}`}
             onClick={toggleOnTop}
-            title="Always on top"
+            title={t("video.ontop")}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M14 3 L17 3 L17 6 L14 6 Z" fill="none" stroke="currentColor" strokeWidth="1.6" />
@@ -624,7 +628,7 @@ export default function App() {
           <button
             className={`tool-btn ${sidebarOpen && sidebarTab === "playlist" ? "active" : ""}`}
             onClick={() => toggleSidebar("playlist")}
-            title="Playlist (v)"
+            title={t("controls.playlist")}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 6 H20 M4 12 H20 M4 18 H14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -634,7 +638,7 @@ export default function App() {
             className={`tool-btn ${sidebarOpen && sidebarTab === "chapters" ? "active" : ""}`}
             onClick={() => toggleSidebar("chapters")}
             disabled={state.chapters.length === 0 && state.idle}
-            title="Chapters"
+            title={t("panel.chapters")}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
@@ -646,12 +650,30 @@ export default function App() {
             onClick={() => setAboutOpen(true)}
             aria-label="About BrushLLM Player"
             aria-haspopup="dialog"
-            title="About"
+            title={t("settings.about")}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <circle cx="12" cy="12" r="9" />
               <line x1="12" y1="10.5" x2="12" y2="16" />
               <circle cx="12" cy="7.5" r="0.7" fill="currentColor" stroke="none" />
+            </svg>
+          </button>
+          <button
+            className="tool-btn"
+            onClick={() => setSettingsOpen(true)}
+            aria-label={t("settings.general")}
+            aria-haspopup="dialog"
+            title={t("settings.general")}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="12" r="3.1" fill="none" stroke="currentColor" strokeWidth="1.6" />
+              <path
+                d="M12 3.6 L13.7 5.9 L16.5 5.4 L16.9 8.2 L19.4 9.5 L18.2 12 L19.4 14.5 L16.9 15.8 L16.5 18.6 L13.7 18.1 L12 20.4 L10.3 18.1 L7.5 18.6 L7.1 15.8 L4.6 14.5 L5.8 12 L4.6 9.5 L7.1 8.2 L7.5 5.4 L10.3 5.9 Z"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinejoin="round"
+              />
             </svg>
           </button>
         </div>
@@ -672,12 +694,12 @@ export default function App() {
             aria-labelledby="url-dialog-title"
           >
             <div className="about-header">
-              <h2 id="url-dialog-title">Open URL</h2>
+              <h2 id="url-dialog-title">{t("menu.open-url")}</h2>
               <button
                 className="tool-btn about-close"
                 onClick={() => setUrlOpen(false)}
-                aria-label="Close URL dialog"
-                title="Close"
+                aria-label={t("panel.cancel")}
+                title={t("panel.cancel")}
                 autoFocus
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -698,17 +720,19 @@ export default function App() {
                 type="text"
                 value={urlInput}
                 onChange={(event) => setUrlInput(event.target.value)}
-                placeholder="Direct media link or m3u8/HLS address"
+                placeholder={t("panel.url.hint")}
                 autoFocus
                 spellCheck={false}
               />
               <button className="url-submit" type="submit" disabled={urlInput.trim() === ""}>
-                Play
+                {t("panel.url.open")}
               </button>
             </form>
           </section>
         </div>
       )}
+
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
 
       {aboutOpen && (
         <div
@@ -736,8 +760,8 @@ export default function App() {
                 ref={aboutCloseRef}
                 className="tool-btn about-close"
                 onClick={closeAbout}
-                aria-label="Close About dialog"
-                title="Close"
+                aria-label={t("panel.cancel")}
+                title={t("panel.cancel")}
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <line x1="6" y1="6" x2="18" y2="18" />

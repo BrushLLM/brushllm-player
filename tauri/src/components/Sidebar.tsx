@@ -7,6 +7,7 @@
 // drop their own shell; HistoryPanel/BookmarksPanel are always embedded.
 
 import type { ReactNode } from "react";
+import { useI18n } from "../i18n";
 
 export type SidebarTab = "playlist" | "chapters" | "history" | "bookmarks";
 
@@ -18,20 +19,21 @@ export interface SidebarProps {
   children: ReactNode;
 }
 
-const TABS: { id: SidebarTab; label: string }[] = [
-  { id: "playlist", label: "Playlist" },
-  { id: "chapters", label: "Chapters" },
-  { id: "history", label: "History" },
-  { id: "bookmarks", label: "Bookmarks" },
+const TABS: { id: SidebarTab; labelKey: string }[] = [
+  { id: "playlist", labelKey: "panel.playlist.title" },
+  { id: "chapters", labelKey: "panel.chapters" },
+  { id: "history", labelKey: "panel.history" },
+  { id: "bookmarks", labelKey: "panel.bookmarks" },
 ];
 
 export default function Sidebar({ open, tab, onTabChange, onClose, children }: SidebarProps) {
+  const { t } = useI18n();
   if (!open) return null;
 
   return (
     <aside className="pl-sidebar" aria-label="Sidebar">
       <div className="pl-tabs" role="tablist" aria-label="Sidebar sections">
-        {TABS.map(({ id, label }) => (
+        {TABS.map(({ id, labelKey }) => (
           <button
             key={id}
             type="button"
@@ -40,15 +42,15 @@ export default function Sidebar({ open, tab, onTabChange, onClose, children }: S
             className={`pl-tab ${tab === id ? "active" : ""}`}
             onClick={() => onTabChange(id)}
           >
-            {label}
+            {t(labelKey)}
           </button>
         ))}
         <button
           type="button"
           className="pl-tab-close"
           onClick={onClose}
-          aria-label="Close sidebar"
-          title="Close"
+          aria-label={t("panel.cancel")}
+          title={t("panel.cancel")}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <line x1="6" y1="6" x2="18" y2="18" />
