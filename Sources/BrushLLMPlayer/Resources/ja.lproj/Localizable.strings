@@ -236,3 +236,16 @@
 "about.github" = "GitHub プロジェクト";
 "about.releases" = "リリース";
 "about.license-link" = "ライセンス全文";
+
+// IINA port: delay/pitch/deinterlace/video-eq/export
+"playlist.export" = "M3U として書き出す…";
+"subtitle.delay" = "字幕遅延";
+"audio.preserve-pitch" = "速度変更時に音程を維持";
+"video.deinterlace" = "インターレース解除";
+"video.brightness" = "明るさ";
+"video.contrast" = "コントラスト";
+"video.saturation" = "彩度";
+
+// IINA port: audio output device selection
+"audio.device" = "オーディオ出力";
+"audio.device-default" = "システム標準";

@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import AppKit
 import AVFoundation
+import UniformTypeIdentifiers
 import Libmpv
 
 /// One player instance: owns the `MPVController` and publishes playback state
@@ -52,6 +53,30 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         didSet { if !isApplyingFromMPV { mpv.setDouble("speed", speed) } }
     }
 
+    // MARK: - Audio output device (IINA audioDeviceMenu)
+
+    /// Available audio output devices from mpv's `audio-device-list` node
+    /// property; each item is {name: audio API-specific ID, description:
+    /// human-readable label}. Refreshed once when media starts playing.
+    @Published private(set) var audioDevices: [(name: String, device: String)] = []
+
+    /// The selected audio output device, written to mpv's `audio-device`
+    /// property ("auto" = system default device/driver).
+    @Published var audioDevice: String = "auto" {
+        didSet {
+            guard !isApplyingFromMPV else { return }
+            mpv.setString("audio-device", audioDevice)
+            DebugLog.log("audio-device: \(audioDevice)")
+        }
+    }
+
+    // MARK: - System media control (Now Playing)
+
+    /// Publishes playback state to the Control Center Now Playing module and
+    /// answers its remote commands (media keys). Only the UI player owns a
+    /// session; headless instances never touch it.
+    private let nowPlaying: NowPlayingManager?
+
     @Published private(set) var loopMode: LoopMode = .off {
         didSet { applyLoopMode() }
     }
@@ -96,6 +121,35 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     /// Video delay in seconds, exposed as the inverse of mpv's audio-delay.
     @Published var videoDelay: Double = 0 {
         didSet { if !isApplyingFromMPV { mpv.setDouble("audio-delay", -videoDelay) } }
+    }
+
+    /// Subtitle delay in seconds (positive delays subtitles; IINA
+    /// SubDelayView, applied live via the sub-delay property).
+    @Published var subtitleDelay: Double = 0 {
+        didSet { if !isApplyingFromMPV { mpv.setDouble("sub-delay", subtitleDelay) } }
+    }
+
+    /// Whether speed changes keep the audio pitch (mpv
+    /// audio-pitch-correction; IINA exposes it as a codec preference).
+    @Published var preservesPitch = true {
+        didSet { mpv.setFlag("audio-pitch-correction", preservesPitch) }
+    }
+
+    /// Deinterlace filter toggle (IINA's deinterlaceSwitch).
+    @Published var deinterlace = false {
+        didSet { mpv.setFlag("deinterlace", deinterlace) }
+    }
+
+    /// Video adjustments, applied live via mpv's direct properties
+    /// (IINA setVideoEqualizer: brightness/contrast/saturation, -100…100).
+    @Published var videoBrightness: Double = 0 {
+        didSet { mpv.setDouble("brightness", videoBrightness) }
+    }
+    @Published var videoContrast: Double = 0 {
+        didSet { mpv.setDouble("contrast", videoContrast) }
+    }
+    @Published var videoSaturation: Double = 0 {
+        didSet { mpv.setDouble("saturation", videoSaturation) }
     }
 
     /// Whether a recording is in progress (mpv `stream-record`).
@@ -244,9 +298,16 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     /// Periodic history position updates.
     private var historyTimer: Timer?
 
+    /// Timestamp of the last Now Playing position update (throttle).
+    private var lastNowPlayingPositionUpdate = Date.distantPast
+
     init(playbackStore: PlaybackStore = .shared, headless: Bool = false) {
         self.playbackStore = playbackStore
         self.headless = headless
+        // The UI player registers the remote command handlers once at
+        // startup (IINA's AppDelegate does this at launch); headless test
+        // and thumbnail players stay out of the system media feature.
+        self.nowPlaying = headless ? nil : NowPlayingManager.shared
         if !headless { Self.sharedForSettings = self }
         let settings = AppSettings.shared
         mpv.eventHandler = { [weak self] event in
@@ -254,6 +315,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         }
         mpv.start(hardwareDecoding: settings.hardwareDecoding, headless: headless)
         settings.applyTo(player: self)
+        nowPlaying?.activate()
 
         // Hardware decoding can be toggled in settings while playing; mpv
         // re-initializes the decoder when the property changes.
@@ -468,6 +530,10 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         guard !isIdle else { return }
         let clamped = duration > 0 ? min(max(time, 0), duration) : time
         mpv.command("seek", [String(format: "%.3f", clamped), "absolute+exact"])
+        // Seeks bypass the position throttle so the Now Playing scrubber
+        // lands on the new time immediately.
+        lastNowPlayingPositionUpdate = Date()
+        nowPlaying?.updatePlaybackState(player: self)
     }
 
     func seek(relative seconds: Double) {
@@ -490,6 +556,34 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
 
     func setSubtitleTrack(_ id: Int?) {
         mpv.setString("sid", id.map(String.init) ?? "no")
+    }
+
+    // MARK: - Audio output device
+
+    /// Reloads the audio device list from mpv's `audio-device-list` node
+    /// property (IINA `getAudioDevices`) and adopts the currently active
+    /// `audio-device` so the picker reflects reality. Called when media
+    /// starts playing — the list is static otherwise (devices appear once
+    /// the audio output initializes).
+    func refreshAudioDevices() {
+        guard let raw = mpv.getNode("audio-device-list") as? [[String: Any]] else { return }
+        let devices = raw.compactMap { entry -> (name: String, device: String)? in
+            guard let name = entry["name"] as? String,
+                  let description = entry["description"] as? String else { return nil }
+            return (name: description, device: name)
+        }
+        // mpv re-fires properties with identical content; skip equal lists
+        // (tuples are not Equatable, compare element-wise).
+        let unchanged = devices.count == audioDevices.count
+            && !zip(devices, audioDevices).contains { $0.name != $1.name || $0.device != $1.device }
+        guard !unchanged else { return }
+        audioDevices = devices
+        // Adopt the device mpv actually uses (e.g. a configured device that
+        // vanished and fell back to auto).
+        isApplyingFromMPV = true
+        audioDevice = mpv.getString("audio-device") ?? "auto"
+        isApplyingFromMPV = false
+        DebugLog.log("audio devices: \(devices.count)")
     }
 
     // MARK: - Playlist
@@ -608,6 +702,10 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
                 DebugLog.log("screenshot: framebuffer capture failed")
                 return
             }
+            // Copy to the clipboard in addition to the file (IINA's
+            // screenshotCopyToClipboard preference, always-on here).
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.writeObjects([image])
             guard let tiff = image.tiffRepresentation,
                   let rep = NSBitmapImageRep(data: tiff),
                   let png = rep.representation(using: .png, properties: [:]) else {
@@ -625,10 +723,23 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
 
     // MARK: - A/V delay
 
+    /// Exports the current playlist as an .m3u file (mpv's save-playlist
+    /// command, IINA's menuSavePlaylist flow).
+    func exportPlaylist() {
+        guard !playlist.isEmpty else { return }
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.playlist]
+        panel.nameFieldStringValue = "playlist.m3u"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        mpv.command("save-playlist", [url.path])
+    }
+
     func resetDelays() {
         audioDelay = 0
         videoDelay = 0
+        subtitleDelay = 0
         mpv.setDouble("audio-delay", 0)
+        mpv.setDouble("sub-delay", 0)
     }
 
     // MARK: - Network playback
@@ -1292,6 +1403,10 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
             isBuffering = true
             loadErrorMessage = nil
             startBufferingTimer()
+            // Refresh the device list once when media starts playing; mpv
+            // probed the audio output at init, so the list is available here.
+            refreshAudioDevices()
+            nowPlaying?.updatePlaybackState(player: self)
 
         case .loadHook(let id):
             prepareLoad(id)
@@ -1332,6 +1447,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
             startHistoryUpdates()
             loadThumbnails(for: activeStreamPath ?? "")
             currentFileBookmarks = playbackStore.bookmarks(for: media.key)
+            nowPlaying?.updateMetadata(player: self)
             DebugLog.log("fileLoaded: \(fileName), duration=\(duration), hwdec=\(hwdecCurrent ?? "nil"), audio=\(audioTracks.count), sub=\(subtitleTracks.count), playlist=\(playlist.count)")
 
         case .endFile(let entryID, let reason, let errorCode):
@@ -1369,20 +1485,36 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         defer { isApplyingFromMPV = false }
         switch name {
         case "pause":
-            if case .flag(let paused)? = value { isPaused = paused }
+            if case .flag(let paused)? = value {
+                isPaused = paused
+                nowPlaying?.updatePlaybackState(player: self)
+            }
         case "time-pos":
             if case .double(let pos)? = value, pos.isFinite {
                 lastPlaybackPosition = max(pos, 0)
                 if !isScrubbing { position = lastPlaybackPosition }
+                // Now Playing position: throttled (every 5s) so the property
+                // events don't spam the info center; seeks reset the
+                // timestamp so the new position lands immediately.
+                if !isScrubbing, Date().timeIntervalSince(lastNowPlayingPositionUpdate) >= 5 {
+                    lastNowPlayingPositionUpdate = Date()
+                    nowPlaying?.updatePlaybackState(player: self)
+                }
             }
         case "volume":
             if case .double(let level)? = value, level.isFinite { volume = level }
         case "duration":
-            if case .double(let dur)? = value { duration = max(dur, 0) }
+            if case .double(let dur)? = value {
+                duration = max(dur, 0)
+                nowPlaying?.updatePlaybackState(player: self)
+            }
         case "mute":
             if case .flag(let muted)? = value { isMuted = muted }
         case "speed":
-            if case .double(let newSpeed)? = value { speed = newSpeed }
+            if case .double(let newSpeed)? = value {
+                speed = newSpeed
+                nowPlaying?.updatePlaybackState(player: self)
+            }
         case "eof-reached":
             if case .flag(let eof)? = value, eof { isPaused = true }
         case "idle-active":
@@ -1392,6 +1524,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
                     // Drop the stale last frame so the idle overlay sits on
                     // black, not on the frozen final image.
                     videoLayer?.clearFrame()
+                    nowPlaying?.endSession()
                     stopHistoryUpdates()
                     position = 0
                     duration = 0
@@ -1412,7 +1545,10 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
             if let media = currentReference { fileName = media.displayName }
             else if case .string(let name)? = value { fileName = URLPrivacy.redact(name) }
         case "media-title":
-            if case .string(let title)? = value, !title.contains("brushplayer://") { mediaTitle = URLPrivacy.redact(title) }
+            if case .string(let title)? = value, !title.contains("brushplayer://") {
+                mediaTitle = URLPrivacy.redact(title)
+                nowPlaying?.updateMetadata(player: self)
+            }
         case "hwdec-current":
             if case .string(let hwdec)? = value { hwdecCurrent = nonEmpty(hwdec) }
         case "track-list":

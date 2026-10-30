@@ -49,6 +49,42 @@ struct AudioEffectsPanel: View {
                     .buttonStyle(PressedDimButtonStyle())
                     .padding(.top, 2)
                 }
+
+                Divider().overlay(BrushLLMPlayerTheme.controlSeparator)
+
+                // MARK: Subtitle delay
+
+                PanelSection(title: L("panel.tracks.subtitle", "Subtitles")) {
+                    delayRow(L("subtitle.delay", "Subtitle delay"), value: $player.subtitleDelay)
+                }
+
+                Divider().overlay(BrushLLMPlayerTheme.controlSeparator)
+
+                // MARK: Speed / pitch
+
+                Toggle(isOn: $player.preservesPitch) {
+                    Text(L("audio.preserve-pitch", "Keep pitch when changing speed"))
+                        .font(.callout)
+                        .foregroundStyle(BrushLLMPlayerTheme.controlText)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .toggleStyle(ThemedSwitchToggleStyle())
+
+                Divider().overlay(BrushLLMPlayerTheme.controlSeparator)
+
+                // MARK: Audio output device (IINA audioDeviceMenu)
+
+                PanelSection(title: L("audio.device", "Audio Output")) {
+                    Picker(L("audio.device", "Audio Output"), selection: $player.audioDevice) {
+                        Text(L("audio.device-default", "System Default")).tag("auto")
+                        ForEach(player.audioDevices, id: \.device) { device in
+                            Text(device.name).tag(device.device)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
             .padding(12)
         }

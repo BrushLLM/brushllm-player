@@ -247,6 +247,9 @@ struct PlaylistPanel: View {
 
             switch tab {
             case .playlist:
+                footerButton(icon: "square.and.arrow.up", help: L("playlist.export", "Export as M3U…")) {
+                    player.exportPlaylist()
+                }
                 footerButton(icon: "shuffle", help: L("panel.playlist.shuffle", "Shuffle")) {
                     player.shufflePlaylist()
                 }

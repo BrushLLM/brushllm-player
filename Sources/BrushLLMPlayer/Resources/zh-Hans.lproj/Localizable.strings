@@ -236,3 +236,16 @@
 "about.github" = "GitHub 项目";
 "about.releases" = "发行版本";
 "about.license-link" = "完整许可证";
+
+// IINA port: delay/pitch/deinterlace/video-eq/export
+"playlist.export" = "导出为 M3U…";
+"subtitle.delay" = "字幕延迟";
+"audio.preserve-pitch" = "变速时保持音高";
+"video.deinterlace" = "反交错";
+"video.brightness" = "亮度";
+"video.contrast" = "对比度";
+"video.saturation" = "饱和度";
+
+// IINA port: audio output device selection
+"audio.device" = "音频输出";
+"audio.device-default" = "系统默认";

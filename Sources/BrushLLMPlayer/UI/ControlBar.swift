@@ -344,6 +344,9 @@ struct ControlBar: View {
 
     // MARK: - Right-side tools
 
+    /// Speed popover visibility (IINA's 0.25–16× speedSlider experience).
+    @State private var speedPanelVisible = false
+
     @ViewBuilder
     private var speedMenu: some View {
         let label = Text("\(formatSpeed(player.speed))×")
@@ -355,20 +358,60 @@ struct ControlBar: View {
         if forSnapshot {
             label.fixedSize()
         } else {
-            Menu {
-                ForEach(speedOptions, id: \.self) { option in
-                    Button {
-                        player.speed = option
-                    } label: {
-                        Text("\(formatSpeed(option))×")
-                    }
-                }
+            Button {
+                speedPanelVisible.toggle()
             } label: {
                 label
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
+            .buttonStyle(PressedDimButtonStyle())
+            .popover(isPresented: $speedPanelVisible, arrowEdge: .bottom) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Slider(value: Binding(
+                        get: { player.speed },
+                        set: { player.speed = (($0 / 0.05).rounded() * 0.05) }
+                    ), in: 0.25...16)
+                        .tint(BrushLLMPlayerTheme.accent)
+                        .frame(width: 180)
+                    HStack {
+                        Text(String(format: "%.2g×", player.speed))
+                            .font(.system(size: 11, weight: .semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(BrushLLMPlayerTheme.accent)
+                        Spacer()
+                        Button(L("video.delay-reset", "Reset")) {
+                            player.speed = 1
+                        }
+                        .font(.caption)
+                        .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
+                        .buttonStyle(PressedDimButtonStyle())
+                    }
+                    Divider().overlay(BrushLLMPlayerTheme.controlSeparator)
+                    // Preset chips.
+                    HStack(spacing: 6) {
+                        ForEach(speedOptions, id: \.self) { option in
+                            Button {
+                                player.speed = option
+                            } label: {
+                                Text("\(formatSpeed(option))×")
+                                    .font(.system(size: 10, weight: player.speed == option ? .bold : .regular))
+                                    .monospacedDigit()
+                                    .foregroundStyle(player.speed == option ? BrushLLMPlayerTheme.onAccent : BrushLLMPlayerTheme.controlTextSecondary)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background {
+                                        if player.speed == option {
+                                            Capsule().fill(BrushLLMPlayerTheme.accent)
+                                        }
+                                    }
+                            }
+                            .buttonStyle(PressedDimButtonStyle())
+                        }
+                    }
+                }
+                .padding(12)
+                .frame(minWidth: 220)
+                .presentationBackground(BrushLLMPlayerTheme.panelMaterial)
+            }
             .help(L("controls.speed", "Playback speed"))
         }
     }

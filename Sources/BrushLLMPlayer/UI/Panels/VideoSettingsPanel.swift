@@ -69,6 +69,14 @@ struct VideoSettingsPanel: View {
                     }
                     .toggleStyle(ThemedSwitchToggleStyle())
 
+                    Toggle(isOn: $player.deinterlace) {
+                        Text(L("video.deinterlace", "Deinterlace"))
+                            .font(.callout)
+                            .foregroundStyle(BrushLLMPlayerTheme.controlText)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .toggleStyle(ThemedSwitchToggleStyle())
+
                     Toggle(isOn: $settings.hardwareDecoding) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(L("video.hwdec", "Hardware Decoding"))
@@ -83,6 +91,27 @@ struct VideoSettingsPanel: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .toggleStyle(ThemedSwitchToggleStyle())
+                }
+
+                Divider().padding(.vertical, 8)
+
+                // MARK: Video adjustments (IINA setVideoEqualizer)
+
+                PanelSection(title: L("video.saturation", "Saturation")) {
+                    adjustmentRow(L("video.brightness", "Brightness"), value: $player.videoBrightness)
+                    adjustmentRow(L("video.contrast", "Contrast"), value: $player.videoContrast)
+                    adjustmentRow(L("video.saturation", "Saturation"), value: $player.videoSaturation)
+                    Button {
+                        player.videoBrightness = 0
+                        player.videoContrast = 0
+                        player.videoSaturation = 0
+                    } label: {
+                        Text(L("video.delay-reset", "Reset"))
+                            .font(.caption)
+                            .foregroundStyle(BrushLLMPlayerTheme.accent)
+                    }
+                    .buttonStyle(PressedDimButtonStyle())
+                    .padding(.top, 2)
                 }
             }
             .padding(12)
@@ -196,6 +225,23 @@ struct VideoSettingsPanel: View {
             Slider(value: value, in: 0...45, step: 1)
                 .tint(BrushLLMPlayerTheme.accent)
             Text("\(Int(value.wrappedValue))%")
+                .font(.system(size: 10))
+                .monospacedDigit()
+                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
+                .frame(width: 32, alignment: .trailing)
+        }
+    }
+
+    /// One video-adjustment slider (brightness/contrast/saturation,
+    /// -100…100, mpv direct property).
+    private func adjustmentRow(_ label: String, value: Binding<Double>) -> some View {
+        HStack {
+            Text(label)
+                .font(.callout)
+                .foregroundStyle(BrushLLMPlayerTheme.controlText)
+            Slider(value: value, in: -100...100, step: 1)
+                .tint(BrushLLMPlayerTheme.accent)
+            Text("\(Int(value.wrappedValue))")
                 .font(.system(size: 10))
                 .monospacedDigit()
                 .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)

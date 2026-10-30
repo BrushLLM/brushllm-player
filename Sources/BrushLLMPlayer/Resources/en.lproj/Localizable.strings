@@ -236,3 +236,16 @@
 "about.github" = "GitHub Project";
 "about.releases" = "Releases";
 "about.license-link" = "Full license";
+
+// IINA port: delay/pitch/deinterlace/video-eq/export
+"playlist.export" = "Export as M3U…";
+"subtitle.delay" = "Subtitle delay";
+"audio.preserve-pitch" = "Keep pitch when changing speed";
+"video.deinterlace" = "Deinterlace";
+"video.brightness" = "Brightness";
+"video.contrast" = "Contrast";
+"video.saturation" = "Saturation";
+
+// IINA port: audio output device selection
+"audio.device" = "Audio Output";
+"audio.device-default" = "System Default";
