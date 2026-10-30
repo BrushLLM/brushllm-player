@@ -1,5 +1,6 @@
 mod library;
 mod mpv;
+mod servers;
 
 use library::{Bookmark, HistoryEntry, LibraryStore};
 use mpv::controller::{CommandResult, MpvPlayer, PlayerError, StateSnapshot};
@@ -30,6 +31,7 @@ pub fn run() {
             player.set_watch_later_dir(data_dir.join("watch_later"));
             app.manage(Player(Arc::new(player)));
             app.manage(LibraryStore::open(app.handle()));
+            app.manage(servers::model::ServerStore::open(app.handle()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -61,6 +63,14 @@ pub fn run() {
             bookmark_clear,
             playlist_save,
             playlist_restore,
+            servers::servers_list,
+            servers::servers_add,
+            servers::servers_update,
+            servers::servers_remove,
+            servers::servers_browse,
+            servers::servers_play,
+            servers::servers_enqueue,
+            servers::servers_test,
         ])
         .build(tauri::generate_context!())
         .expect("error while building BrushLLM Player");
