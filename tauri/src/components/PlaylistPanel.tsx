@@ -18,6 +18,9 @@ export interface PlaylistPanelProps {
   loopFile: boolean;
   loopPlaylist: boolean;
   onLoop: (mode: LoopMode) => void;
+  /** Inside the shared Sidebar: skip the .pl-sidebar shell (it provides the
+   *  container and the tab strip) and render only the list + footer. */
+  embedded?: boolean;
 }
 
 function displayName(entry: PlaylistEntry): string {
@@ -30,7 +33,7 @@ function displayName(entry: PlaylistEntry): string {
 
 export default function PlaylistPanel({
   visible, entries, onPlay, onRemove, onClear, onShuffle,
-  loopFile, loopPlaylist, onLoop,
+  loopFile, loopPlaylist, onLoop, embedded = false,
 }: PlaylistPanelProps) {
   if (!visible) return null;
 
@@ -38,12 +41,14 @@ export default function PlaylistPanel({
   const nextLoop: LoopMode =
     loopMode === "off" ? "file" : loopMode === "file" ? "playlist" : "off";
 
-  return (
-    <aside className="pl-sidebar" aria-label="Playlist">
-      <div className="pl-header">
-        <span className="pl-title">Playlist</span>
-        <span className="pl-count">{entries.length}</span>
-      </div>
+  const body = (
+    <>
+      {!embedded && (
+        <div className="pl-header">
+          <span className="pl-title">Playlist</span>
+          <span className="pl-count">{entries.length}</span>
+        </div>
+      )}
 
       <div className="pl-list" role="list">
         {entries.length === 0 ? (
@@ -147,6 +152,8 @@ export default function PlaylistPanel({
           </svg>
         </button>
       </div>
-    </aside>
+    </>
   );
+
+  return embedded ? body : <aside className="pl-sidebar" aria-label="Playlist">{body}</aside>;
 }

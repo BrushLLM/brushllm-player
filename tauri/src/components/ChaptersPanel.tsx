@@ -8,6 +8,9 @@ export interface ChaptersPanelProps {
   chapters: Chapter[];
   currentChapter: number | null;
   onSelect: (index: number) => void;
+  /** Inside the shared Sidebar: skip the .pl-sidebar shell (it provides the
+   *  container and the tab strip) and render only the list. */
+  embedded?: boolean;
 }
 
 function formatTime(seconds: number): string {
@@ -20,13 +23,15 @@ function formatTime(seconds: number): string {
   return `${minutes}:${String(secs).padStart(2, "0")}`;
 }
 
-export default function ChaptersPanel({ chapters, currentChapter, onSelect }: ChaptersPanelProps) {
-  return (
-    <aside className="pl-sidebar" aria-label="Chapters">
-      <div className="pl-header">
-        <span className="pl-title">Chapters</span>
-        <span className="pl-count">{chapters.length}</span>
-      </div>
+export default function ChaptersPanel({ chapters, currentChapter, onSelect, embedded = false }: ChaptersPanelProps) {
+  const body = (
+    <>
+      {!embedded && (
+        <div className="pl-header">
+          <span className="pl-title">Chapters</span>
+          <span className="pl-count">{chapters.length}</span>
+        </div>
+      )}
 
       <div className="pl-list" role="list">
         {chapters.length === 0 ? (
@@ -47,6 +52,8 @@ export default function ChaptersPanel({ chapters, currentChapter, onSelect }: Ch
           ))
         )}
       </div>
-    </aside>
+    </>
   );
+
+  return embedded ? body : <aside className="pl-sidebar" aria-label="Chapters">{body}</aside>;
 }

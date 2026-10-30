@@ -912,3 +912,167 @@ html, body, #root {
   background: var(--accent-bright);
   color: #121212;
 }
+
+/* --- Agent F: history/bookmarks sidebar --- */
+
+/* Tab strip of the unified Sidebar (Playlist/Chapters/History/Bookmarks).
+   Capsule text buttons; the active tab uses --accent-bright with dark text,
+   matching the mac PlaylistPanel tab pills. */
+.pl-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--bg-card-border);
+}
+
+.pl-tab {
+  min-height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 12px;
+  background: var(--bg-card);
+  color: var(--text-dim);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+  transition: color 0.1s, background 0.1s, border-color 0.1s;
+}
+
+.pl-tab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pl-tab.active {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+  color: #121212;
+  font-weight: 600;
+}
+
+.pl-tab:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+.pl-tab-close {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin-left: 2px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.pl-tab-close svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.pl-tab-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.pl-tab-close:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+/* Panel content below the tab strip. Embedded panels render .pl-list +
+   .pl-footer directly; this wrapper provides the flex column and lets the
+   list scroll. */
+.pl-tab-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pl-tab-content .pl-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.pl-tab-content .pl-footer {
+  flex: none;
+}
+
+/* History/bookmark rows: leading icon + two-line text (title + subtitle). */
+.pl-lib-row {
+  align-items: flex-start;
+  width: 100%;
+  margin: 1px 0;
+}
+
+.pl-lib-icon {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 2px;
+  color: var(--text-dim);
+}
+
+.pl-bookmark-icon {
+  color: var(--accent);
+}
+
+.pl-lib-row:hover .pl-lib-icon {
+  color: var(--text);
+}
+
+.pl-lib-row:hover .pl-bookmark-icon {
+  color: var(--accent-bright);
+}
+
+.pl-lib-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pl-lib-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.pl-lib-subtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Destructive clear sits 8px away from its neighbors (playlist pattern). */
+.pl-footer-gap {
+  flex: none;
+  width: 8px;
+}
+
+.pl-footer-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pl-footer-btn:disabled:hover {
+  background: transparent;
+  color: var(--text-dim);
+}

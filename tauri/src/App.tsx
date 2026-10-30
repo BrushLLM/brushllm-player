@@ -9,8 +9,13 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { applySnapshot, CommandGate, commandError, initialView, sameMedia, trackFraction, volumeAtClick } from "./player-state";
 import type { StateSnapshot } from "./player-state";
 import type { LoopMode } from "./components/PlaylistPanel";
+import type { SidebarTab } from "./components/Sidebar";
+import type { HistoryEntry, Bookmark } from "./library-state";
 import PlaylistPanel from "./components/PlaylistPanel";
 import ChaptersPanel from "./components/ChaptersPanel";
+import HistoryPanel from "./components/HistoryPanel";
+import BookmarksPanel from "./components/BookmarksPanel";
+import Sidebar from "./components/Sidebar";
 import TrackMenu from "./components/TrackMenu";
 import VideoSettingsMenu from "./components/VideoSettingsMenu";
 import VideoEqMenu from "./components/VideoEqMenu";
@@ -55,14 +60,18 @@ export default function App() {
   const commandGate = useRef(new CommandGate());
   const state = view.player;
 
-  // New surfaces: sidebar (playlist/chapters), popups, URL dialog.
+  // New surfaces: sidebar (playlist/chapters/history/bookmarks), popups, URL dialog.
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<"playlist" | "chapters">("playlist");
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("playlist");
   const [trackMenu, setTrackMenu] = useState<"audio" | "sub" | null>(null);
   const [videoMenuOpen, setVideoMenuOpen] = useState(false);
   const [eqMenuOpen, setEqMenuOpen] = useState(false);
   const [urlOpen, setUrlOpen] = useState(false);
   const [urlInput, setUrlInput] = useState("");
+  // Library data (history is global; bookmarks are per-file).
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const restoredPlaylist = useRef(false);
 
   const closeAbout = useCallback(() => setAboutOpen(false), []);
 
@@ -116,9 +125,24 @@ export default function App() {
   }, [aboutOpen, closeAbout]);
 
   const acceptSnapshot = useCallback((snapshot: StateSnapshot) => {
-    const next = applySnapshot(viewRef.current, snapshot);
-    if (next === viewRef.current) return;
-    if (!sameMedia(next, viewRef.current) || !next.connected) {
+    const previous = viewRef.current;
+    const next = applySnapshot(previous, snapshot);
+    if (next === previous) return;
+
+    // Library recording (IINA HistoryController pattern: record on open,
+    // update the final position when playback of that file ends).
+    if (next.connected && !sameMedia(next, previous) && !previous.player.idle && previous.player.fileName) {
+      void invoke("history_record", { path: previous.player.fileName, title: previous.player.mediaTitle || previous.player.fileName }).catch(() => {});
+      void invoke("history_update", {
+        path: previous.player.fileName, position: previous.player.position, duration: previous.player.duration,
+      }).catch(() => {});
+    }
+    if (next.connected && !next.player.idle && previous.player.idle && next.player.fileName && next.player.mediaTitle) {
+      // A new file just started playing.
+      void invoke("history_record", { path: next.player.fileName, title: next.player.mediaTitle }).catch(() => {});
+    }
+
+    if (!sameMedia(next, previous) || !next.connected) {
       dragCleanup.current?.();
       setScrubbing(false);
       commandGate.current.invalidate();
@@ -193,6 +217,35 @@ export default function App() {
     });
     return () => { cancelled = true; unlisten?.(); };
   }, [runCommand]);
+
+  // Restore the persisted playlist once the player is ready (idle append,
+  // nothing auto-plays).
+  useEffect(() => {
+    if (!view.ready || restoredPlaylist.current) return;
+    restoredPlaylist.current = true;
+    void invoke("playlist_restore").catch(() => {});
+  }, [view.ready]);
+
+  // History list: refresh when the history tab becomes visible and after
+  // every media change (a play was recorded).
+  useEffect(() => {
+    if (!sidebarOpen || sidebarTab !== "history") return;
+    let cancelled = false;
+    void invoke<HistoryEntry[]>("history_list")
+      .then((entries) => { if (!cancelled) setHistory(entries); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [sidebarOpen, sidebarTab, view.generation, view.mediaEpoch]);
+
+  // Bookmarks are per-file: refresh on tab open and on media change.
+  useEffect(() => {
+    if (!sidebarOpen || sidebarTab !== "bookmarks" || !state.fileName) return;
+    let cancelled = false;
+    void invoke<Bookmark[]>("bookmark_list", { path: state.fileName })
+      .then((list) => { if (!cancelled) setBookmarks(list); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [sidebarOpen, sidebarTab, state.fileName, view.generation, view.mediaEpoch]);
 
   const error = invokeError && invokeError.generation >= view.generation ? invokeError.message : view.error;
 
@@ -269,9 +322,36 @@ export default function App() {
     setProperty("ontop", next ? "yes" : "no");
   };
 
-  const toggleSidebar = (tab: "playlist" | "chapters") => {
+  const toggleSidebar = (tab: SidebarTab) => {
     if (sidebarOpen && sidebarTab === tab) setSidebarOpen(false);
     else { setSidebarTab(tab); setSidebarOpen(true); }
+  };
+
+  // Library actions.
+  const playHistoryEntry = (path: string) => runCommand("history_play", { path });
+  const removeHistoryEntry = (path: string) => {
+    setHistory((entries) => entries.filter((entry) => entry.path !== path));
+    void runCommand("history_remove", { path });
+  };
+  const clearHistory = () => {
+    setHistory([]);
+    void runCommand("history_clear");
+  };
+  const addBookmark = () => {
+    if (!state.fileName || state.idle) return;
+    void invoke<Bookmark>("bookmark_add", {
+      path: state.fileName, time: state.position, title: state.mediaTitle || state.fileName,
+    })
+      .then((bookmark) => setBookmarks((list) => [...list, bookmark].sort((a, b) => a.time - b.time)))
+      .catch(() => {});
+  };
+  const removeBookmark = (id: number) => {
+    setBookmarks((list) => list.filter((bookmark) => bookmark.id !== id));
+    void runCommand("bookmark_remove", { id });
+  };
+  const clearBookmarks = () => {
+    setBookmarks([]);
+    if (state.fileName) void runCommand("bookmark_clear", { path: state.fileName });
   };
 
   const submitUrl = () => {
@@ -316,26 +396,52 @@ export default function App() {
           </div>
         )}
 
-        {sidebarOpen && sidebarTab === "playlist" && (
-          <PlaylistPanel
-            visible
-            entries={state.playlist}
-            onPlay={playPlaylistIndex}
-            onRemove={removePlaylistIndex}
-            onClear={clearPlaylist}
-            onShuffle={shufflePlaylist}
-            loopFile={state.loopFile}
-            loopPlaylist={state.loopPlaylist}
-            onLoop={setLoopMode}
-          />
-        )}
-        {sidebarOpen && sidebarTab === "chapters" && (
-          <ChaptersPanel
-            chapters={state.chapters}
-            currentChapter={state.currentChapter}
-            onSelect={selectChapter}
-          />
-        )}
+        <Sidebar
+          open={sidebarOpen}
+          tab={sidebarTab}
+          onTabChange={setSidebarTab}
+          onClose={() => setSidebarOpen(false)}
+        >
+          {sidebarTab === "playlist" && (
+            <PlaylistPanel
+              visible
+              embedded
+              entries={state.playlist}
+              onPlay={playPlaylistIndex}
+              onRemove={removePlaylistIndex}
+              onClear={clearPlaylist}
+              onShuffle={shufflePlaylist}
+              loopFile={state.loopFile}
+              loopPlaylist={state.loopPlaylist}
+              onLoop={setLoopMode}
+            />
+          )}
+          {sidebarTab === "chapters" && (
+            <ChaptersPanel
+              embedded
+              chapters={state.chapters}
+              currentChapter={state.currentChapter}
+              onSelect={selectChapter}
+            />
+          )}
+          {sidebarTab === "history" && (
+            <HistoryPanel
+              entries={history}
+              onPlay={playHistoryEntry}
+              onRemove={removeHistoryEntry}
+              onClear={clearHistory}
+            />
+          )}
+          {sidebarTab === "bookmarks" && (
+            <BookmarksPanel
+              bookmarks={bookmarks}
+              onAdd={addBookmark}
+              onSelect={(time) => runCommand("seek", { position: time })}
+              onRemove={removeBookmark}
+              onClear={clearBookmarks}
+            />
+          )}
+        </Sidebar>
       </div>
 
       <div className="control-bar">

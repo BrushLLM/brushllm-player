@@ -275,12 +275,17 @@ struct LaunchConfig {
     args: Vec<String>,
     /// Tests use a synthetic media directory and isolated HOME/config/cache.
     isolation: Option<PathBuf>,
+    /// Persistent watch-later directory (IINA watch-later-directory). None
+    /// keeps mpv's default (a session temp location); the app always sets it
+    /// to `<app_data_dir>/watch_later` so resume data survives restarts.
+    watch_later_dir: Option<PathBuf>,
 }
 impl Default for LaunchConfig {
     fn default() -> Self {
         Self {
             binary: MpvController::find_mpv(),
             isolation: None,
+            watch_later_dir: None,
             args: vec![
                 "--no-terminal",
                 "--no-config",
@@ -291,7 +296,11 @@ impl Default for LaunchConfig {
                 "--cache=yes",
                 "--idle=yes",
                 "--vo=gpu-next",
+                // Explicit writes via write-watch-later-config; quitting must
+                // not save (IINA savePlaybackPosition pattern).
                 "--save-position-on-quit=no",
+                // mpv default; loadfile then resumes from watch-later files.
+                "--resume-playback=yes",
             ]
             .into_iter()
             .map(str::to_owned)
@@ -339,6 +348,13 @@ impl MpvController {
         command
             .args(&config.args)
             .arg(format!("--input-ipc-server={}", controller.endpoint));
+        if let Some(dir) = &config.watch_later_dir {
+            // Created here so mpv never sees a missing directory.
+            if let Err(error) = std::fs::create_dir_all(dir) {
+                log::warn!("Cannot create watch-later dir {}: {error}", dir.display());
+            }
+            command.arg(format!("--watch-later-directory={}", dir.display()));
+        }
         command
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -710,6 +726,11 @@ impl MpvPlayer {
             sink,
             config: LaunchConfig::default(),
         }
+    }
+    /// Setup-time only (before the player is shared behind an Arc), so a
+    /// running player's watch-later location can never change.
+    pub fn set_watch_later_dir(&mut self, dir: PathBuf) {
+        self.config.watch_later_dir = Some(dir);
     }
     pub fn snapshot(&self) -> StateSnapshot {
         self.current

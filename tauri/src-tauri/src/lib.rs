@@ -1,5 +1,7 @@
+mod library;
 mod mpv;
 
+use library::{Bookmark, HistoryEntry, LibraryStore};
 use mpv::controller::{CommandResult, MpvPlayer, PlayerError, StateSnapshot};
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -19,11 +21,15 @@ pub fn run() {
             // Preserve the independent video window on every platform. Frontend
             // installs its listener before player_ready starts IPC/observers.
             let handle = app.handle().clone();
-            app.manage(Player(Arc::new(MpvPlayer::new(Arc::new(
-                move |snapshot| {
-                    let _ = handle.emit("mpv-state", snapshot);
-                },
-            )))));
+            let mut player = MpvPlayer::new(Arc::new(move |snapshot| {
+                let _ = handle.emit("mpv-state", snapshot);
+            }));
+            // IINA watch-later-directory: persistent resume data in the app
+            // data dir (created on demand by the controller at spawn).
+            let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+            player.set_watch_later_dir(data_dir.join("watch_later"));
+            app.manage(Player(Arc::new(player)));
+            app.manage(LibraryStore::open(app.handle()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -43,6 +49,18 @@ pub fn run() {
             set_property,
             send_command,
             open_file_dialog,
+            history_list,
+            history_record,
+            history_update,
+            history_remove,
+            history_clear,
+            history_play,
+            bookmark_add,
+            bookmark_list,
+            bookmark_remove,
+            bookmark_clear,
+            playlist_save,
+            playlist_restore,
         ])
         .build(tauri::generate_context!())
         .expect("error while building BrushLLM Player");
@@ -51,6 +69,7 @@ pub fn run() {
             event,
             tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit
         ) {
+            persist_on_exit(handle);
             if let Some(player) = handle.try_state::<Player>() {
                 if let Err(error) = player.0.shutdown() {
                     log::warn!("{error}");
@@ -58,6 +77,60 @@ pub fn run() {
             }
         }
     });
+}
+
+/// IINA savePlaybackPosition at app exit: write the mpv watch-later file, then
+/// mirror the current playlist and position into library.json/playlist.json
+/// before the player is shut down. Best effort; exit proceeds regardless.
+fn persist_on_exit(handle: &tauri::AppHandle) {
+    let Some(player) = handle.try_state::<Player>() else {
+        return;
+    };
+    let store = handle.try_state::<LibraryStore>();
+    let snapshot = player.0.snapshot();
+    if snapshot.connected {
+        let _ = player.0.command(&[json!("write-watch-later-config")], false);
+    }
+    let Some(store) = store else { return };
+    // Playlist: filenames in order from the observed "playlist" property.
+    if let Some(paths) = snapshot
+        .properties
+        .get("playlist")
+        .and_then(|value| value.as_array())
+    {
+        let paths: Vec<String> = paths
+            .iter()
+            .filter_map(|entry| {
+                entry
+                    .get("filename")
+                    .and_then(Value::as_str)
+                    .filter(|name| !name.is_empty())
+                    .map(str::to_owned)
+            })
+            .collect();
+        if !paths.is_empty() {
+            store.save_playlist(&paths);
+        }
+    }
+    // Position/duration for the current file (media-title as the title).
+    let filename = snapshot
+        .properties
+        .get("filename")
+        .and_then(Value::as_str)
+        .map(str::to_owned);
+    if let Some(path) = filename {
+        let position = snapshot
+            .properties
+            .get("time-pos")
+            .and_then(Value::as_f64)
+            .unwrap_or(0.0);
+        let duration = snapshot
+            .properties
+            .get("duration")
+            .and_then(Value::as_f64)
+            .unwrap_or(0.0);
+        store.update_position(&path, position, duration);
+    }
 }
 
 /// IPC waits run off the event/UI thread. No async-runtime dependency added.
@@ -255,8 +328,16 @@ async fn seek_relative(
     .await
 }
 
+/// IINA savePlaybackPosition pattern: persist the position for resume before
+/// the playlist is kept and playback stops.
 #[tauri::command]
 async fn stop_playback(player: tauri::State<'_, Player>) -> Result<CommandResult, PlayerError> {
+    let _ = command(
+        player.0.clone(),
+        vec![json!("write-watch-later-config")],
+        false,
+    )
+    .await;
     command(
         player.0.clone(),
         vec![json!("stop"), json!("keep-playlist")],
@@ -331,4 +412,126 @@ async fn open_file_dialog(
         generation: first_result.generation,
         data: json!(paths.len()),
     }))
+}
+
+// ---- Media library (history, bookmarks, saved playlist) ----
+// All commands are synchronous and cheap (small JSON files under a Mutex);
+// no async runtime hop is needed, matching player_snapshot's style.
+
+#[tauri::command]
+fn history_list(store: tauri::State<'_, LibraryStore>) -> Vec<HistoryEntry> {
+    store.list_history()
+}
+
+#[tauri::command]
+fn history_record(store: tauri::State<'_, LibraryStore>, path: String, title: String) {
+    store.record_play(&path, &title);
+}
+
+#[tauri::command]
+fn history_update(
+    store: tauri::State<'_, LibraryStore>,
+    path: String,
+    position: f64,
+    duration: f64,
+) {
+    store.update_position(&path, position, duration);
+}
+
+#[tauri::command]
+fn history_remove(store: tauri::State<'_, LibraryStore>, path: String) {
+    store.remove_history(&path);
+}
+
+#[tauri::command]
+fn history_clear(store: tauri::State<'_, LibraryStore>) {
+    store.clear_history();
+}
+
+/// Reopen from history: loadfile replace; mpv's resume-playback (watch-later)
+/// seeks to the saved position automatically, so no explicit seek is sent.
+#[tauri::command]
+async fn history_play(
+    player: tauri::State<'_, Player>,
+    store: tauri::State<'_, LibraryStore>,
+    path: String,
+) -> Result<CommandResult, PlayerError> {
+    let title = store
+        .list_history()
+        .iter()
+        .find(|entry| entry.path == path)
+        .map(|entry| entry.title.clone())
+        .unwrap_or_default();
+    store.record_play(&path, &title);
+    command(
+        player.0.clone(),
+        vec![json!("loadfile"), json!(path), json!("replace")],
+        true,
+    )
+    .await
+}
+
+#[tauri::command]
+fn bookmark_add(
+    store: tauri::State<'_, LibraryStore>,
+    path: String,
+    time: f64,
+    title: String,
+) -> Bookmark {
+    store.add_bookmark(&path, time, &title)
+}
+
+#[tauri::command]
+fn bookmark_list(store: tauri::State<'_, LibraryStore>, path: String) -> Vec<Bookmark> {
+    store.list_bookmarks(&path)
+}
+
+#[tauri::command]
+fn bookmark_remove(store: tauri::State<'_, LibraryStore>, id: u64) {
+    store.remove_bookmark(id);
+}
+
+#[tauri::command]
+fn bookmark_clear(store: tauri::State<'_, LibraryStore>, path: String) {
+    store.clear_bookmarks(&path);
+}
+
+#[tauri::command]
+fn playlist_save(store: tauri::State<'_, LibraryStore>, paths: Vec<String>) {
+    store.save_playlist(&paths);
+}
+
+/// Rebuild the saved playlist with loadfile append; mpv stays idle (verified:
+/// appending to an idle player does not start playback), so the frontend
+/// decides when to start. An empty list is a successful no-op.
+#[tauri::command]
+async fn playlist_restore(
+    player: tauri::State<'_, Player>,
+    store: tauri::State<'_, LibraryStore>,
+) -> Result<CommandResult, PlayerError> {
+    let paths = store.load_playlist();
+    let Some(first) = paths.first() else {
+        return Ok(CommandResult {
+            generation: player.0.snapshot().generation,
+            data: json!(0),
+        });
+    };
+    let first_result = command(
+        player.0.clone(),
+        vec![json!("loadfile"), json!(first), json!("append")],
+        true,
+    )
+    .await?;
+    for path in &paths[1..] {
+        command(
+            player.0.clone(),
+            vec![json!("loadfile"), json!(path), json!("append")],
+            false,
+        )
+        .await?;
+    }
+    Ok(CommandResult {
+        generation: first_result.generation,
+        data: json!(paths.len()),
+    })
 }

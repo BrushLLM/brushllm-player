@@ -433,6 +433,7 @@ impl TempMedia {
         LaunchConfig {
             binary,
             isolation: Some(self.0.clone()),
+            watch_later_dir: Some(self.0.join("watch_later")),
             args: [
                 "--no-config",
                 "--load-scripts=no",
@@ -525,6 +526,12 @@ fn real_isolated_mpv_subscriptions_playback_failures_eof_and_reconnect() {
             .unwrap_or(0.)
             >= 1.9
     });
+    // IINA savePlaybackPosition: persist the position explicitly; the later
+    // reloads below must resume from this watch-later file (mpv's default
+    // resume-playback) instead of restarting at zero.
+    player
+        .command(&[json!("write-watch-later-config")], false)
+        .unwrap();
     assert!(player
         .command(&[json!("command-that-does-not-exist")], false)
         .unwrap_err()
@@ -550,7 +557,7 @@ fn real_isolated_mpv_subscriptions_playback_failures_eof_and_reconnect() {
             == Some("stop")
     });
     assert!(player.snapshot().error.is_none());
-    for file in [temp.0.join("does-not-exist.wav"), broken] {
+    for (index, file) in [temp.0.join("does-not-exist.wav"), broken].into_iter().enumerate() {
         // loadfile acknowledgement means accepted, not successfully decoded.
         player
             .command(
@@ -595,6 +602,21 @@ fn real_isolated_mpv_subscriptions_playback_failures_eof_and_reconnect() {
                     .unwrap_or(0.)
                     > 5.
         });
+        // mpv's default resume-playback applies the watch-later file written
+        // above: the FIRST recovery reload sits at the saved ~2s position
+        // (paused). The resume consumes the file, so the second iteration
+        // legitimately restarts at 0 and is not asserted.
+        if index == 0 {
+            wait_for(|| {
+                player
+                    .snapshot()
+                    .properties
+                    .get("time-pos")
+                    .and_then(Value::as_f64)
+                    .unwrap_or(0.)
+                    >= 1.9
+            });
+        }
         assert!(player.snapshot().error.is_none());
     }
     player
@@ -686,6 +708,7 @@ fn startup_exit_and_readiness_failures_do_not_leak_processes() {
         binary: PathBuf::from("/bin/sleep"),
         args: vec!["10".into()],
         isolation: Some(temp.0.clone()),
+        watch_later_dir: None,
     };
     let controller = MpvController::spawn(2, no_events(), &invalid).unwrap();
     assert!(controller.initialize(Duration::from_millis(200)).is_err());

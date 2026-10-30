@@ -303,3 +303,87 @@ test("About surface exposes version, license, links, and accessible close paths"
   assert.match(styles, /\.about-dialog/);
   assert.match(styles, /\.about-trigger/);
 });
+
+// --- Agent F: library (history/bookmarks) pure functions ---
+
+// Compile library-state.ts the same way the player-state functions above are
+// compiled: with the project's own TypeScript, as an importable module.
+const librarySource = await readFile(new URL("../src/library-state.ts", import.meta.url), "utf8");
+const libraryCompiled = ts.transpileModule(librarySource, {
+  compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext },
+});
+const { formatRelativeTime, formatHistorySubtitle, formatBookmarkTime } =
+  await import(`data:text/javascript;base64,${Buffer.from(libraryCompiled.outputText).toString("base64")}`);
+
+test("formatRelativeTime buckets elapsed time like the mac relative formatter", () => {
+  const now = 1_700_000_000;
+  assert.equal(formatRelativeTime(now, now), "just now");
+  assert.equal(formatRelativeTime(now - 30, now), "just now");
+  assert.equal(formatRelativeTime(now - 59, now), "just now");
+  assert.equal(formatRelativeTime(now - 60, now), "1m ago");
+  assert.equal(formatRelativeTime(now - 5 * 60, now), "5m ago");
+  assert.equal(formatRelativeTime(now - 59 * 60, now), "59m ago");
+  assert.equal(formatRelativeTime(now - 60 * 60, now), "1h ago");
+  assert.equal(formatRelativeTime(now - 3 * 3600, now), "3h ago");
+  assert.equal(formatRelativeTime(now - 23 * 3600, now), "23h ago");
+  assert.equal(formatRelativeTime(now - 24 * 3600, now), "1d ago");
+  assert.equal(formatRelativeTime(now - 2 * 86400, now), "2d ago");
+  assert.equal(formatRelativeTime(now - 6 * 86400, now), "6d ago");
+});
+
+test("formatRelativeTime falls back to YYYY-MM-DD after a week and across years", () => {
+  const now = 1_700_000_000;
+  assert.equal(formatRelativeTime(now - 7 * 86400, now), formatRelativeTime(now - 7 * 86400, now));
+  assert.match(formatRelativeTime(now - 7 * 86400, now), /^\d{4}-\d{2}-\d{2}$/);
+  // Fixed local-time anchors: 2023-11-14 and 1999-12-31 (no DST transition
+  // crosses midnight for these dates in any common timezone).
+  const local = (s) => {
+    const [y, m, d] = s.split("-").map(Number);
+    return Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
+  };
+  assert.equal(formatRelativeTime(local("2023-11-14"), local("2023-11-14")), "just now");
+  assert.equal(formatRelativeTime(local("1999-12-31"), local("2023-11-14")), "1999-12-31");
+  // Reversed clock skew: a "future" timestamp never formats as a negative or
+  // future date, it reads as "just now" (asserted again below for NaN safety).
+  assert.equal(formatRelativeTime(local("2023-11-14"), local("1999-12-31")), "just now");
+});
+
+test("formatRelativeTime tolerates zero, future timestamps and non-finite input", () => {
+  const now = 1_700_000_000;
+  assert.equal(formatRelativeTime(0, 0), "just now");
+  // Clock skew: a future lastPlayedAt reads as "just now", never negative.
+  assert.equal(formatRelativeTime(now + 5000, now), "just now");
+  assert.equal(formatRelativeTime(now + 5000, now + 5000), "just now");
+  assert.equal(formatRelativeTime(Number.NaN, now), "");
+  assert.equal(formatRelativeTime(now, Number.NaN), "");
+  assert.equal(formatRelativeTime(Number.POSITIVE_INFINITY, now), "");
+});
+
+test("formatHistorySubtitle renders position/duration and the relative time", () => {
+  const now = 1_700_000_000;
+  const entry = {
+    path: "/media/a.mkv", title: "Movie", duration: 5025, position: 754,
+    lastPlayedAt: now - 5 * 60, playCount: 3,
+  };
+  assert.equal(formatHistorySubtitle(entry, now), "12:34 / 1:23:45 · 5m ago");
+  // Unknown duration keeps the subtitle readable instead of "0:00".
+  assert.equal(
+    formatHistorySubtitle({ ...entry, duration: 0, position: 0, lastPlayedAt: now }, now),
+    "0:00 / --:-- · just now",
+  );
+  assert.equal(
+    formatHistorySubtitle({ ...entry, position: Number.NaN, lastPlayedAt: now - 3 * 3600 }, now),
+    "0:00 / 1:23:45 · 3h ago",
+  );
+});
+
+test("formatBookmarkTime uses the shared mm:ss / h:mm:ss clock format", () => {
+  assert.equal(formatBookmarkTime(0), "0:00");
+  assert.equal(formatBookmarkTime(5.9), "0:05");
+  assert.equal(formatBookmarkTime(65), "1:05");
+  assert.equal(formatBookmarkTime(754), "12:34");
+  assert.equal(formatBookmarkTime(3600), "1:00:00");
+  assert.equal(formatBookmarkTime(5025), "1:23:45");
+  assert.equal(formatBookmarkTime(-10), "0:00");
+  assert.equal(formatBookmarkTime(Number.NaN), "0:00");
+});
