@@ -367,3 +367,548 @@ html, body, #root {
     padding: 18px;
   }
 }
+
+/* ============================================================
+   Agent D: video settings / equalizer popup menus (VideoSettingsMenu,
+   VideoEqMenu) shared popup chrome
+   ============================================================ */
+
+.vsm-menu,
+.veq-menu {
+  position: absolute;
+  z-index: 5;
+  min-width: 220px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: var(--radius);
+  background: #17171c;
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.52);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vsm-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.vsm-option-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.vsm-option {
+  min-height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-dim);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  transition: color 0.1s, background 0.1s, border-color 0.1s;
+}
+
+.vsm-option:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.vsm-option.active {
+  color: var(--accent-bright);
+  border-color: rgba(230, 255, 0, 0.45);
+  background: rgba(137, 60, 237, 0.25);
+}
+
+.vsm-divider {
+  height: 1px;
+  margin: 2px 0;
+  background: var(--bg-card-border);
+}
+
+.vsm-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.vsm-toggle-label {
+  color: var(--text);
+}
+
+.vsm-switch {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 17px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.18);
+  position: relative;
+  transition: background 0.15s;
+}
+
+.vsm-switch.on {
+  background: var(--accent);
+}
+
+.vsm-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.15s;
+}
+
+.vsm-switch.on .vsm-switch-knob {
+  transform: translateX(13px);
+}
+
+.vsm-option:focus-visible,
+.vsm-toggle:focus-visible,
+.veq-reset:focus-visible,
+.veq-slider:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+/* --- Agent D: VideoEqMenu sliders --- */
+
+.veq-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.veq-slider-label {
+  flex: 0 0 72px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.veq-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+}
+
+.veq-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  border: none;
+}
+
+.veq-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  border: none;
+}
+
+.veq-slider-value {
+  flex: 0 0 30px;
+  text-align: right;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.veq-reset {
+  align-self: flex-end;
+  min-height: 26px;
+  padding: 0 12px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 7px;
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  transition: border-color 0.1s, background 0.1s, color 0.1s;
+}
+
+.veq-reset:hover {
+  border-color: rgba(230, 255, 0, 0.45);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--accent-bright);
+}
+
+/* --- Agent C: playlist/chapters/track UI --- */
+
+/* Shared right sidebar container (PlaylistPanel / ChaptersPanel). */
+.pl-sidebar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 264px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bar-bg);
+  border-left: 1px solid var(--bg-card-border);
+  z-index: 30;
+}
+
+.pl-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 8px;
+}
+
+.pl-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pl-count {
+  font-size: 10px;
+  color: var(--text-dim);
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--bg-card-border);
+}
+
+.pl-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+}
+
+.pl-empty {
+  padding: 32px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.pl-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 6px;
+}
+
+.pl-row.current {
+  background: var(--accent-bright);
+}
+
+.pl-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pl-row-main:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.pl-row.current .pl-row-main,
+.pl-row.current .pl-row-main:hover {
+  background: transparent;
+  color: #121212;
+  font-weight: 600;
+}
+
+.pl-playing-icon {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  color: var(--accent-bright);
+}
+
+.pl-row.current .pl-playing-icon {
+  color: #121212;
+}
+
+.pl-row-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pl-row-delete {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin-right: 2px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  opacity: 0.45;
+  cursor: pointer;
+  transition: opacity 0.1s, color 0.1s;
+}
+
+.pl-row-delete svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.pl-row-delete:hover {
+  opacity: 1;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Chapter rows reuse the row-main styles with a trailing time. */
+.pl-chapter-row {
+  display: flex;
+  width: 100%;
+  margin: 1px 0;
+}
+
+.pl-chapter-row.current,
+.pl-chapter-row.current:hover {
+  background: var(--accent-bright);
+  color: #121212;
+  font-weight: 600;
+}
+
+.pl-chapter-time {
+  flex: none;
+  margin-left: 8px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.pl-chapter-row.current .pl-chapter-time {
+  color: #121212;
+}
+
+.pl-footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--bg-card-border);
+}
+
+.pl-footer-btn {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.pl-footer-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.pl-footer-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.pl-footer-btn.active {
+  color: var(--accent);
+}
+
+.pl-footer-spacer {
+  flex: 1;
+}
+
+/* Track picker popup (TrackMenu) — same floating pattern as .vsm-menu. */
+.tm-menu {
+  position: absolute;
+  bottom: 52px;
+  right: 12px;
+  min-width: 200px;
+  max-width: 280px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--bg);
+  border: 1px solid var(--bg-card-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 40;
+}
+
+.tm-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tm-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tm-row.selected {
+  background: var(--accent-bright);
+  color: #121212;
+  font-weight: 600;
+}
+
+.tm-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tm-check {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  display: grid;
+  place-items: center;
+}
+
+.tm-check svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* --- Integration: menu anchors, A-B markers, URL dialog --- */
+
+/* Trigger buttons wrap their popup so it anchors above the button. */
+.menu-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.menu-anchor .vsm-menu,
+.menu-anchor .veq-menu,
+.menu-anchor .tm-menu {
+  top: auto;
+  left: auto;
+  bottom: calc(100% + 10px);
+  right: 0;
+  z-index: 60;
+}
+
+/* A-B loop points on the progress track (IINA PlaySliderLoopKnob). */
+.ab-marker {
+  position: absolute;
+  top: 50%;
+  width: 3px;
+  height: 12px;
+  transform: translateY(-50%);
+  border-radius: 1.5px;
+  background: var(--accent-bright);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+/* URL open dialog (reuses the About overlay/dialog chrome). */
+.url-dialog {
+  max-width: 420px;
+}
+
+.url-form {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.url-input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  user-select: text;
+}
+
+.url-input:focus {
+  outline: none;
+  border-color: var(--accent-bright);
+}
+
+.url-submit {
+  flex: none;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.url-submit:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.url-submit:not(:disabled):hover {
+  background: var(--accent-bright);
+  color: #121212;
+}

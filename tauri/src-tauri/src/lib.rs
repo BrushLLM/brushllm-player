@@ -30,6 +30,12 @@ pub fn run() {
             player_ready,
             player_snapshot,
             load_file,
+            load_files,
+            open_url,
+            add_subtitle,
+            open_subtitle_dialog,
+            screenshot,
+            playlist_command,
             toggle_pause,
             seek,
             seek_relative,
@@ -91,6 +97,126 @@ async fn load_file(
         true,
     )
     .await
+}
+
+/// Batch load: the first file replaces, the rest append (IINA addToPlaylist).
+#[tauri::command]
+async fn load_files(
+    player: tauri::State<'_, Player>,
+    paths: Vec<String>,
+) -> Result<CommandResult, PlayerError> {
+    let Some(first) = paths.first() else {
+        return Err(player.0.error("load_files requires at least one path"));
+    };
+    let player = player.0.clone();
+    let first_result = command(
+        player.clone(),
+        vec![json!("loadfile"), json!(first), json!("replace")],
+        true,
+    )
+    .await?;
+    for path in &paths[1..] {
+        command(
+            player.clone(),
+            vec![json!("loadfile"), json!(path), json!("append")],
+            false,
+        )
+        .await?;
+    }
+    Ok(CommandResult {
+        generation: first_result.generation,
+        data: json!(paths.len()),
+    })
+}
+
+#[tauri::command]
+async fn open_url(
+    player: tauri::State<'_, Player>,
+    url: String,
+) -> Result<CommandResult, PlayerError> {
+    command(
+        player.0.clone(),
+        vec![json!("loadfile"), json!(url), json!("replace")],
+        true,
+    )
+    .await
+}
+
+/// External subtitle: flags "auto" lets mpv's default selection decide (IINA
+/// loadExternalSubFile uses sub-add; "auto" avoids force-switching tracks).
+#[tauri::command]
+async fn add_subtitle(
+    player: tauri::State<'_, Player>,
+    path: String,
+) -> Result<CommandResult, PlayerError> {
+    command(
+        player.0.clone(),
+        vec![json!("sub-add"), json!(path), json!("auto")],
+        false,
+    )
+    .await
+}
+
+/// Subtitle picker: a file dialog filtered to subtitle extensions that
+/// feeds the chosen file straight to sub-add (IINA's LoadSubtitleView flow).
+#[tauri::command]
+async fn open_subtitle_dialog(
+    player: tauri::State<'_, Player>,
+    app: tauri::AppHandle,
+) -> Result<Option<CommandResult>, PlayerError> {
+    use tauri_plugin_dialog::DialogExt;
+    let owner = player.0.clone();
+    let file = tauri::async_runtime::spawn_blocking(move || {
+        app.dialog()
+            .file()
+            .add_filter("Subtitles", &["srt", "ass", "ssa", "sub", "idx", "vtt", "sup"])
+            .blocking_pick_file()
+    })
+    .await
+    .map_err(|e| owner.error(format!("Subtitle dialog failed: {e}")))?;
+    if let Some(file) = file {
+        let path = file.into_path().map_err(|e| owner.error(e.to_string()))?;
+        command(
+            owner,
+            vec![
+                json!("sub-add"),
+                json!(path.to_string_lossy()),
+                json!("auto"),
+            ],
+            false,
+        )
+        .await
+        .map(Some)
+    } else {
+        Ok(None)
+    }
+}
+
+#[tauri::command]
+async fn screenshot(player: tauri::State<'_, Player>) -> Result<CommandResult, PlayerError> {
+    command(player.0.clone(), vec![json!("screenshot")], false).await
+}
+
+/// Parameterless playlist maintenance; indexed operations (playlist-move,
+/// playlist-remove, playlist-play-index) go through send_command instead.
+#[tauri::command]
+async fn playlist_command(
+    player: tauri::State<'_, Player>,
+    op: String,
+) -> Result<CommandResult, PlayerError> {
+    match op.as_str() {
+        "clear" | "shuffle" | "unshuffle" => {
+            command(
+                player.0.clone(),
+                vec![json!(format!("playlist-{op}"))],
+                false,
+            )
+            .await
+        }
+        _ => Err(player
+            .0
+            .error("playlist_command supports clear, shuffle, unshuffle")),
+    }
 }
 
 #[tauri::command]
@@ -170,24 +296,39 @@ async fn open_file_dialog(
 ) -> Result<Option<CommandResult>, PlayerError> {
     use tauri_plugin_dialog::DialogExt;
     let owner = player.0.clone();
-    let file =
-        tauri::async_runtime::spawn_blocking(move || app.dialog().file().blocking_pick_file())
-            .await
-            .map_err(|e| owner.error(format!("File dialog failed: {e}")))?;
-    if let Some(file) = file {
+    // Multi-select: the first file replaces, the rest append (IINA
+    // addToPlaylist batch behavior, same as load_files).
+    let files = tauri::async_runtime::spawn_blocking(move || {
+        app.dialog().file().blocking_pick_files()
+    })
+    .await
+    .map_err(|e| owner.error(format!("File dialog failed: {e}")))?;
+    let Some(files) = files else { return Ok(None) };
+    let mut paths: Vec<String> = Vec::with_capacity(files.len());
+    for file in files {
         let path = file.into_path().map_err(|e| owner.error(e.to_string()))?;
-        command(
-            owner,
-            vec![
-                json!("loadfile"),
-                json!(path.to_string_lossy()),
-                json!("replace"),
-            ],
-            true,
-        )
-        .await
-        .map(Some)
-    } else {
-        Ok(None)
+        paths.push(path.to_string_lossy().into_owned());
     }
+    if paths.is_empty() {
+        return Ok(None);
+    }
+    let Some(first) = paths.first() else { return Ok(None) };
+    let first_result = command(
+        owner.clone(),
+        vec![json!("loadfile"), json!(first), json!("replace")],
+        true,
+    )
+    .await?;
+    for path in &paths[1..] {
+        command(
+            owner.clone(),
+            vec![json!("loadfile"), json!(path), json!("append")],
+            false,
+        )
+        .await?;
+    }
+    Ok(Some(CommandResult {
+        generation: first_result.generation,
+        data: json!(paths.len()),
+    }))
 }

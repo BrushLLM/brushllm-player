@@ -15,15 +15,62 @@ const snapshot = (overrides = {}) => ({
     pause: false, "time-pos": 3.5, duration: 10, "idle-active": false,
     "media-title": "Synthetic media", filename: "test.wav", volume: 65, mute: false,
     speed: 1.25, "playlist-count": 2, "playlist-pos": 1,
+    playlist: [
+      { filename: "/media/a.mkv", title: "Intro", current: false, playing: false },
+      { filename: "/media/b.mkv", current: true, playing: true },
+    ],
+    "chapter-list": [
+      { title: "Cold open", time: 0 },
+      { title: "", time: 42.5 },
+    ],
+    chapter: 1,
+    "track-list": [
+      { id: 1, type: "video", title: "Main", lang: "und", selected: true },
+      { id: 1, type: "audio", title: "Commentary", lang: "en", selected: false },
+      { id: 2, type: "audio", lang: "ja", selected: true },
+      { id: 3, type: "sub", lang: "zh", selected: true },
+      { id: 9, type: "secondSub", selected: false },
+    ],
+    aid: 2, sid: 3,
+    "ab-loop-a": 10, "ab-loop-b": 20,
+    "loop-file": "inf", "loop-playlist": "no",
+    "sub-delay": 0.15, "audio-delay": -0.05,
+    hwdec: "auto-safe", deinterlace: true,
+    brightness: 10, contrast: -5, saturation: 100,
+    ontop: true,
+    "video-aspect-override": "16:9", "video-rotate": 90,
   }, ...overrides,
 });
 
-test("delayed startup or refresh recovers all eleven properties from snapshot", () => {
+test("delayed startup or refresh recovers all properties from snapshot", () => {
   const next = applySnapshot(initialView, snapshot());
   assert.deepEqual(next.player, {
     paused: false, position: 3.5, duration: 10, idle: false,
     mediaTitle: "Synthetic media", fileName: "test.wav", volume: 65, muted: false,
     speed: 1.25, playlistCount: 2, playlistPos: 1,
+    playlist: [
+      { filename: "/media/a.mkv", title: "Intro", current: false, playing: false },
+      { filename: "/media/b.mkv", title: null, current: true, playing: true },
+    ],
+    chapters: [
+      { title: "Cold open", time: 0 },
+      { title: "Chapter 1", time: 42.5 },
+    ],
+    currentChapter: 1,
+    tracks: [
+      { id: 1, type: "video", title: "Main", lang: "und", selected: true },
+      { id: 1, type: "audio", title: "Commentary", lang: "en", selected: false },
+      { id: 2, type: "audio", title: null, lang: "ja", selected: true },
+      { id: 3, type: "sub", title: null, lang: "zh", selected: true },
+    ],
+    audioTrackId: 2, subtitleTrackId: 3,
+    abLoopA: 10, abLoopB: 20,
+    loopFile: true, loopPlaylist: false,
+    subDelay: 0.15, audioDelay: -0.05,
+    hwdec: "auto-safe", deinterlace: true,
+    brightness: 10, contrast: -5, saturation: 100,
+    onTop: true,
+    aspectMode: "16:9", rotation: 90,
   });
   assert.equal(next.ready, true);
 });
@@ -76,6 +123,90 @@ test("unavailable properties reset to safe defaults without NaN", () => {
   assert.equal(next.player.speed, 1);
   assert.equal(next.player.volume, 100);
   assert.equal(next.player.playlistPos, -1);
+});
+
+test("mpv no/inf strings map to null and false for optional ids and loops", () => {
+  const next = applySnapshot(initialView, snapshot({ properties: {
+    "ab-loop-a": "no", "ab-loop-b": null,
+    aid: "no", sid: "no", chapter: "no",
+    "loop-file": "inf", "loop-playlist": "no",
+    hwdec: "no", "sub-delay": 0, "audio-delay": 0,
+  } }));
+  assert.equal(next.player.abLoopA, null);
+  assert.equal(next.player.abLoopB, null);
+  assert.equal(next.player.audioTrackId, null);
+  assert.equal(next.player.subtitleTrackId, null);
+  assert.equal(next.player.currentChapter, null);
+  assert.equal(next.player.loopFile, true);
+  assert.equal(next.player.loopPlaylist, false);
+  assert.equal(next.player.hwdec, "no");
+  assert.equal(next.player.subDelay, 0);
+  assert.equal(next.player.audioDelay, 0);
+});
+
+test("disconnection falls back to safe defaults for every new field", () => {
+  const playing = applySnapshot(initialView, snapshot());
+  const next = applySnapshot(playing, snapshot({
+    revision: 13, connected: false, ready: false, endFile: null,
+  }));
+  assert.deepEqual(next.player.playlist, []);
+  assert.deepEqual(next.player.chapters, []);
+  assert.deepEqual(next.player.tracks, []);
+  assert.equal(next.player.currentChapter, null);
+  assert.equal(next.player.audioTrackId, null);
+  assert.equal(next.player.subtitleTrackId, null);
+  assert.equal(next.player.abLoopA, null);
+  assert.equal(next.player.abLoopB, null);
+  assert.equal(next.player.loopFile, false);
+  assert.equal(next.player.loopPlaylist, false);
+  assert.equal(next.player.subDelay, 0);
+  assert.equal(next.player.audioDelay, 0);
+  assert.equal(next.player.hwdec, "no");
+  assert.equal(next.player.deinterlace, false);
+  assert.equal(next.player.brightness, 0);
+  assert.equal(next.player.contrast, 0);
+  assert.equal(next.player.saturation, 0);
+  assert.equal(next.player.onTop, false);
+});
+
+test("start-file clears media-scoped fields while global settings survive", () => {
+  // The backend nulls media-scoped properties on start-file (a new mediaEpoch)
+  // but keeps global settings like brightness, hwdec, loop-file and ontop.
+  const mediaA = applySnapshot(initialView, snapshot());
+  const mediaB = applySnapshot(mediaA, snapshot({
+    revision: 13, mediaEpoch: 2, properties: {
+      pause: true, "time-pos": 0, duration: 0, "idle-active": true,
+      "media-title": "", filename: "", volume: 65, mute: false, speed: 1.25,
+      "playlist-count": 1, "playlist-pos": 0,
+      playlist: [{ filename: "/media/next.mkv", current: true, playing: true }],
+      "chapter-list": null, chapter: null, "track-list": null,
+      aid: null, sid: null, "ab-loop-a": null, "ab-loop-b": null,
+      "sub-delay": null, "audio-delay": null,
+      "loop-file": "inf", "loop-playlist": "no",
+      hwdec: "auto-safe", deinterlace: true,
+      brightness: 10, contrast: -5, saturation: 100, ontop: true,
+    },
+  }));
+  assert.equal(sameMedia(mediaA, mediaB), false);
+  assert.deepEqual(mediaB.player.chapters, []);
+  assert.deepEqual(mediaB.player.tracks, []);
+  assert.equal(mediaB.player.currentChapter, null);
+  assert.equal(mediaB.player.audioTrackId, null);
+  assert.equal(mediaB.player.subtitleTrackId, null);
+  assert.equal(mediaB.player.abLoopA, null);
+  assert.equal(mediaB.player.abLoopB, null);
+  assert.equal(mediaB.player.subDelay, 0);
+  assert.equal(mediaB.player.audioDelay, 0);
+  assert.deepEqual(mediaB.player.playlist,
+    [{ filename: "/media/next.mkv", title: null, current: true, playing: true }]);
+  // Global settings survive the file change.
+  assert.equal(mediaB.player.loopFile, true);
+  assert.equal(mediaB.player.hwdec, "auto-safe");
+  assert.equal(mediaB.player.deinterlace, true);
+  assert.equal(mediaB.player.brightness, 10);
+  assert.equal(mediaB.player.contrast, -5);
+  assert.equal(mediaB.player.saturation, 100);
+  assert.equal(mediaB.player.onTop, true);
 });
 
 test("volume uses currentTarget for fill and background at 0/65/100/130", () => {

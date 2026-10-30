@@ -14,7 +14,7 @@ fn wait_for(mut condition: impl FnMut() -> bool) {
 
 #[test]
 fn typed_observers_and_string_end_file_reasons() {
-    assert_eq!(OBSERVED.len(), 11);
+    assert_eq!(OBSERVED.len(), 31);
     for (name, id) in OBSERVED {
         let command = json!(["observe_property", id, name]);
         assert!(command[1].is_u64());
@@ -53,6 +53,112 @@ fn start_file_changes_media_epoch_within_one_connection() {
         .unwrap()
         .get("mediaEpoch")
         .is_some());
+}
+
+#[test]
+fn array_property_change_is_stored_verbatim_in_properties() {
+    let shared = Shared::new(3, no_events());
+    shared.connected(&AtomicBool::new(false));
+    let playlist = json!([
+        {"filename": "a.mkv", "playing": true, "current": true},
+        {"filename": "b.mkv", "playing": false, "current": false},
+    ]);
+    shared.dispatch(json!({
+        "event": "property-change",
+        "name": "playlist",
+        "data": playlist,
+    }));
+    assert_eq!(shared.snapshot().properties["playlist"], playlist);
+    // "no" strings and nulls stay untyped, exactly as mpv sends them.
+    shared.dispatch(json!({"event":"property-change","name":"loop-file","data":"no"}));
+    assert_eq!(shared.snapshot().properties["loop-file"], json!("no"));
+    shared.dispatch(json!({"event":"property-change","name":"ab-loop-a","data":"no"}));
+    shared.dispatch(json!({"event":"property-change","name":"ab-loop-b","data":35.5}));
+    assert_eq!(shared.snapshot().properties["ab-loop-a"], json!("no"));
+    assert_eq!(shared.snapshot().properties["ab-loop-b"], json!(35.5));
+    // Unobserved properties are still ignored.
+    shared.dispatch(json!({"event":"property-change","name":"unobserved","data":1}));
+    assert!(shared.snapshot().properties.get("unobserved").is_none());
+}
+
+#[test]
+fn start_file_clears_media_scoped_properties_but_keeps_global_settings() {
+    let shared = Shared::new(4, no_events());
+    shared.connected(&AtomicBool::new(false));
+    for (name, data) in [
+        ("playlist", json!([{"filename": "a.mkv"}])),
+        ("chapter-list", json!([{"title": "Chapter 1", "time": 0.0}])),
+        ("track-list", json!([{"id": 1, "type": "audio"}])),
+        ("chapter", json!(0)),
+        ("aid", json!(1)),
+        ("sid", json!(2)),
+        ("sub-delay", json!(0.1)),
+        ("audio-delay", json!(0.0)),
+        ("ab-loop-a", json!("no")),
+        ("ab-loop-b", json!("no")),
+        ("brightness", json!(10)),
+        ("contrast", json!(-5)),
+        ("saturation", json!(100)),
+        ("hwdec", json!("auto-safe")),
+        ("deinterlace", json!(true)),
+        ("loop-file", json!("inf")),
+        ("loop-playlist", json!("no")),
+        ("ontop", json!(false)),
+    ] {
+        shared.dispatch(json!({"event":"property-change","name":name,"data":data}));
+    }
+    let before = shared.snapshot();
+    for name in [
+        "playlist",
+        "chapter-list",
+        "track-list",
+        "chapter",
+        "aid",
+        "sid",
+        "sub-delay",
+        "audio-delay",
+        "ab-loop-a",
+        "ab-loop-b",
+    ] {
+        assert!(
+            before.properties[name] != Value::Null,
+            "{name} should be set before start-file"
+        );
+    }
+    shared.dispatch(json!({"event":"start-file"}));
+    let after = shared.snapshot();
+    for name in [
+        "playlist",
+        "chapter-list",
+        "track-list",
+        "chapter",
+        "aid",
+        "sid",
+        "sub-delay",
+        "audio-delay",
+        "ab-loop-a",
+        "ab-loop-b",
+        "time-pos",
+        "duration",
+        "media-title",
+        "filename",
+    ] {
+        assert_eq!(
+            after.properties[name],
+            Value::Null,
+            "{name} must be cleared on start-file"
+        );
+    }
+    for name in ["brightness", "contrast", "saturation", "hwdec", "deinterlace"] {
+        assert_eq!(
+            after.properties[name],
+            before.properties[name],
+            "{name} is global and must survive start-file"
+        );
+    }
+    assert_eq!(after.properties["loop-file"], json!("inf"));
+    assert_eq!(after.properties["loop-playlist"], json!("no"));
+    assert_eq!(after.properties["ontop"], json!(false));
 }
 
 #[test]
@@ -363,7 +469,7 @@ fn real_isolated_mpv_subscriptions_playback_failures_eof_and_reconnect() {
     player.config = config;
     let initial = player.ready().unwrap();
     assert!(initial.ready);
-    wait_for(|| player.snapshot().properties.len() == 11);
+    wait_for(|| player.snapshot().properties.len() == 31);
     assert_eq!(player.snapshot().properties["idle-active"], json!(true));
     for (name, value) in [("volume", "65"), ("speed", "1.25"), ("pause", "yes")] {
         player

@@ -20,7 +20,7 @@ const SHUTDOWN_TIMEOUT: Duration = Duration::from_millis(1500);
 const QUIT_GRACE: Duration = Duration::from_millis(150);
 const MAX_LINE: usize = 1024 * 1024;
 const QUEUE_CAPACITY: usize = 64;
-const OBSERVED: [(&str, u64); 11] = [
+const OBSERVED: [(&str, u64); 31] = [
     ("pause", 1),
     ("time-pos", 2),
     ("duration", 3),
@@ -32,6 +32,26 @@ const OBSERVED: [(&str, u64); 11] = [
     ("speed", 9),
     ("playlist-count", 10),
     ("playlist-pos", 11),
+    ("playlist", 12),
+    ("chapter-list", 13),
+    ("chapter", 14),
+    ("track-list", 15),
+    ("ab-loop-a", 16),
+    ("ab-loop-b", 17),
+    ("loop-file", 18),
+    ("loop-playlist", 19),
+    ("aid", 20),
+    ("sid", 21),
+    ("sub-delay", 22),
+    ("audio-delay", 23),
+    ("hwdec", 24),
+    ("deinterlace", 25),
+    ("brightness", 26),
+    ("contrast", 27),
+    ("saturation", 28),
+    ("ontop", 29),
+    ("video-aspect-override", 30),
+    ("video-rotate", 31),
 ];
 
 type Reply = Result<Value, String>;
@@ -173,7 +193,25 @@ impl Shared {
                 state.media_epoch += 1;
                 state.error = None;
                 state.end_file = None;
-                for property in ["time-pos", "duration", "media-title", "filename"] {
+                // Media-scoped state is reset; global settings (brightness,
+                // contrast, saturation, hwdec, deinterlace, loop-*, ontop)
+                // survive across files.
+                for property in [
+                    "time-pos",
+                    "duration",
+                    "media-title",
+                    "filename",
+                    "playlist",
+                    "chapter-list",
+                    "chapter",
+                    "track-list",
+                    "ab-loop-a",
+                    "ab-loop-b",
+                    "aid",
+                    "sid",
+                    "sub-delay",
+                    "audio-delay",
+                ] {
                     state.properties.insert(property.into(), Value::Null);
                 }
             }),
