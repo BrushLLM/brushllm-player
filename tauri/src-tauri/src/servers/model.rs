@@ -323,18 +323,15 @@ fn getrandom_os(buffer: &mut [u8]) -> Result<(), String> {
     use windows::Win32::Security::Cryptography::{
         BCryptGenRandom, BCRYPT_USE_SYSTEM_PREFERRED_RNG,
     };
-    let result = unsafe {
-        BCryptGenRandom(
-            None,
-            buffer.as_mut_ptr(),
-            buffer.len() as u32,
-            BCRYPT_USE_SYSTEM_PREFERRED_RNG,
-        )
-    };
-    if result.is_ok() {
+    // windows 0.58 takes the output as a &mut [u8] slice (the length is the
+    // slice's len) and returns a bare NTSTATUS(i32) with no is_ok(): success
+    // is the standard severity test (success/informational codes are >= 0;
+    // warnings and errors have the high bit set).
+    let status = unsafe { BCryptGenRandom(None, buffer, BCRYPT_USE_SYSTEM_PREFERRED_RNG) };
+    if status.0 >= 0 {
         Ok(())
     } else {
-        Err(format!("BCryptGenRandom failed: {:?}", result))
+        Err(format!("BCryptGenRandom failed: NTSTATUS {:#010x}", status.0))
     }
 }
 
