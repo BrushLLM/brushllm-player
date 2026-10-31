@@ -280,14 +280,14 @@ html, body, #root {
 
 .player-error-dismiss {
   flex: none;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 5px;
+  border-radius: 6px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.85);
   cursor: pointer;
   transition: color 0.1s, background 0.1s;
 }
@@ -653,6 +653,10 @@ html, body, #root {
 }
 
 .pl-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 32px 12px;
   text-align: center;
   font-size: 12px;

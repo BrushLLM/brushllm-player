@@ -260,7 +260,12 @@ export default function App() {
     if (view.connected) setInvokeError(null);
   }, [view.connected]);
 
-  const error = invokeError && invokeError.generation >= view.generation ? invokeError.message : view.error;
+  const rawError = invokeError && invokeError.generation >= view.generation ? invokeError.message : view.error;
+  // Localize the mpv end-file error (technical English like "no audio or
+  // video data played"); the raw string stays as the tooltip detail.
+  const isMpvLoadError = !invokeError && view.error !== null && view.error !== undefined;
+  const error = isMpvLoadError ? t("player.load-failed") : rawError;
+  const errorDetail = isMpvLoadError ? rawError : null;
   const dismissError = () => setInvokeError(null);
 
   const effectivePosition = scrubbing ? scrubPosition : state.position;
@@ -399,7 +404,13 @@ export default function App() {
 
       <div className="video-area" onDoubleClick={() => sendMpv(["cycle", "fullscreen"])}>
         {error && (
-          <div className="player-error" role="alert">
+          <div
+            className="player-error"
+            role="alert"
+            // Keep the banner clear of the sidebar when it is open.
+            style={{ right: sidebarOpen ? 280 : 16 }}
+            title={errorDetail ?? undefined}
+          >
             <span className="player-error-text">{error}</span>
             <button
               type="button"
@@ -497,28 +508,42 @@ export default function App() {
         </div>
 
         <div className="button-row">
-          <button className="tool-btn" onClick={() => runCommand("open_file_dialog")} title={t("menu.open")}>📂</button>
+          <button className="tool-btn" onClick={() => runCommand("open_file_dialog")} title={t("menu.open")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7 Q3 5 5 5 H9.5 L11.5 7 H19 Q21 7 21 9 V17 Q21 19 19 19 H5 Q3 19 3 17 Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>
+          </button>
           <button className="tool-btn" onClick={() => sendMpv(["playlist-prev", "weak"])} disabled={state.playlistCount < 2 || !view.ready} title={t("menu.previous")}>
-            ⏮
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5 V19 M19 5 L10 12 L19 19 Z" fill="currentColor" stroke="none" /></svg>
           </button>
           <button
             className={`play-btn ${!state.paused ? "playing" : ""}`}
             onClick={togglePlay}
             disabled={state.idle || !view.ready}
-            title={state.paused ? t("controls.play") : t("controls.pause")}
+            title={state.idle || state.paused ? t("controls.play") : t("controls.pause")}
           >
-            {state.paused ? "▶" : "⏸"}
+            {state.idle || state.paused ? (
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5 L19 12 L7 19 Z" fill="currentColor" stroke="none" /></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" /><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" /></svg>
+            )}
           </button>
           <button className="tool-btn" onClick={() => sendMpv(["playlist-next", "weak"])} disabled={state.playlistCount < 2 || !view.ready} title={t("menu.next")}>
-            ⏭
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5 V19 M5 5 L14 12 L5 19 Z" fill="currentColor" stroke="none" /></svg>
           </button>
           <button className="tool-btn" onClick={() => runCommand("stop_playback")} disabled={state.idle || !view.ready} title={t("menu.stop")}>
-            ⏹
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none" /></svg>
           </button>
-          <button className="tool-btn" onClick={() => seekRelative(-5)} title={t("menu.step-backward")}>«</button>
-          <button className="tool-btn" onClick={() => seekRelative(5)} title={t("menu.step-forward")}>»</button>
-          <button className="tool-btn" onClick={() => sendMpv(["frame-back-step"])} disabled={state.idle || !view.ready || state.paused === false} title={t("menu.frame-back-step")}>«·</button>
-          <button className="tool-btn" onClick={() => sendMpv(["frame-step"])} disabled={state.idle || !view.ready} title={t("menu.frame-step")}>·»</button>
+          <button className="tool-btn" onClick={() => seekRelative(-5)} title={t("menu.step-backward")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 A8 8 0 0 1 18.5 7.5 M18.5 7.5 L18.5 3.5 M18.5 7.5 L14.5 7.5 M4 12 A8 8 0 0 0 18.5 16.5 M18.5 16.5 L18.5 20.5 M18.5 16.5 L14.5 16.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+          </button>
+          <button className="tool-btn" onClick={() => seekRelative(5)} title={t("menu.step-forward")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12 A8 8 0 0 1 5.5 7.5 M5.5 7.5 L5.5 3.5 M5.5 7.5 L9.5 7.5 M20 12 A8 8 0 0 0 5.5 16.5 M5.5 16.5 L5.5 20.5 M5.5 16.5 L9.5 16.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+          </button>
+          <button className="tool-btn" onClick={() => sendMpv(["frame-back-step"])} disabled={state.idle || !view.ready || state.paused === false} title={t("menu.frame-back-step")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12 H16 M8 12 L11 9 M8 12 L11 15 M16 12 L13 9 M16 12 L13 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
+          </button>
+          <button className="tool-btn" onClick={() => sendMpv(["frame-step"])} disabled={state.idle || !view.ready} title={t("menu.frame-step")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 12 H8 M16 12 L13 9 M16 12 L13 15 M8 12 L11 9 M8 12 L11 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
+          </button>
           <button
             className={`tool-btn ${abLoopActive ? "active" : ""}`}
             onClick={toggleAbLoop}
@@ -618,7 +643,11 @@ export default function App() {
 
           <div className="volume-control">
             <button className="tool-btn" onClick={toggleMute} title={state.muted ? t("controls.unmute") : t("controls.mute")}>
-              {state.muted ? "🔇" : "🔊"}
+              {state.muted ? (
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10 H8 L13 5 V19 L8 14 H4 Z" fill="currentColor" stroke="none" /><path d="M17 9 L21 15 M21 9 L17 15" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10 H8 L13 5 V19 L8 14 H4 Z" fill="currentColor" stroke="none" /><path d="M16.5 9 A4.5 4.5 0 0 1 16.5 15 M19 7 A8 8 0 0 1 19 17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+              )}
             </button>
             <div
               className="volume-slider"
@@ -633,9 +662,9 @@ export default function App() {
 
           <button className="tool-btn" onClick={() => setUrlOpen(true)} title={t("menu.open-url")}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M10 14 Q12 12 14 14 T18 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              <path d="M14 10 Q12 12 10 10 T6 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              <path d="M9 15 L6 18 M15 9 L18 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              <path d="M10 13 A5 5 0 0 0 14.2 17.2 L15.5 15.9 A3 3 0 0 1 12.1 12.5 Z" fill="currentColor" stroke="none" />
+              <path d="M13.5 10.5 A5 5 0 0 0 9.3 6.3 L8 7.6 A3 3 0 0 1 11.4 11 Z" fill="currentColor" stroke="none" />
+              <path d="M14.5 9.5 L18 6 M9.5 14.5 L6 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
           </button>
           <button

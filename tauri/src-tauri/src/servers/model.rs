@@ -10,7 +10,6 @@
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 /// mac `MediaServerKind`: webdav/smb/ftp/emby/jellyfin (jellyfin shares the
 /// Emby client; the kind only affects display and playability rules).

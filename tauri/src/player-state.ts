@@ -150,6 +150,10 @@ export function applySnapshot(previous: PlayerView, snapshot: StateSnapshot): Pl
   return {
     generation: snapshot.generation, mediaEpoch: snapshot.mediaEpoch, revision: snapshot.revision,
     connected: snapshot.connected, ready: snapshot.connected && snapshot.ready,
+    // mpv's raw file_error (e.g. "no audio or video data played") is
+    // technical English; the localized message is substituted at render
+    // time in App.tsx via t("player.load-failed"), with the raw string
+    // kept as the tooltip detail.
     error: snapshot.error || (snapshot.endFile?.reason === "error"
       ? snapshot.endFile.file_error || "Media loading failed" : null),
     player: {

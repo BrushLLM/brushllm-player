@@ -289,25 +289,36 @@ impl Default for LaunchConfig {
             binary: MpvController::find_mpv(),
             isolation: None,
             watch_later_dir: None,
-            args: vec![
-                "--no-terminal",
-                "--no-config",
-                "--load-scripts=no",
-                "--no-osc",
-                "--keepaspect=yes",
-                "--hwdec=auto-safe",
-                "--cache=yes",
-                "--idle=yes",
-                "--vo=gpu-next",
-                // Explicit writes via write-watch-later-config; quitting must
-                // not save (IINA savePlaybackPosition pattern).
-                "--save-position-on-quit=no",
-                // mpv default; loadfile then resumes from watch-later files.
-                "--resume-playback=yes",
-            ]
-            .into_iter()
-            .map(str::to_owned)
-            .collect(),
+            args: {
+                let mut args = vec![
+                    "--no-terminal",
+                    "--no-config",
+                    "--load-scripts=no",
+                    "--no-osc",
+                    "--keepaspect=yes",
+                    "--hwdec=auto-safe",
+                    "--cache=yes",
+                    "--idle=yes",
+                    // Explicit writes via write-watch-later-config; quitting must
+                    // not save (IINA savePlaybackPosition pattern).
+                    "--save-position-on-quit=no",
+                    // mpv default; loadfile then resumes from watch-later files.
+                    "--resume-playback=yes",
+                ];
+                // macOS: no GPU-based VO can initialize in a subprocess of
+                // the Tauri app (verified live: gpu-next and gpu both fail
+                // with "no audio or video data played" while vo=null plays
+                // fine — the subprocess cannot acquire a window-server GPU
+                // context). The Tauri app on macOS is a control panel for
+                // developing the Windows UI; actual video display is the
+                // native macOS app's job. Windows: gpu-next is the modern
+                // default and mpv creates its own window fine there.
+                #[cfg(target_os = "macos")]
+                args.push("--vo=null");
+                #[cfg(not(target_os = "macos"))]
+                args.push("--vo=gpu-next");
+                args.into_iter().map(str::to_owned).collect()
+            }
         }
     }
 }
@@ -361,7 +372,10 @@ impl MpvController {
         command
             .stdin(Stdio::null())
             .stdout(Stdio::null())
-            .stderr(Stdio::null());
+            // mpv's stderr carries the decode/demux diagnostics that explain
+            // load failures ("no audio or video data played" gives no root
+            // cause). Pipe it into the app log instead of discarding it.
+            .stderr(Stdio::piped());
         if let Some(dir) = &config.isolation {
             command
                 .current_dir(dir)
@@ -375,6 +389,21 @@ impl MpvController {
                 .spawn()
                 .map_err(|e| format!("Failed to launch mpv: {e}"))?,
         );
+
+        // Drain mpv's stderr on a dedicated thread; every line goes to the
+        // app log so load failures leave a diagnostic trail. --no-terminal
+        // keeps mpv quiet unless something actually breaks.
+        if let Some(child) = controller.child.get_mut().as_mut() {
+            if let Some(stderr) = child.stderr.take() {
+                std::thread::spawn(move || {
+                    use std::io::{BufRead, BufReader};
+                    let reader = BufReader::new(stderr);
+                    for line in reader.lines().map_while(Result::ok) {
+                        log::info!("[mpv] {line}");
+                    }
+                });
+            }
+        }
         Ok(controller)
     }
 
