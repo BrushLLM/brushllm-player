@@ -4,7 +4,11 @@
   --bg-card-border: rgba(255, 255, 255, 0.1);
   --text: rgba(255, 255, 255, 0.92);
   --text-dim: rgba(255, 255, 255, 0.55);
-  --accent: #893CED;
+  /* Lemon accent (matches the macOS app's design system: lemon = selection/
+     activation/primary action). The old violet #893CED is now brand-only
+     (--accent-brand below). */
+  --accent: #E6FF00;
+  --accent-brand: #893CED;
   --accent-bright: #E6FF00;
   --bar-bg: rgba(0, 0, 0, 0.85);
   --radius: 12px;
@@ -159,10 +163,18 @@ html, body, #root {
   border: none;
   border-radius: 7px;
   background: var(--accent);
-  color: white;
+  color: #121212;
   font-size: 15px;
   cursor: pointer;
   transition: opacity 0.1s;
+}
+
+/* Unsized SVG collapses in WebKit — the play/pause glyph needs an
+   explicit box (same fix as .tool-btn svg). */
+.play-btn svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
 }
 
 .play-btn:disabled {
@@ -171,7 +183,8 @@ html, body, #root {
 }
 
 .play-btn.playing {
-  background: rgba(137, 60, 237, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
 }
 
 .spacer {
@@ -469,9 +482,9 @@ html, body, #root {
 }
 
 .vsm-option.active {
-  color: var(--accent-bright);
-  border-color: rgba(230, 255, 0, 0.45);
-  background: rgba(137, 60, 237, 0.25);
+  color: #121212;
+  border-color: var(--accent-bright);
+  background: var(--accent-bright);
 }
 
 .vsm-divider {
@@ -947,7 +960,7 @@ html, body, #root {
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: #121212;
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -994,7 +1007,43 @@ html, body, #root {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   transition: color 0.1s, background 0.1s, border-color 0.1s;
+}
+
+.pl-tab-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+
+.pl-tab-icon svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.pl-tab-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* When the tab strip is too narrow for full labels (long localizations),
+   the label hides and the icon carries the meaning — the web equivalent
+   of the mac app's ViewThatFits icon fallback. */
+@media (max-width: 280px) {
+  .pl-tab-label {
+    display: none;
+  }
+  .pl-tab {
+    padding: 0 7px;
+  }
 }
 
 .pl-tab:hover {
@@ -1420,7 +1469,7 @@ html, body, #root {
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: #121212;
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -1533,7 +1582,7 @@ html, body, #root {
   height: 22px;
   display: grid;
   place-items: center;
-  color: var(--accent);
+  color: var(--accent-brand);
 }
 
 .net-server-icon svg {
@@ -1595,7 +1644,7 @@ html, body, #root {
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: #121212;
   font: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -1701,7 +1750,7 @@ html, body, #root {
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: #121212;
   font: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -1877,7 +1926,7 @@ html, body, #root {
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: #121212;
   font: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -1947,7 +1996,7 @@ html, body, #root {
   height: 14px;
   display: grid;
   place-items: center;
-  color: var(--accent);
+  color: var(--accent-brand);
 }
 
 .net-browser-kind svg {
@@ -2136,7 +2185,7 @@ html, body, #root {
 }
 
 .net-browser-row-icon.folder {
-  color: var(--accent);
+  color: var(--accent-brand);
 }
 
 .net-browser-row-icon.folder svg {
