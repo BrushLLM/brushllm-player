@@ -141,6 +141,15 @@ html, body, #root {
   cursor: default;
 }
 
+/* Unsized inline SVGs collapse in WebKit — every icon button needs an
+   explicit box (the About/Close buttons render only because their own
+   rules set this; without it the toolbar icons are invisible). */
+.tool-btn svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
 .play-btn {
   width: 32px;
   height: 28px;
@@ -254,8 +263,46 @@ html, body, #root {
   pointer-events: none;
 }
 
+/* The error banner is interactive (dismiss button); the status banner stays
+   pointer-transparent. */
 .player-error {
   background: rgba(115, 30, 35, 0.95);
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.player-error-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.player-error-dismiss {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: color 0.1s, background 0.1s;
+}
+
+.player-error-dismiss:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.player-error-dismiss svg {
+  width: 11px;
+  height: 11px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
 }
 
 .about-overlay {
@@ -937,6 +984,12 @@ html, body, #root {
   font: inherit;
   font-size: 11px;
   white-space: nowrap;
+  /* Long localizations (English "Bookmarks") must shrink instead of pushing
+     the close button out of the 264px sidebar. */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: color 0.1s, background 0.1s, border-color 0.1s;
 }
 
@@ -1111,6 +1164,15 @@ html, body, #root {
   font: inherit;
   font-size: 13px;
   cursor: pointer;
+  /* Native select popups are light on macOS — strip the native chrome and
+     draw a dark control that matches the theme (the dropdown list itself
+     still renders with the OS style on some platforms). */
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1 L5 5 L9 1' fill='none' stroke='%23999' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
 }
 
 .settings-language-select:focus {
@@ -1245,7 +1307,9 @@ html, body, #root {
   width: min(100%, 540px);
   display: flex;
   flex-direction: column;
-  max-height: min(600px, 100%);
+  /* Tall enough for the full add-server form; the actions row is sticky so
+     Save/Cancel stay visible while the fields scroll. */
+  max-height: min(680px, 100%);
 }
 
 .network-title {
@@ -1779,6 +1843,12 @@ html, body, #root {
   justify-content: space-between;
   gap: 10px;
   padding-top: 4px;
+  /* Sticky inside the scrollable form: Save/Cancel never scroll out of view. */
+  position: sticky;
+  bottom: -6px;
+  padding-bottom: 6px;
+  background: var(--bg);
+  border-top: 1px solid var(--bg-card-border);
 }
 
 .net-form-cancel {

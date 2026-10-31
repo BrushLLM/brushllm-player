@@ -259,3 +259,20 @@
 "subtitle.online-searching" = "Searching…";
 "subtitle.online-downloading" = "Downloading…";
 "subtitle.online-download-failed" = "Download failed";
+
+// Server error messages (localized)
+"servers.error.badUrl" = "Invalid server address";
+"servers.error.http" = "Server returned an HTTP error";
+"servers.error.auth" = "Authentication failed — check your username and password";
+"servers.error.connection" = "Could not connect to the server";
+"servers.error.listing" = "Could not list the folder contents";
+"servers.error.timeout" = "The server took too long to respond";
+"servers.error.parse" = "The server sent an unreadable response";
+"servers.error.unsupported" = "This operation is not supported on this platform";
+"servers.error.notFound" = "Server not found";
+"servers.error.notPlayable" = "This item cannot be played";
+"servers.error.io" = "A file access error occurred";
+"servers.error.store" = "Could not read the server configuration";
+"servers.error.player" = "The playback engine reported an error";
+"servers.error.internal" = "An internal error occurred";
+"servers.error.generic" = "Something went wrong";

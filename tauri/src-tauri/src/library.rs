@@ -273,17 +273,22 @@ impl LibraryStore {
     /// Resolves `<app_data_dir>/library.json` and `playlist.json`, creating
     /// the directory when missing. Falls back to the temp dir only when the
     /// resolver itself fails; never panics during Tauri setup.
-    pub fn open(app: &tauri::AppHandle) -> Arc<Self> {
+    ///
+    /// Returns `Self`, NOT `Arc<Self>`: `app.manage()` registers the exact
+    /// type it is given, and the commands resolve `State<'_, LibraryStore>` —
+    /// managing an `Arc<LibraryStore>` makes every history/bookmark command
+    /// fail with "state not managed" at runtime.
+    pub fn open(app: &tauri::AppHandle) -> Self {
         let dir = app.path().app_data_dir().unwrap_or_else(|error| {
             log::warn!("Cannot resolve app data dir, using temp dir: {error}");
             std::env::temp_dir().join("brushllm-player-library")
         });
         let library_path = dir.join(LIBRARY_FILE);
-        Arc::new(Self {
+        Self {
             library: Mutex::new(Library::load(&library_path)),
             library_path,
             playlist_path: dir.join(PLAYLIST_FILE),
-        })
+        }
     }
 
     pub fn record_play(&self, path: &str, title: &str) {

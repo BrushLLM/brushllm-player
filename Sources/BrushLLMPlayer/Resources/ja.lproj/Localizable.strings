@@ -259,3 +259,20 @@
 "subtitle.online-searching" = "検索中…";
 "subtitle.online-downloading" = "ダウンロード中…";
 "subtitle.online-download-failed" = "ダウンロードに失敗しました";
+
+// Server error messages (localized)
+"servers.error.badUrl" = "サーバーアドレスが無効です";
+"servers.error.http" = "サーバーが HTTP エラーを返しました";
+"servers.error.auth" = "認証に失敗しました — ユーザー名とパスワードを確認してください";
+"servers.error.connection" = "サーバーに接続できません";
+"servers.error.listing" = "フォルダの内容を取得できませんでした";
+"servers.error.timeout" = "サーバーの応答がタイムアウトしました";
+"servers.error.parse" = "サーバーが読み取れない応答を返しました";
+"servers.error.unsupported" = "この操作はこのプラットフォームではサポートされていません";
+"servers.error.notFound" = "サーバーが見つかりません";
+"servers.error.notPlayable" = "この項目は再生できません";
+"servers.error.io" = "ファイルアクセスエラーが発生しました";
+"servers.error.store" = "サーバー設定を読み込めませんでした";
+"servers.error.player" = "再生エンジンがエラーを報告しました";
+"servers.error.internal" = "内部エラーが発生しました";
+"servers.error.generic" = "問題が発生しました";

@@ -281,3 +281,26 @@ export function formatItemSize(size: number): string {
   const digits = unit === 0 || value >= 1000 ? 0 : value >= 100 ? 0 : 1;
   return `${value.toFixed(digits)} ${units[unit]}`;
 }
+
+/** Maps a Rust ServerError ({ code, message }) to a localized, user-facing
+ * message. Known codes get their own strings (servers.error.<code>); the
+ * raw backend message is never shown to users — it stays in the console. */
+export function serverErrorMessage(
+  error: unknown,
+  t: (key: string) => string,
+): string {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const code = (error as { code: unknown }).code;
+    if (typeof code === "string" && code !== "") {
+      const key = `servers.error.${code}`;
+      const localized = t(key);
+      // t() falls back to the key name when a translation is missing.
+      if (localized !== key) return localized;
+      console.warn("[servers] unlocalized error code:", code,
+        (error as { message?: unknown }).message);
+      return t("servers.error.generic");
+    }
+  }
+  console.warn("[servers] unrecognized error shape:", error);
+  return t("servers.error.generic");
+}

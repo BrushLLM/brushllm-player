@@ -253,7 +253,15 @@ export default function App() {
     return () => { cancelled = true; };
   }, [sidebarOpen, sidebarTab, state.fileName, view.generation, view.mediaEpoch]);
 
+  // Dismissable error: the invoke-side error clears on dismiss or as soon
+  // as a fresh snapshot reports a healthy connection; snapshot-side errors
+  // (view.error) already clear on the next clean snapshot.
+  useEffect(() => {
+    if (view.connected) setInvokeError(null);
+  }, [view.connected]);
+
   const error = invokeError && invokeError.generation >= view.generation ? invokeError.message : view.error;
+  const dismissError = () => setInvokeError(null);
 
   const effectivePosition = scrubbing ? scrubPosition : state.position;
   const progress = state.duration > 0 ? Math.min(effectivePosition / state.duration, 1) : 0;
@@ -390,7 +398,23 @@ export default function App() {
       />
 
       <div className="video-area" onDoubleClick={() => sendMpv(["cycle", "fullscreen"])}>
-        {error && <div className="player-error" role="alert">{error}</div>}
+        {error && (
+          <div className="player-error" role="alert">
+            <span className="player-error-text">{error}</span>
+            <button
+              type="button"
+              className="player-error-dismiss"
+              onClick={dismissError}
+              aria-label={t("panel.cancel")}
+              title={t("panel.cancel")}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <line x1="6" y1="6" x2="18" y2="18" />
+                <line x1="18" y1="6" x2="6" y2="18" />
+              </svg>
+            </button>
+          </div>
+        )}
         {!view.connected && !error && <div className="connection-status" role="status">{t("player.open-hint")}</div>}
         {state.idle && (
           <div className="empty-state" onClick={() => runCommand("open_file_dialog")} style={{ cursor: "pointer" }}>

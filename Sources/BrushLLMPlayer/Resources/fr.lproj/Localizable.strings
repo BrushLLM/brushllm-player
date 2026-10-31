@@ -259,3 +259,20 @@
 "subtitle.online-searching" = "Recherche…";
 "subtitle.online-downloading" = "Téléchargement…";
 "subtitle.online-download-failed" = "Échec du téléchargement";
+
+// Server error messages (localized)
+"servers.error.badUrl" = "Adresse du serveur invalide";
+"servers.error.http" = "Le serveur a renvoyé une erreur HTTP";
+"servers.error.auth" = "Échec de l'authentification — vérifiez l'identifiant et le mot de passe";
+"servers.error.connection" = "Impossible de se connecter au serveur";
+"servers.error.listing" = "Impossible de lister le contenu du dossier";
+"servers.error.timeout" = "Le serveur a mis trop de temps à répondre";
+"servers.error.parse" = "Le serveur a envoyé une réponse illisible";
+"servers.error.unsupported" = "Cette opération n'est pas prise en charge sur cette plateforme";
+"servers.error.notFound" = "Serveur introuvable";
+"servers.error.notPlayable" = "Cet élément ne peut pas être lu";
+"servers.error.io" = "Une erreur d'accès aux fichiers s'est produite";
+"servers.error.store" = "Impossible de lire la configuration du serveur";
+"servers.error.player" = "Le moteur de lecture a signalé une erreur";
+"servers.error.internal" = "Une erreur interne s'est produite";
+"servers.error.generic" = "Une erreur s'est produite";

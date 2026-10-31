@@ -259,3 +259,20 @@
 "subtitle.online-searching" = "Suche…";
 "subtitle.online-downloading" = "Wird geladen…";
 "subtitle.online-download-failed" = "Download fehlgeschlagen";
+
+// Server error messages (localized)
+"servers.error.badUrl" = "Ungültige Serveradresse";
+"servers.error.http" = "Der Server hat einen HTTP-Fehler gemeldet";
+"servers.error.auth" = "Anmeldung fehlgeschlagen — Benutzername und Passwort prüfen";
+"servers.error.connection" = "Verbindung zum Server nicht möglich";
+"servers.error.listing" = "Ordnerinhalt konnte nicht abgerufen werden";
+"servers.error.timeout" = "Der Server hat zu lange nicht geantwortet";
+"servers.error.parse" = "Der Server hat eine unlesbare Antwort gesendet";
+"servers.error.unsupported" = "Dieser Vorgang wird auf dieser Plattform nicht unterstützt";
+"servers.error.notFound" = "Server nicht gefunden";
+"servers.error.notPlayable" = "Dieses Element kann nicht wiedergegeben werden";
+"servers.error.io" = "Beim Dateizugriff ist ein Fehler aufgetreten";
+"servers.error.store" = "Serverkonfiguration konnte nicht gelesen werden";
+"servers.error.player" = "Die Wiedergabe-Engine hat einen Fehler gemeldet";
+"servers.error.internal" = "Ein interner Fehler ist aufgetreten";
+"servers.error.generic" = "Etwas ist schiefgelaufen";

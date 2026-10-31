@@ -259,3 +259,20 @@
 "subtitle.online-searching" = "검색 중…";
 "subtitle.online-downloading" = "다운로드 중…";
 "subtitle.online-download-failed" = "다운로드 실패";
+
+// Server error messages (localized)
+"servers.error.badUrl" = "서버 주소가 잘못되었습니다";
+"servers.error.http" = "서버가 HTTP 오류를 반환했습니다";
+"servers.error.auth" = "인증에 실패했습니다 — 사용자 이름과 비밀번호를 확인하세요";
+"servers.error.connection" = "서버에 연결할 수 없습니다";
+"servers.error.listing" = "폴더 내용을 가져올 수 없습니다";
+"servers.error.timeout" = "서버 응답이 시간 초과되었습니다";
+"servers.error.parse" = "서버가 읽을 수 없는 응답을 반환했습니다";
+"servers.error.unsupported" = "이 플랫폼에서는 이 작업이 지원되지 않습니다";
+"servers.error.notFound" = "서버를 찾을 수 없습니다";
+"servers.error.notPlayable" = "이 항목은 재생할 수 없습니다";
+"servers.error.io" = "파일 접근 중 오류가 발생했습니다";
+"servers.error.store" = "서버 구성을 읽을 수 없습니다";
+"servers.error.player" = "재생 엔진이 오류를 보고했습니다";
+"servers.error.internal" = "내부 오류가 발생했습니다";
+"servers.error.generic" = "문제가 발생했습니다";

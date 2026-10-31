@@ -259,3 +259,20 @@
 "subtitle.online-searching" = "Buscando…";
 "subtitle.online-downloading" = "Descargando…";
 "subtitle.online-download-failed" = "Error al descargar";
+
+// Server error messages (localized)
+"servers.error.badUrl" = "Dirección del servidor no válida";
+"servers.error.http" = "El servidor devolvió un error HTTP";
+"servers.error.auth" = "Error de autenticación: comprueba el usuario y la contraseña";
+"servers.error.connection" = "No se pudo conectar con el servidor";
+"servers.error.listing" = "No se pudo listar el contenido de la carpeta";
+"servers.error.timeout" = "El servidor tardó demasiado en responder";
+"servers.error.parse" = "El servidor envió una respuesta ilegible";
+"servers.error.unsupported" = "Esta operación no es compatible con esta plataforma";
+"servers.error.notFound" = "Servidor no encontrado";
+"servers.error.notPlayable" = "Este elemento no se puede reproducir";
+"servers.error.io" = "Se produjo un error de acceso a archivos";
+"servers.error.store" = "No se pudo leer la configuración del servidor";
+"servers.error.player" = "El motor de reproducción informó un error";
+"servers.error.internal" = "Se produjo un error interno";
+"servers.error.generic" = "Algo salió mal";

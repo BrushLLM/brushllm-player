@@ -15,7 +15,10 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(3);
-const STARTUP_TIMEOUT: Duration = Duration::from_secs(5);
+// 15s: the dev build launches mpv with --vo=gpu-next, whose GPU context
+// cold-start can exceed the old 5s budget (the test config uses --vo=null
+// and never hits this). The socket appears late, not never.
+const STARTUP_TIMEOUT: Duration = Duration::from_secs(15);
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_millis(1500);
 const QUIT_GRACE: Duration = Duration::from_millis(150);
 const MAX_LINE: usize = 1024 * 1024;
@@ -377,6 +380,8 @@ impl MpvController {
 
     fn initialize(&self, timeout: Duration) -> Result<(), String> {
         let deadline = Instant::now() + timeout;
+        let started = Instant::now();
+        let mut logged_slow = false;
         loop {
             if self.closing.load(Ordering::Acquire) {
                 return Err("Player is shutting down".into());
@@ -387,8 +392,24 @@ impl MpvController {
                 }
             }
             if let Ok(transport) = transport::connect(&self.endpoint) {
+                log::info!(
+                    "mpv IPC connected after {:.2?}s (endpoint {})",
+                    started.elapsed().as_secs_f64(),
+                    self.endpoint
+                );
                 self.attach(transport)?;
                 break;
+            }
+            // One diagnostic when the socket is unusually slow to appear —
+            // cold GPU-context init in the dev build can take >5s.
+            if !logged_slow && started.elapsed() > Duration::from_secs(3) {
+                logged_slow = true;
+                log::warn!(
+                    "mpv IPC socket not ready after {:.2?}s (endpoint {}); still retrying until {:.0?}",
+                    started.elapsed().as_secs_f64(),
+                    self.endpoint,
+                    timeout
+                );
             }
             if Instant::now() >= deadline {
                 return Err("Timed out connecting to mpv IPC".into());

@@ -259,3 +259,20 @@
 "subtitle.online-searching" = "搜尋中…";
 "subtitle.online-downloading" = "下載中…";
 "subtitle.online-download-failed" = "下載失敗";
+
+// Server error messages (localized)
+"servers.error.badUrl" = "伺服器位址無效";
+"servers.error.http" = "伺服器回傳了 HTTP 錯誤";
+"servers.error.auth" = "認證失敗——請檢查使用者名稱和密碼";
+"servers.error.connection" = "無法連線到伺服器";
+"servers.error.listing" = "無法取得資料夾內容";
+"servers.error.timeout" = "伺服器回應逾時";
+"servers.error.parse" = "伺服器回傳了無法解析的回應";
+"servers.error.unsupported" = "此平台不支援該操作";
+"servers.error.notFound" = "找不到伺服器";
+"servers.error.notPlayable" = "無法播放此項目";
+"servers.error.io" = "檔案存取出錯";
+"servers.error.store" = "無法讀取伺服器設定";
+"servers.error.player" = "播放引擎回報了錯誤";
+"servers.error.internal" = "發生內部錯誤";
+"servers.error.generic" = "發生問題";

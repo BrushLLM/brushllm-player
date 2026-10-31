@@ -13,7 +13,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useI18n } from "../i18n";
 import type { MediaItem, MediaSortMode, ServerSource } from "../server-state";
 import { isPlayable, sortMediaItems } from "../server-state";
-import { commandError } from "../player-state";
+import { serverErrorMessage } from "../server-state";
 import StreamTab from "./network/StreamTab";
 import ServerList from "./network/ServerList";
 import AddServerForm from "./network/AddServerForm";
@@ -59,7 +59,7 @@ export default function NetworkPanel({ onClose, onPlayUrl, onEnqueued }: Network
   const refreshServers = useCallback(() => {
     void invoke<ServerSource[]>("servers_list")
       .then((list) => setServers(list))
-      .catch((error) => setListError(commandError(error).message));
+      .catch((error) => setListError(serverErrorMessage(error, t)));
   }, []);
 
   // Load the server list when the panel opens.
@@ -117,7 +117,7 @@ export default function NetworkPanel({ onClose, onPlayUrl, onEnqueued }: Network
       })
       .catch((error) => {
         if (browseToken.current !== token) return;
-        setBrowseError(commandError(error).message);
+        setBrowseError(serverErrorMessage(error, t));
         setIsLoading(false);
       });
   }, []);
@@ -173,7 +173,7 @@ export default function NetworkPanel({ onClose, onPlayUrl, onEnqueued }: Network
     // the global player error banner: a failed server play keeps the modal
     // open so the user can retry or pick another item.
     void invoke("servers_play", { serverId: server.id, itemId: item.id }).catch((error) => {
-      setBrowseError(commandError(error).message);
+      setBrowseError(serverErrorMessage(error, t));
     });
   }, []);
 
@@ -214,7 +214,7 @@ export default function NetworkPanel({ onClose, onPlayUrl, onEnqueued }: Network
       .catch((error) => {
         if (folderToken.current !== token) return;
         setAddingFolder(false);
-        setBrowseError(commandError(error).message);
+        setBrowseError(serverErrorMessage(error, t));
       });
   }, [view, servers, sortMode, sortAscending, onEnqueued, t]);
 
@@ -226,7 +226,7 @@ export default function NetworkPanel({ onClose, onPlayUrl, onEnqueued }: Network
       .then(() => {
         setServers((list) => list.filter((entry) => entry.id !== server.id));
       })
-      .catch((error) => setListError(commandError(error).message));
+      .catch((error) => setListError(serverErrorMessage(error, t)));
   }, []);
 
   const onFormSaved = useCallback((server: ServerSource) => {

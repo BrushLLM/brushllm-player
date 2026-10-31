@@ -128,13 +128,18 @@ pub struct ServerState {
 impl ServerStore {
     /// Resolves `<app_data_dir>/servers.json`, creating the directory when
     /// missing (same fallback policy as `LibraryStore::open`).
-    pub fn open(app: &tauri::AppHandle) -> std::sync::Arc<Self> {
+    ///
+    /// Returns `Self`, NOT `Arc<Self>`: `app.manage()` registers the exact
+    /// type it is given, and the commands resolve `State<'_, ServerStore>` —
+    /// managing an `Arc<ServerStore>` makes every servers_* command fail
+    /// with "state not managed" at runtime.
+    pub fn open(app: &tauri::AppHandle) -> Self {
         use tauri::Manager;
         let dir = app.path().app_data_dir().unwrap_or_else(|error| {
             log::warn!("Cannot resolve app data dir, using temp dir: {error}");
             std::env::temp_dir().join("brushllm-player-servers")
         });
-        Arc::new(Self::open_at(&dir.join(SERVERS_FILE)))
+        Self::open_at(&dir.join(SERVERS_FILE))
     }
 
     /// Testable constructor against an explicit file path.
