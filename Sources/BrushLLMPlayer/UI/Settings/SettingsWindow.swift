@@ -81,6 +81,10 @@ struct SettingsWindow: View {
             SubtitleSettingsTab()
                 .tabItem { Label(L("settings.subtitle", "Subtitles"), systemImage: "captions.bubble") }
         }
+        // Each tab's Form carries the brand-violet tint: a tint on the
+        // TabView itself does not propagate into the tab content on macOS.
+        // Player chrome keeps the lemon.
+        .tint(BrushLLMPlayerTheme.settingsAccent)
         .formStyle(.grouped)
         .frame(width: 480)
     }
@@ -127,6 +131,7 @@ private struct GeneralSettingsTab: View {
                 })
             }
             }
+            .tint(BrushLLMPlayerTheme.settingsAccent)
         }
     }
 
@@ -236,10 +241,10 @@ private struct UpdateCheckerSection: View {
         case .available(let latest):
             HStack(spacing: 10) {
                 Image(systemName: "arrow.down.circle.fill")
-                    .foregroundStyle(BrushLLMPlayerTheme.accent)
+                    .foregroundStyle(BrushLLMPlayerTheme.settingsAccent)
                 Text("\(L("update.available", "New version available")) — v\(latest)")
                     .font(.callout)
-                    .foregroundStyle(BrushLLMPlayerTheme.accent)
+                    .foregroundStyle(BrushLLMPlayerTheme.settingsAccent)
                 Spacer()
                 Button(L("update.download", "Download Update")) {
                     NSWorkspace.shared.open(UpdateChecker.releasePageURL)
@@ -248,7 +253,7 @@ private struct UpdateCheckerSection: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(BrushLLMPlayerTheme.accent.opacity(0.12), in: .rect(cornerRadius: 8))
+            .background(BrushLLMPlayerTheme.settingsAccent.opacity(0.12), in: .rect(cornerRadius: 8))
         case .failed:
             card(background: Color.red.opacity(0.15),
                  text: L("update.failed", "Check failed: network error")) {
@@ -281,7 +286,6 @@ private struct PlaybackSettingsTab: View {
             Section(L("settings.playback", "Playback")) {
                 LabeledContent(L("settings.playback.volume", "Default volume")) {
                     Slider(value: $settings.defaultVolume, in: 0...130)
-                        .tint(BrushLLMPlayerTheme.accent)
                         .frame(width: 220)
                     Text("\(Int(settings.defaultVolume))")
                         .monospacedDigit()
@@ -290,7 +294,8 @@ private struct PlaybackSettingsTab: View {
                 }
 
                 Toggle(L("settings.playback.muted", "Start muted"), isOn: $settings.startMuted)
-                    .toggleStyle(ThemedSwitchToggleStyle())
+                    .toggleStyle(ThemedSwitchToggleStyle(onColor: BrushLLMPlayerTheme.settingsAccent,
+                                                         onKnobColor: .white))
 
                 Picker(L("settings.playback.loop", "Default loop mode"), selection: $settings.loopMode) {
                     Text(L("loop.off", "No Loop")).tag(LoopMode.off)
@@ -300,6 +305,7 @@ private struct PlaybackSettingsTab: View {
                 .frame(maxWidth: 320, alignment: .leading)
             }
         }
+        .tint(BrushLLMPlayerTheme.settingsAccent)
     }
 }
 
@@ -312,7 +318,8 @@ private struct VideoSettingsTab: View {
         Form {
             Section(L("settings.video", "Video")) {
                 Toggle(L("settings.video.hwdec", "Hardware decoding (VideoToolbox)"), isOn: $settings.hardwareDecoding)
-                    .toggleStyle(ThemedSwitchToggleStyle())
+                    .toggleStyle(ThemedSwitchToggleStyle(onColor: BrushLLMPlayerTheme.settingsAccent,
+                                                         onKnobColor: .white))
                 Text(L("settings.video.hwdec.hint", "Accelerates decoding of H.264, H.265 and AV1."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -321,5 +328,6 @@ private struct VideoSettingsTab: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .tint(BrushLLMPlayerTheme.settingsAccent)
     }
 }

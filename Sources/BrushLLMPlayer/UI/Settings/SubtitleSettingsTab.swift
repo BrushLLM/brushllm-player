@@ -25,11 +25,11 @@ struct SubtitleSettingsTab: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                .toggleStyle(ThemedSwitchToggleStyle())
+                .toggleStyle(ThemedSwitchToggleStyle(onColor: BrushLLMPlayerTheme.settingsAccent,
+                                                     onKnobColor: .white))
 
                 LabeledContent(L("subtitle.font-size", "Font size")) {
                     Slider(value: $player.subtitleFontSize, in: 12...72, step: 1)
-                        .tint(BrushLLMPlayerTheme.accent)
                     Text("\(Int(player.subtitleFontSize))")
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
@@ -38,7 +38,6 @@ struct SubtitleSettingsTab: View {
 
                 LabeledContent(L("subtitle.border-size", "Outline width")) {
                     Slider(value: $player.subtitleBorderSize, in: 0...6, step: 0.5)
-                        .tint(BrushLLMPlayerTheme.accent)
                     Text(String(format: "%.1f", player.subtitleBorderSize))
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
@@ -47,7 +46,6 @@ struct SubtitleSettingsTab: View {
 
                 LabeledContent(L("subtitle.position", "Vertical position")) {
                     Slider(value: $player.subtitlePosition, in: 0...100, step: 1)
-                        .tint(BrushLLMPlayerTheme.accent)
                     Text("\(Int(player.subtitlePosition))%")
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
@@ -67,6 +65,7 @@ struct SubtitleSettingsTab: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .tint(BrushLLMPlayerTheme.settingsAccent)
     }
 
     private func swatchRow(selection: Binding<String>) -> some View {

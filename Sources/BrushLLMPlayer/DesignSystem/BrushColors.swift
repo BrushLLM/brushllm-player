@@ -63,6 +63,12 @@ enum DesignIcon {
 enum BrushLLMPlayerTheme {
     /// Lemon accent: selection, activation, primary actions.
     static let accent = Color(hex: 0xE6FF00)
+    /// Brand violet for the Settings window surface. The system-preferences
+    /// window keeps the brand identity while the player chrome keeps lemon,
+    /// so settings controls (toggles, sliders, update banner) read as
+    /// product, not player. Violet is mid-dark: pair fills with a white
+    /// knob/label — the near-black `onAccent` would disappear on it.
+    static let settingsAccent = BrushPalette.violet
     /// Text and icons placed ON the solid accent fill.
     static let onAccent = Color(hex: 0x121212)
     /// Primary text on the dark control material.
@@ -94,6 +100,9 @@ enum BrushLLMPlayerTheme {
 struct ThemedSwitchToggleStyle: ToggleStyle {
     /// Fill color for the on-state — the lemon accent everywhere.
     var onColor: Color = BrushLLMPlayerTheme.accent
+    /// Knob color while on. Defaults to near-black for bright lemon fills;
+    /// mid-dark fills (settings violet) pair with white.
+    var onKnobColor: Color = BrushLLMPlayerTheme.onAccent
 
     func makeBody(configuration: Configuration) -> some View {
         HStack {
@@ -103,7 +112,7 @@ struct ThemedSwitchToggleStyle: ToggleStyle {
                 Capsule()
                     .fill(configuration.isOn ? onColor : Color.white.opacity(0.22))
                 Circle()
-                    .fill(configuration.isOn ? BrushLLMPlayerTheme.onAccent : Color.white)
+                    .fill(configuration.isOn ? onKnobColor : Color.white)
                     .frame(width: 14, height: 14)
                     .shadow(color: .black.opacity(0.25), radius: 1, y: 0.5)
                     .offset(x: configuration.isOn ? 9 : -9)
