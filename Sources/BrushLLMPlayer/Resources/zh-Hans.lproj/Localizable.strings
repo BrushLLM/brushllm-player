@@ -276,3 +276,5 @@
 "servers.error.player" = "播放引擎报告了错误";
 "servers.error.internal" = "发生内部错误";
 "servers.error.generic" = "出现问题";
+
+"controls.progress" = "播放进度";

@@ -276,3 +276,5 @@
 "servers.error.player" = "The playback engine reported an error";
 "servers.error.internal" = "An internal error occurred";
 "servers.error.generic" = "Something went wrong";
+
+"controls.progress" = "Playback position";

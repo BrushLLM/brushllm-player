@@ -276,3 +276,5 @@
 "servers.error.player" = "O motor de reprodução relatou um erro";
 "servers.error.internal" = "Ocorreu um erro interno";
 "servers.error.generic" = "Algo deu errado";
+
+"controls.progress" = "Posição de reprodução";

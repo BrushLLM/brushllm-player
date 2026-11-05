@@ -1,4 +1,5 @@
 import XCTest
+import Combine
 import Libmpv
 @testable import BrushLLMPlayer
 
@@ -12,6 +13,27 @@ final class PlaybackTests: XCTestCase {
 
     override func tearDownWithError() throws {
         try FileManager.default.removeItem(at: directory)
+    }
+
+    func testTimelineCoalescesTicksButPublishesPauseSeekAndResetImmediately() {
+        let timeline = PlaybackTimeline()
+        var positions: [Double] = []
+        let subscription = timeline.$position.sink { positions.append($0) }
+        timeline.update(1, force: true, now: 100)
+        for tick in 1...9 {
+            timeline.update(1 + Double(tick) / 100, now: 100 + Double(tick) / 100)
+        }
+        XCTAssertEqual(positions, [0, 1])
+        timeline.update(1.2, now: 100.2)
+        XCTAssertEqual(positions.last, 1.2)
+        timeline.update(40, force: true, now: 100.21)
+        XCTAssertEqual(positions.last, 40)
+        timeline.update(5, now: 100.22)
+        XCTAssertEqual(positions.last, 5)
+        timeline.update(0, force: true, now: 100.23)
+        timeline.update(.nan, force: true, now: 100.24)
+        XCTAssertEqual(positions.last, 0)
+        withExtendedLifetime(subscription) {}
     }
 
     func testStringEventCopiesPointerValue() {

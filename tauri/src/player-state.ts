@@ -26,6 +26,8 @@ export interface PlayerState {
   idle: boolean;
   mediaTitle: string;
   fileName: string;
+  /** Full local path or stream URL; filename is display-only. */
+  mediaPath: string;
   volume: number;
   muted: boolean;
   speed: number;
@@ -56,7 +58,7 @@ export interface PlayerState {
 }
 
 export const initialState: PlayerState = {
-  paused: true, position: 0, duration: 0, idle: true, mediaTitle: "", fileName: "",
+  paused: true, position: 0, duration: 0, idle: true, mediaTitle: "", fileName: "", mediaPath: "",
   volume: 100, muted: false, speed: 1, playlistCount: 0, playlistPos: -1,
   playlist: [], chapters: [], currentChapter: null, tracks: [],
   audioTrackId: null, subtitleTrackId: null,
@@ -161,7 +163,7 @@ export function applySnapshot(previous: PlayerView, snapshot: StateSnapshot): Pl
       position: Math.max(0, finite(p["time-pos"], 0)),
       duration: Math.max(0, finite(p.duration, 0)),
       idle: typeof p["idle-active"] === "boolean" ? p["idle-active"] : true,
-      mediaTitle: text(p["media-title"]), fileName: text(p.filename),
+      mediaTitle: text(p["media-title"]), fileName: text(p.filename), mediaPath: text(p.path),
       volume: Math.min(130, Math.max(0, finite(p.volume, 100))),
       muted: p.mute === true, speed: finite(p.speed, 1),
       playlistCount: Math.max(0, finite(p["playlist-count"], 0)),
@@ -227,4 +229,14 @@ export function volumeAtClick(event: {
   const rect = event.currentTarget.getBoundingClientRect();
   const fraction = trackFraction(event.clientX, rect.left, rect.width);
   return fraction === null ? null : Math.round(fraction * 130);
+}
+
+/** Keyboard adjustment shared by both custom sliders. */
+export function sliderValueAtKey(key: string, value: number, min: number, max: number, step: number): number | null {
+  if (![value, min, max, step].every(Number.isFinite) || max < min || step <= 0) return null;
+  const delta = key === "ArrowRight" || key === "ArrowUp" ? step
+    : key === "ArrowLeft" || key === "ArrowDown" ? -step : null;
+  if (key === "Home") return min;
+  if (key === "End") return max;
+  return delta === null ? null : Math.min(max, Math.max(min, value + delta));
 }

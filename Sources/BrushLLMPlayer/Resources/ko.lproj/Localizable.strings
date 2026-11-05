@@ -276,3 +276,5 @@
 "servers.error.player" = "재생 엔진이 오류를 보고했습니다";
 "servers.error.internal" = "내부 오류가 발생했습니다";
 "servers.error.generic" = "문제가 발생했습니다";
+
+"controls.progress" = "재생 위치";

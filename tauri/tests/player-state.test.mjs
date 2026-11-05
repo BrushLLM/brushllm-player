@@ -13,7 +13,7 @@ const snapshot = (overrides = {}) => ({
   generation: 1, mediaEpoch: 1, revision: 12, connected: true, ready: true, error: null, endFile: null,
   properties: {
     pause: false, "time-pos": 3.5, duration: 10, "idle-active": false,
-    "media-title": "Synthetic media", filename: "test.wav", volume: 65, mute: false,
+    "media-title": "Synthetic media", filename: "test.wav", path: "/media/test.wav", volume: 65, mute: false,
     speed: 1.25, "playlist-count": 2, "playlist-pos": 1,
     playlist: [
       { filename: "/media/a.mkv", title: "Intro", current: false, playing: false },
@@ -46,7 +46,7 @@ test("delayed startup or refresh recovers all properties from snapshot", () => {
   const next = applySnapshot(initialView, snapshot());
   assert.deepEqual(next.player, {
     paused: false, position: 3.5, duration: 10, idle: false,
-    mediaTitle: "Synthetic media", fileName: "test.wav", volume: 65, muted: false,
+    mediaTitle: "Synthetic media", fileName: "test.wav", mediaPath: "/media/test.wav", volume: 65, muted: false,
     speed: 1.25, playlistCount: 2, playlistPos: 1,
     playlist: [
       { filename: "/media/a.mkv", title: "Intro", current: false, playing: false },

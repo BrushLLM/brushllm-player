@@ -4,6 +4,31 @@ use std::io::{BufRead, BufReader, Write};
 fn no_events() -> StateSink {
     Arc::new(|_| {})
 }
+
+#[test]
+fn position_bursts_keep_exact_state_without_publishing_large_snapshots() {
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let received = events.clone();
+    let shared = Shared::new(1, Arc::new(move |state| received.lock().push(state)));
+    shared.connected(&AtomicBool::new(false));
+    shared.dispatch(json!({"event":"property-change", "name":"pause", "data":false}));
+    events.lock().clear();
+    shared.inner.lock().last_position_publish = Some(Instant::now() + Duration::from_secs(60));
+    for position in 0..1000 {
+        shared.dispatch(json!({"event":"property-change", "name":"time-pos", "data":position}));
+    }
+    assert!(events.lock().is_empty());
+    assert_eq!(shared.snapshot().properties["time-pos"], json!(999));
+    // Pausing flushes the latest position immediately, without a trailing timer.
+    shared.dispatch(json!({"event":"property-change", "name":"pause", "data":true}));
+    assert_eq!(events.lock().len(), 1);
+    assert_eq!(events.lock()[0].properties["time-pos"], json!(999));
+    shared.dispatch(json!({"event":"property-change", "name":"time-pos", "data":42}));
+    assert_eq!(
+        events.lock().last().unwrap().properties["time-pos"],
+        json!(42)
+    );
+}
 fn wait_for(mut condition: impl FnMut() -> bool) {
     let deadline = Instant::now() + Duration::from_secs(3);
     while !condition() {
@@ -14,7 +39,7 @@ fn wait_for(mut condition: impl FnMut() -> bool) {
 
 #[test]
 fn typed_observers_and_string_end_file_reasons() {
-    assert_eq!(OBSERVED.len(), 31);
+    assert_eq!(OBSERVED.len(), 32);
     for (name, id) in OBSERVED {
         let command = json!(["observe_property", id, name]);
         assert!(command[1].is_u64());
@@ -149,10 +174,15 @@ fn start_file_clears_media_scoped_properties_but_keeps_global_settings() {
             "{name} must be cleared on start-file"
         );
     }
-    for name in ["brightness", "contrast", "saturation", "hwdec", "deinterlace"] {
+    for name in [
+        "brightness",
+        "contrast",
+        "saturation",
+        "hwdec",
+        "deinterlace",
+    ] {
         assert_eq!(
-            after.properties[name],
-            before.properties[name],
+            after.properties[name], before.properties[name],
             "{name} is global and must survive start-file"
         );
     }
@@ -470,7 +500,7 @@ fn real_isolated_mpv_subscriptions_playback_failures_eof_and_reconnect() {
     player.config = config;
     let initial = player.ready().unwrap();
     assert!(initial.ready);
-    wait_for(|| player.snapshot().properties.len() == 31);
+    wait_for(|| player.snapshot().properties.len() == 32);
     assert_eq!(player.snapshot().properties["idle-active"], json!(true));
     for (name, value) in [("volume", "65"), ("speed", "1.25"), ("pause", "yes")] {
         player
@@ -502,7 +532,8 @@ fn real_isolated_mpv_subscriptions_playback_failures_eof_and_reconnect() {
     assert_eq!(snapshot.properties["pause"], json!(true));
     assert_eq!(snapshot.properties["playlist-count"], json!(1));
     assert_eq!(snapshot.properties["playlist-pos"], json!(0));
-    assert!(!snapshot.properties["filename"].as_str().unwrap().is_empty());
+    assert_eq!(snapshot.properties["filename"], json!("synthetic.wav"));
+    wait_for(|| player.snapshot().properties.get("path") == Some(&json!(long.to_string_lossy())));
     player
         .command(
             &[
@@ -557,7 +588,10 @@ fn real_isolated_mpv_subscriptions_playback_failures_eof_and_reconnect() {
             == Some("stop")
     });
     assert!(player.snapshot().error.is_none());
-    for (index, file) in [temp.0.join("does-not-exist.wav"), broken].into_iter().enumerate() {
+    for (index, file) in [temp.0.join("does-not-exist.wav"), broken]
+        .into_iter()
+        .enumerate()
+    {
         // loadfile acknowledgement means accepted, not successfully decoded.
         player
             .command(
@@ -693,6 +727,43 @@ fn real_isolated_mpv_subscriptions_playback_failures_eof_and_reconnect() {
     assert!(final_controller.workers.lock().threads.is_empty());
     assert!(!PathBuf::from(endpoint).exists());
     assert!(player.ready().is_err());
+}
+
+#[cfg(not(target_os = "windows"))]
+#[test]
+fn real_history_resume_uses_full_path_and_library_checkpoint_without_watch_later() {
+    let temp = TempMedia::new();
+    let path = temp.wav("same.wav", 6).to_string_lossy().into_owned();
+    let mut library = crate::library::Library::default();
+    library.record_play(&path, "Same");
+    library.update_position(&path, 3.0, 6.0);
+    let mut player = MpvPlayer::new(no_events());
+    player.config = temp.config();
+    player.ready().unwrap();
+    player
+        .command(&[json!("set_property"), json!("pause"), json!(true)], false)
+        .unwrap();
+    let entry = library.list_history().remove(0);
+    player
+        .command(&crate::history_load_command(&path, Some(&entry)), true)
+        .unwrap();
+    wait_for(|| {
+        player
+            .snapshot()
+            .properties
+            .get("time-pos")
+            .and_then(Value::as_f64)
+            .is_some_and(|position| position >= 2.9)
+    });
+    assert_eq!(player.snapshot().properties["path"], json!(path));
+    // A completed title starts at the beginning instead of seeking to EOF.
+    library.update_position(&path, 6.0, 6.0);
+    let completed = library.list_history().remove(0);
+    assert_eq!(
+        crate::history_load_command(&path, Some(&completed))[4],
+        json!({"start":"0"})
+    );
+    player.shutdown().unwrap();
 }
 
 #[cfg(not(target_os = "windows"))]

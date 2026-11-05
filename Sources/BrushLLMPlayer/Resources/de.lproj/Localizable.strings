@@ -276,3 +276,5 @@
 "servers.error.player" = "Die Wiedergabe-Engine hat einen Fehler gemeldet";
 "servers.error.internal" = "Ein interner Fehler ist aufgetreten";
 "servers.error.generic" = "Etwas ist schiefgelaufen";
+
+"controls.progress" = "Wiedergabeposition";

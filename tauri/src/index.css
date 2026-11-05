@@ -117,6 +117,8 @@ html, body, #root {
 
 .button-row {
   display: flex;
+  flex-wrap: wrap;
+  row-gap: 4px;
   align-items: center;
   gap: 2px;
 }
@@ -416,6 +418,8 @@ html, body, #root {
   color: var(--settings-accent-text);
 }
 
+.progress-track:focus-visible,
+.volume-slider:focus-visible,
 .tool-btn:focus-visible,
 .play-btn:focus-visible {
   outline: 2px solid var(--accent-bright);
@@ -2145,13 +2149,11 @@ html, body, #root {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
   padding: 10px 2px 12px;
 }
 
 .net-browser-row {
+  height: 32px;
   display: flex;
   align-items: center;
   gap: 9px;

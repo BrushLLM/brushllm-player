@@ -54,7 +54,8 @@ function isActivatableTarget(target: EventTarget | null): boolean {
 }
 
 function isRangeTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLInputElement && target.type === "range";
+  return (target instanceof HTMLInputElement && target.type === "range")
+    || (target instanceof HTMLElement && target.getAttribute("role") === "slider");
 }
 
 export default function KeyboardHandler({

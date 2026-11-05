@@ -5,11 +5,12 @@
 // playable items and enqueues them). Errors show a retry row; an empty folder
 // shows the empty state; a pending browse shows a centered spinner.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useI18n } from "../../i18n";
 import type { MediaItem, MediaSortMode, ServerSource } from "../../server-state";
 import { formatItemSize, isPlayable, sortMediaItems } from "../../server-state";
+import VirtualList from "../VirtualList";
 import { KindIcon } from "./KindIcon";
 
 export interface BrowserViewProps {
@@ -66,7 +67,7 @@ export default function BrowserView({
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [sortMenuOpen]);
 
-  const sortedItems = sortMediaItems(items, sortMode, sortAscending);
+  const sortedItems = useMemo(() => sortMediaItems(items, sortMode, sortAscending), [items, sortMode, sortAscending]);
   const showPath = server.kind !== "emby" && server.kind !== "jellyfin";
 
   const chooseSort = (mode: MediaSortMode) => {
@@ -147,18 +148,17 @@ export default function BrowserView({
             <span className="net-spinner" />
           </div>
         ) : (
-          <div className="net-browser-list" role="list">
-            {sortedItems.map((item) => (
-              <BrowserRow
-                key={item.id}
-                item={item}
-                kind={server.kind}
-                onEnterDirectory={onEnterDirectory}
-                onPlay={onPlay}
-                onAddFolderToPlaylist={onAddFolderToPlaylist}
-              />
-            ))}
-          </div>
+          <VirtualList
+            key={`${server.id}:${pathStack.join("/")}:${sortMode}:${sortAscending}`}
+            items={sortedItems}
+            itemKey={(item) => item.id}
+            isFocusable={(item) => item.isDirectory || isPlayable(item, server.kind)}
+            renderItem={(item) => (
+              <BrowserRow item={item} kind={server.kind}
+                onEnterDirectory={onEnterDirectory} onPlay={onPlay}
+                onAddFolderToPlaylist={onAddFolderToPlaylist} />
+            )}
+          />
         )}
       </div>
     </div>
@@ -184,7 +184,6 @@ function BrowserRow({
   return (
     <button
       type="button"
-      role="listitem"
       className={`net-browser-row ${disabled ? "disabled" : ""}`}
       disabled={disabled}
       onClick={() => {

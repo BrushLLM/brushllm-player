@@ -99,7 +99,9 @@ fn persist_on_exit(handle: &tauri::AppHandle) {
     let store = handle.try_state::<LibraryStore>();
     let snapshot = player.0.snapshot();
     if snapshot.connected {
-        let _ = player.0.command(&[json!("write-watch-later-config")], false);
+        let _ = player
+            .0
+            .command(&[json!("write-watch-later-config")], false);
     }
     let Some(store) = store else { return };
     // Playlist: filenames in order from the observed "playlist" property.
@@ -118,14 +120,14 @@ fn persist_on_exit(handle: &tauri::AppHandle) {
                     .map(str::to_owned)
             })
             .collect();
-        if !paths.is_empty() {
-            store.save_playlist(&paths);
+        if let Err(error) = store.save_playlist(&paths) {
+            log::warn!("{error}");
         }
     }
     // Position/duration for the current file (media-title as the title).
     let filename = snapshot
         .properties
-        .get("filename")
+        .get("path")
         .and_then(Value::as_str)
         .map(str::to_owned);
     if let Some(path) = filename {
@@ -139,7 +141,9 @@ fn persist_on_exit(handle: &tauri::AppHandle) {
             .get("duration")
             .and_then(Value::as_f64)
             .unwrap_or(0.0);
-        store.update_position(&path, position, duration);
+        if let Err(error) = store.update_position(&path, position, duration) {
+            log::warn!("{error}");
+        }
     }
 }
 
@@ -252,7 +256,10 @@ async fn open_subtitle_dialog(
     let file = tauri::async_runtime::spawn_blocking(move || {
         app.dialog()
             .file()
-            .add_filter("Subtitles", &["srt", "ass", "ssa", "sub", "idx", "vtt", "sup"])
+            .add_filter(
+                "Subtitles",
+                &["srt", "ass", "ssa", "sub", "idx", "vtt", "sup"],
+            )
             .blocking_pick_file()
     })
     .await
@@ -389,11 +396,10 @@ async fn open_file_dialog(
     let owner = player.0.clone();
     // Multi-select: the first file replaces, the rest append (IINA
     // addToPlaylist batch behavior, same as load_files).
-    let files = tauri::async_runtime::spawn_blocking(move || {
-        app.dialog().file().blocking_pick_files()
-    })
-    .await
-    .map_err(|e| owner.error(format!("File dialog failed: {e}")))?;
+    let files =
+        tauri::async_runtime::spawn_blocking(move || app.dialog().file().blocking_pick_files())
+            .await
+            .map_err(|e| owner.error(format!("File dialog failed: {e}")))?;
     let Some(files) = files else { return Ok(None) };
     let mut paths: Vec<String> = Vec::with_capacity(files.len());
     for file in files {
@@ -403,7 +409,9 @@ async fn open_file_dialog(
     if paths.is_empty() {
         return Ok(None);
     }
-    let Some(first) = paths.first() else { return Ok(None) };
+    let Some(first) = paths.first() else {
+        return Ok(None);
+    };
     let first_result = command(
         owner.clone(),
         vec![json!("loadfile"), json!(first), json!("replace")],
@@ -425,8 +433,15 @@ async fn open_file_dialog(
 }
 
 // ---- Media library (history, bookmarks, saved playlist) ----
-// All commands are synchronous and cheap (small JSON files under a Mutex);
-// no async runtime hop is needed, matching player_snapshot's style.
+// Read-only lists stay cheap; transactional disk writes run off the UI thread.
+async fn persist_library<T: Send + 'static>(
+    store: LibraryStore,
+    change: impl FnOnce(LibraryStore) -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(move || change(store))
+        .await
+        .map_err(|error| format!("Media library save failed: {error}"))?
+}
 
 #[tauri::command]
 fn history_list(store: tauri::State<'_, LibraryStore>) -> Vec<HistoryEntry> {
@@ -434,61 +449,92 @@ fn history_list(store: tauri::State<'_, LibraryStore>) -> Vec<HistoryEntry> {
 }
 
 #[tauri::command]
-fn history_record(store: tauri::State<'_, LibraryStore>, path: String, title: String) {
-    store.record_play(&path, &title);
+async fn history_record(
+    store: tauri::State<'_, LibraryStore>,
+    path: String,
+    title: String,
+) -> Result<(), String> {
+    persist_library(store.inner().clone(), move |store| {
+        store.record_play(&path, &title)
+    })
+    .await
 }
 
 #[tauri::command]
-fn history_update(
+async fn history_update(
     store: tauri::State<'_, LibraryStore>,
     path: String,
     position: f64,
     duration: f64,
-) {
-    store.update_position(&path, position, duration);
+) -> Result<(), String> {
+    persist_library(store.inner().clone(), move |store| {
+        store.update_position(&path, position, duration)
+    })
+    .await
 }
 
 #[tauri::command]
-fn history_remove(store: tauri::State<'_, LibraryStore>, path: String) {
-    store.remove_history(&path);
+async fn history_remove(store: tauri::State<'_, LibraryStore>, path: String) -> Result<(), String> {
+    persist_library(store.inner().clone(), move |store| {
+        store.remove_history(&path)
+    })
+    .await
 }
 
 #[tauri::command]
-fn history_clear(store: tauri::State<'_, LibraryStore>) {
-    store.clear_history();
+async fn history_clear(store: tauri::State<'_, LibraryStore>) -> Result<(), String> {
+    persist_library(store.inner().clone(), move |store| store.clear_history()).await
 }
 
-/// Reopen from history: loadfile replace; mpv's resume-playback (watch-later)
-/// seeks to the saved position automatically, so no explicit seek is sent.
+/// Load-time options apply the saved position to this exact media load, so
+/// rapid switches cannot send a late seek to a different file. Library
+/// checkpoints also work when no mpv watch-later file exists yet.
+fn history_load_command(path: &str, entry: Option<&HistoryEntry>) -> Vec<Value> {
+    let start = entry
+        .map(|entry| {
+            let position = entry.position;
+            if position.is_finite()
+                && position > 0.0
+                && (entry.duration <= 0.0
+                    || position < entry.duration - (entry.duration * 0.05).min(2.0))
+            {
+                position
+            } else {
+                0.0
+            }
+        })
+        .unwrap_or(0.0);
+    vec![
+        json!("loadfile"),
+        json!(path),
+        json!("replace"),
+        json!(-1),
+        json!({"start": start.to_string()}),
+    ]
+}
+
 #[tauri::command]
 async fn history_play(
     player: tauri::State<'_, Player>,
     store: tauri::State<'_, LibraryStore>,
     path: String,
 ) -> Result<CommandResult, PlayerError> {
-    let title = store
-        .list_history()
-        .iter()
-        .find(|entry| entry.path == path)
-        .map(|entry| entry.title.clone())
-        .unwrap_or_default();
-    store.record_play(&path, &title);
-    command(
-        player.0.clone(),
-        vec![json!("loadfile"), json!(path), json!("replace")],
-        true,
-    )
-    .await
+    let entries = store.list_history();
+    let entry = entries.iter().find(|entry| entry.path == path);
+    command(player.0.clone(), history_load_command(&path, entry), true).await
 }
 
 #[tauri::command]
-fn bookmark_add(
+async fn bookmark_add(
     store: tauri::State<'_, LibraryStore>,
     path: String,
     time: f64,
     title: String,
-) -> Bookmark {
-    store.add_bookmark(&path, time, &title)
+) -> Result<Bookmark, String> {
+    persist_library(store.inner().clone(), move |store| {
+        store.add_bookmark(&path, time, &title)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -497,18 +543,30 @@ fn bookmark_list(store: tauri::State<'_, LibraryStore>, path: String) -> Vec<Boo
 }
 
 #[tauri::command]
-fn bookmark_remove(store: tauri::State<'_, LibraryStore>, id: u64) {
-    store.remove_bookmark(id);
+async fn bookmark_remove(store: tauri::State<'_, LibraryStore>, id: u64) -> Result<(), String> {
+    persist_library(store.inner().clone(), move |store| {
+        store.remove_bookmark(id)
+    })
+    .await
 }
 
 #[tauri::command]
-fn bookmark_clear(store: tauri::State<'_, LibraryStore>, path: String) {
-    store.clear_bookmarks(&path);
+async fn bookmark_clear(store: tauri::State<'_, LibraryStore>, path: String) -> Result<(), String> {
+    persist_library(store.inner().clone(), move |store| {
+        store.clear_bookmarks(&path)
+    })
+    .await
 }
 
 #[tauri::command]
-fn playlist_save(store: tauri::State<'_, LibraryStore>, paths: Vec<String>) {
-    store.save_playlist(&paths);
+async fn playlist_save(
+    store: tauri::State<'_, LibraryStore>,
+    paths: Vec<String>,
+) -> Result<(), String> {
+    persist_library(store.inner().clone(), move |store| {
+        store.save_playlist(&paths)
+    })
+    .await
 }
 
 /// Rebuild the saved playlist with loadfile append; mpv stays idle (verified:

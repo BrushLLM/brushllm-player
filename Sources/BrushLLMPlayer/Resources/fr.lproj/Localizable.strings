@@ -276,3 +276,5 @@
 "servers.error.player" = "Le moteur de lecture a signalé une erreur";
 "servers.error.internal" = "Une erreur interne s'est produite";
 "servers.error.generic" = "Une erreur s'est produite";
+
+"controls.progress" = "Position de lecture";

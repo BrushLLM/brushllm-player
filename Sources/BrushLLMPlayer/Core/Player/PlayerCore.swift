@@ -22,7 +22,11 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     // MARK: - Published playback state
 
     @Published private(set) var isPaused = true
-    @Published private(set) var position: Double = 0
+    let timeline = PlaybackTimeline()
+    /// Exact playback position; only the isolated timeline publishes its ticks.
+    private(set) var position: Double = 0 {
+        didSet { timeline.update(position, force: isPaused || position == 0) }
+    }
     @Published private(set) var duration: Double = 0
     @Published private(set) var isIdle = true
     @Published private(set) var mediaTitle: String = ""
@@ -1525,6 +1529,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         case "pause":
             if case .flag(let paused)? = value {
                 isPaused = paused
+                if paused { timeline.update(lastPlaybackPosition, force: true) }
                 nowPlaying?.updatePlaybackState(player: self)
             }
         case "time-pos":

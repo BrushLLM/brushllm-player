@@ -276,3 +276,5 @@
 "servers.error.player" = "再生エンジンがエラーを報告しました";
 "servers.error.internal" = "内部エラーが発生しました";
 "servers.error.generic" = "問題が発生しました";
+
+"controls.progress" = "再生位置";

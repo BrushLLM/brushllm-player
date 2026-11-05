@@ -31,6 +31,7 @@
   "controls.speed": "Velocidad de reproducción",
   "controls.unmute": "Activar sonido",
   "controls.video-settings": "Ajustes de vídeo",
+  "controls.progress": "Posición de reproducción",
   "controls.volume": "Volumen",
   "eq.bass": "Graves",
   "eq.mid": "Medios",

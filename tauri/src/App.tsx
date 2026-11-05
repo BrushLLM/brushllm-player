@@ -1,16 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl as openExternal } from "@tauri-apps/plugin-opener";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
-import { applySnapshot, CommandGate, commandError, initialView, sameMedia, trackFraction, volumeAtClick } from "./player-state";
+import { applySnapshot, CommandGate, commandError, initialView, sameMedia, trackFraction, volumeAtClick, sliderValueAtKey } from "./player-state";
 import type { StateSnapshot } from "./player-state";
 import type { LoopMode } from "./components/PlaylistPanel";
 import type { SidebarTab } from "./components/Sidebar";
 import type { HistoryEntry, Bookmark } from "./library-state";
+import { PlaybackHistoryTracker } from "./library-state";
 import { useI18n } from "./i18n";
 import PlaylistPanel from "./components/PlaylistPanel";
 import ChaptersPanel from "./components/ChaptersPanel";
@@ -63,6 +64,12 @@ export default function App() {
   const dragCleanup = useRef<(() => void) | null>(null);
   const mounted = useRef(false);
   const commandGate = useRef(new CommandGate());
+  const [libraryError, setLibraryError] = useState<string | null>(null);
+  const historyTracker = useRef(new PlaybackHistoryTracker());
+  const historyWrites = useRef<Promise<unknown>>(Promise.resolve());
+  const reportLibraryError = useCallback((error: unknown) => {
+    if (mounted.current) setLibraryError(commandError(error).message);
+  }, []);
   const state = view.player;
 
   // New surfaces: sidebar (playlist/chapters/history/bookmarks), popups, URL dialog.
@@ -135,17 +142,14 @@ export default function App() {
     const next = applySnapshot(previous, snapshot);
     if (next === previous) return;
 
-    // Library recording (IINA HistoryController pattern: record on open,
-    // update the final position when playback of that file ends).
-    if (next.connected && !sameMedia(next, previous) && !previous.player.idle && previous.player.fileName) {
-      void invoke("history_record", { path: previous.player.fileName, title: previous.player.mediaTitle || previous.player.fileName }).catch(() => {});
-      void invoke("history_update", {
-        path: previous.player.fileName, position: previous.player.position, duration: previous.player.duration,
-      }).catch(() => {});
-    }
-    if (next.connected && !next.player.idle && previous.player.idle && next.player.fileName && next.player.mediaTitle) {
-      // A new file just started playing.
-      void invoke("history_record", { path: next.player.fileName, title: next.player.mediaTitle }).catch(() => {});
+    // Serialize record/update so a fast EOF cannot save progress before the row exists.
+    for (const write of historyTracker.current.accept(next, {
+      ended: snapshot.endFile !== null,
+      hasPosition: typeof snapshot.properties["time-pos"] === "number",
+    })) {
+      historyWrites.current = historyWrites.current
+        .then(() => invoke(write.command, write.args))
+        .catch(reportLibraryError);
     }
 
     if (!sameMedia(next, previous) || !next.connected) {
@@ -156,7 +160,7 @@ export default function App() {
     }
     viewRef.current = next;
     setView(next);
-  }, []);
+  }, [reportLibraryError]);
   const showError = useCallback((error: unknown, fallback: number, sequence: number) => {
     const parsed = commandError(error);
     const generation = parsed.generation ?? fallback;
@@ -181,6 +185,7 @@ export default function App() {
     let cancelled = false;
     let unlisten: (() => void) | undefined;
     let sequence = commandGate.current.begin();
+    if (!isTauri()) return () => { mounted.current = false; };
     void (async () => {
       try {
         // Listener registration is awaited before readiness/snapshot acquisition.
@@ -210,6 +215,7 @@ export default function App() {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let cancelled = false;
+    if (!isTauri()) return;
     void getCurrentWebview().onDragDropEvent((event) => {
       if (event.payload.type !== "drop") return;
       const paths = event.payload.paths;
@@ -220,9 +226,9 @@ export default function App() {
     }).then((stop) => {
       if (cancelled) stop();
       else unlisten = stop;
-    });
+    }).catch((error) => { if (!cancelled) showError(error, viewRef.current.generation, commandGate.current.begin()); });
     return () => { cancelled = true; unlisten?.(); };
-  }, [runCommand]);
+  }, [runCommand, showError]);
 
   // Restore the persisted playlist once the player is ready (idle append,
   // nothing auto-plays).
@@ -237,21 +243,22 @@ export default function App() {
   useEffect(() => {
     if (!sidebarOpen || sidebarTab !== "history") return;
     let cancelled = false;
-    void invoke<HistoryEntry[]>("history_list")
+    void historyWrites.current.then(() => invoke<HistoryEntry[]>("history_list"))
       .then((entries) => { if (!cancelled) setHistory(entries); })
-      .catch(() => {});
+      .catch((error) => { if (!cancelled) reportLibraryError(error); });
     return () => { cancelled = true; };
-  }, [sidebarOpen, sidebarTab, view.generation, view.mediaEpoch]);
+  }, [sidebarOpen, sidebarTab, state.mediaPath, state.idle, view.generation, view.mediaEpoch]);
 
   // Bookmarks are per-file: refresh on tab open and on media change.
   useEffect(() => {
-    if (!sidebarOpen || sidebarTab !== "bookmarks" || !state.fileName) return;
+    setBookmarks([]);
+    if (!sidebarOpen || sidebarTab !== "bookmarks" || !state.mediaPath) return;
     let cancelled = false;
-    void invoke<Bookmark[]>("bookmark_list", { path: state.fileName })
+    void invoke<Bookmark[]>("bookmark_list", { path: state.mediaPath })
       .then((list) => { if (!cancelled) setBookmarks(list); })
-      .catch(() => {});
+      .catch((error) => { if (!cancelled) reportLibraryError(error); });
     return () => { cancelled = true; };
-  }, [sidebarOpen, sidebarTab, state.fileName, view.generation, view.mediaEpoch]);
+  }, [sidebarOpen, sidebarTab, state.mediaPath, view.generation, view.mediaEpoch]);
 
   // Dismissable error: the invoke-side error clears on dismiss or as soon
   // as a fresh snapshot reports a healthy connection; snapshot-side errors
@@ -263,10 +270,10 @@ export default function App() {
   const rawError = invokeError && invokeError.generation >= view.generation ? invokeError.message : view.error;
   // Localize the mpv end-file error (technical English like "no audio or
   // video data played"); the raw string stays as the tooltip detail.
-  const isMpvLoadError = !invokeError && view.error !== null && view.error !== undefined;
-  const error = isMpvLoadError ? t("player.load-failed") : rawError;
+  const isMpvLoadError = !libraryError && !invokeError && view.error !== null && view.error !== undefined;
+  const error = libraryError || (isMpvLoadError ? t("player.load-failed") : rawError);
   const errorDetail = isMpvLoadError ? rawError : null;
-  const dismissError = () => setInvokeError(null);
+  const dismissError = () => { setLibraryError(null); setInvokeError(null); };
 
   const effectivePosition = scrubbing ? scrubPosition : state.position;
   const progress = state.duration > 0 ? Math.min(effectivePosition / state.duration, 1) : 0;
@@ -337,7 +344,7 @@ export default function App() {
   // the mpv "ontop" property stay in sync.
   const toggleOnTop = () => {
     const next = !state.onTop;
-    void getCurrentWindow().setAlwaysOnTop(next);
+    if (isTauri()) void getCurrentWindow().setAlwaysOnTop(next).catch((error) => showError(error, view.generation, commandGate.current.begin()));
     setProperty("ontop", next ? "yes" : "no");
   };
 
@@ -347,30 +354,35 @@ export default function App() {
   };
 
   // Library actions.
-  const playHistoryEntry = (path: string) => runCommand("history_play", { path });
+  const playHistoryEntry = (path: string) => historyWrites.current.then(() => runCommand("history_play", { path }));
   const removeHistoryEntry = (path: string) => {
-    setHistory((entries) => entries.filter((entry) => entry.path !== path));
-    void runCommand("history_remove", { path });
+    void invoke("history_remove", { path })
+      .then(() => setHistory((entries) => entries.filter((entry) => entry.path !== path)))
+      .catch(reportLibraryError);
   };
   const clearHistory = () => {
-    setHistory([]);
-    void runCommand("history_clear");
+    void invoke("history_clear").then(() => setHistory([])).catch(reportLibraryError);
   };
   const addBookmark = () => {
-    if (!state.fileName || state.idle) return;
+    if (!state.mediaPath || state.idle) return;
+    const media = { generation: view.generation, mediaEpoch: view.mediaEpoch };
     void invoke<Bookmark>("bookmark_add", {
-      path: state.fileName, time: state.position, title: state.mediaTitle || state.fileName,
-    })
-      .then((bookmark) => setBookmarks((list) => [...list, bookmark].sort((a, b) => a.time - b.time)))
-      .catch(() => {});
+      path: state.mediaPath, time: state.position, title: state.mediaTitle || state.fileName || state.mediaPath,
+    }).then((bookmark) => {
+      if (sameMedia(media, viewRef.current)) setBookmarks((list) => [...list, bookmark].sort((a, b) => a.time - b.time));
+    }).catch(reportLibraryError);
   };
   const removeBookmark = (id: number) => {
-    setBookmarks((list) => list.filter((bookmark) => bookmark.id !== id));
-    void runCommand("bookmark_remove", { id });
+    void invoke("bookmark_remove", { id })
+      .then(() => setBookmarks((list) => list.filter((bookmark) => bookmark.id !== id)))
+      .catch(reportLibraryError);
   };
   const clearBookmarks = () => {
-    setBookmarks([]);
-    if (state.fileName) void runCommand("bookmark_clear", { path: state.fileName });
+    if (!state.mediaPath) return;
+    const path = state.mediaPath;
+    void invoke("bookmark_clear", { path }).then(() => {
+      if (viewRef.current.player.mediaPath === path) setBookmarks([]);
+    }).catch(reportLibraryError);
   };
 
   const submitUrl = () => {
@@ -491,6 +503,22 @@ export default function App() {
           <div
             ref={trackRef}
             className="progress-track"
+            role="slider"
+            tabIndex={0}
+            aria-label={t("controls.progress")}
+            aria-valuemin={0}
+            aria-valuemax={state.duration}
+            aria-valuenow={Math.min(effectivePosition, state.duration)}
+            aria-valuetext={`${formatTime(effectivePosition)} / ${formatTime(state.duration)}`}
+            aria-disabled={!view.ready || state.idle || state.duration <= 0}
+            onKeyDown={(event) => {
+              if (event.ctrlKey || event.metaKey || event.altKey || !view.ready || state.idle || state.duration <= 0) return;
+              const position = sliderValueAtKey(event.key, effectivePosition, 0, state.duration, 5);
+              if (position === null) return;
+              event.preventDefault();
+              event.stopPropagation();
+              void runCommand("seek", { position });
+            }}
             onMouseDown={handleTrackMouseDown}
           >
             <div className="progress-bg">
@@ -651,7 +679,24 @@ export default function App() {
             </button>
             <div
               className="volume-slider"
+              role="slider"
+              tabIndex={0}
+              aria-label={t("controls.volume")}
+              aria-valuemin={0}
+              aria-valuemax={130}
+              aria-valuenow={state.volume}
+              aria-valuetext={`${Math.round(state.volume)}%`}
+              aria-disabled={!view.ready}
+              onKeyDown={(event) => {
+                if (event.ctrlKey || event.metaKey || event.altKey || !view.ready) return;
+                const volume = sliderValueAtKey(event.key, state.volume, 0, 130, 5);
+                if (volume === null) return;
+                event.preventDefault();
+                event.stopPropagation();
+                void setVolume(volume);
+              }}
               onClick={(e) => {
+                if (!view.ready) return;
                 const volume = volumeAtClick(e);
                 if (volume !== null) void setVolume(volume);
               }}

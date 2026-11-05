@@ -122,6 +122,16 @@ struct ProgressBar: View {
             )
         }
         .frame(height: 18)
+        .accessibilityRepresentation {
+            Slider(value: Binding(
+                get: { min(max(effectivePosition, 0), max(duration, 0.001)) },
+                set: { onScrubEnded($0) }
+            ), in: 0...max(duration, 0.001), step: min(5, max(duration, 0.001))) {
+                Text(L("controls.progress", "Playback position"))
+            }
+            .disabled(duration <= 0)
+            .accessibilityValue("\(Int(effectivePosition)) / \(Int(max(0, duration)))")
+        }
     }
 
     // MARK: - Pieces

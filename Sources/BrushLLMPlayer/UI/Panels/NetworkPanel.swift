@@ -554,7 +554,7 @@ private struct BrowserView: View {
         pathStack.last ?? "/"
     }
 
-    /// Cached sorted items — recomputed only when items or the sort change.
+    /// Stable sorting of the current listing. Rows below are created lazily.
     private var sortedItems: [MediaItem] {
         settings.mediaSort.apply(items, ascending: settings.mediaSortAscending)
     }
@@ -626,7 +626,7 @@ private struct BrowserView: View {
                            message: L("webdav.empty-folder", "Empty folder"))
         } else {
             ScrollView {
-                VStack(spacing: 4) {
+                LazyVStack(spacing: 4) {
                     ForEach(sortedItems) { item in
                         row(item)
                     }

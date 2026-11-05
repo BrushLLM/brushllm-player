@@ -38,6 +38,7 @@ struct PlayerIconButton: View {
         .buttonStyle(PressedDimButtonStyle())
         .disabled(disabled)
         .help(help)
+        .accessibilityLabel(help)
         .onHover { hovering in
             isHovering = hovering && !disabled
         }
@@ -75,6 +76,7 @@ struct HoverBrightButton: View {
         }
         .buttonStyle(PressedDimButtonStyle())
         .help(help)
+        .accessibilityLabel(help)
         .onHover { isHovering = $0 }
     }
 }

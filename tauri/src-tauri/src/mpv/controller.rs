@@ -23,7 +23,7 @@ const SHUTDOWN_TIMEOUT: Duration = Duration::from_millis(1500);
 const QUIT_GRACE: Duration = Duration::from_millis(150);
 const MAX_LINE: usize = 1024 * 1024;
 const QUEUE_CAPACITY: usize = 64;
-const OBSERVED: [(&str, u64); 31] = [
+const OBSERVED: [(&str, u64); 32] = [
     ("pause", 1),
     ("time-pos", 2),
     ("duration", 3),
@@ -55,6 +55,7 @@ const OBSERVED: [(&str, u64); 31] = [
     ("ontop", 29),
     ("video-aspect-override", 30),
     ("video-rotate", 31),
+    ("path", 32),
 ];
 
 type Reply = Result<Value, String>;
@@ -99,6 +100,7 @@ impl StateSnapshot {
 struct SharedInner {
     snapshot: StateSnapshot,
     pending: HashMap<u64, Sender<Reply>>,
+    last_position_publish: Option<Instant>,
 }
 struct Shared {
     inner: Mutex<SharedInner>,
@@ -110,6 +112,7 @@ impl Shared {
             inner: Mutex::new(SharedInner {
                 snapshot: StateSnapshot::empty(generation),
                 pending: HashMap::new(),
+                last_position_publish: None,
             }),
             sink,
         }
@@ -121,6 +124,11 @@ impl Shared {
         (self.sink)(snapshot);
     }
     fn update(&self, change: impl FnOnce(&mut StateSnapshot)) {
+        self.update_coalesced(false, change);
+    }
+    // Retain every property event, but avoid cloning/serializing the entire
+    // playlist on each playback tick. Lifecycle and user controls are immediate.
+    fn update_coalesced(&self, position_only: bool, change: impl FnOnce(&mut StateSnapshot)) {
         let snapshot = {
             let mut inner = self.inner.lock();
             if !inner.snapshot.connected {
@@ -128,6 +136,16 @@ impl Shared {
             }
             change(&mut inner.snapshot);
             inner.snapshot.revision += 1;
+            let now = Instant::now();
+            if position_only
+                && inner.snapshot.properties.get("pause") != Some(&json!(true))
+                && inner.last_position_publish.is_some_and(|last| {
+                    now.saturating_duration_since(last) < Duration::from_millis(100)
+                })
+            {
+                return;
+            }
+            inner.last_position_publish = Some(now);
             inner.snapshot.clone()
         };
         self.publish(snapshot);
@@ -188,7 +206,7 @@ impl Shared {
                     return;
                 }
                 let value = message.get("data").cloned().unwrap_or(Value::Null);
-                self.update(|state| {
+                self.update_coalesced(name == "time-pos", |state| {
                     state.properties.insert(name.to_owned(), value);
                 });
             }
@@ -204,6 +222,7 @@ impl Shared {
                     "duration",
                     "media-title",
                     "filename",
+                    "path",
                     "playlist",
                     "chapter-list",
                     "chapter",
@@ -318,7 +337,7 @@ impl Default for LaunchConfig {
                 #[cfg(not(target_os = "macos"))]
                 args.push("--vo=gpu-next");
                 args.into_iter().map(str::to_owned).collect()
-            }
+            },
         }
     }
 }

@@ -7,7 +7,10 @@
 //! thin Tauri-managed wrapper that owns the directory and the Mutex.
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::Manager;
 
@@ -68,7 +71,7 @@ fn finite(value: f64) -> f64 {
 /// AppHandle-free core: in-memory state plus load/save against explicit
 /// paths. All mutating methods take `&mut self`, so a plain `Mutex<Library>`
 /// is the concurrency boundary; callers persist via `save` after mutating.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Library {
     history: Vec<HistoryEntry>,
     bookmarks: Vec<Bookmark>,
@@ -81,8 +84,14 @@ pub struct Library {
 impl Library {
     pub fn load(library_path: &Path) -> Self {
         let mut library = Self::default();
-        let Ok(text) = std::fs::read_to_string(library_path) else {
-            return library; // A missing file is a fresh library.
+        let text = match std::fs::read_to_string(library_path) {
+            Ok(text) => text,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return library,
+            Err(error) => {
+                log::warn!("Cannot read library {}: {error}", library_path.display());
+                library.writes_disabled = true;
+                return library;
+            }
         };
         match serde_json::from_str::<Payload>(&text) {
             Ok(payload) => {
@@ -109,31 +118,21 @@ impl Library {
         library
     }
 
-    /// Best-effort persistence: directory is created when missing, failures
-    /// are logged, never fatal.
-    pub fn save(&self, library_path: &Path) {
+    /// Refuse writes to a damaged source and replace valid data atomically.
+    pub fn save(&self, library_path: &Path) -> Result<(), String> {
         if self.writes_disabled {
-            return;
+            return Err(
+                "The media library could not be read; its original data has been preserved".into(),
+            );
         }
-        let payload = Payload {
-            history: self.history.clone(),
-            bookmarks: self.bookmarks.clone(),
-            next_bookmark_id: self.next_bookmark_id,
-        };
-        if let Some(dir) = library_path.parent() {
-            if let Err(error) = std::fs::create_dir_all(dir) {
-                log::warn!("Cannot create library directory {}: {error}", dir.display());
-                return;
-            }
-        }
-        match serde_json::to_string_pretty(&payload) {
-            Ok(text) => {
-                if let Err(error) = std::fs::write(library_path, text) {
-                    log::warn!("Cannot write library {}: {error}", library_path.display());
-                }
-            }
-            Err(error) => log::warn!("Cannot encode library: {error}"),
-        }
+        atomic_json_write(
+            library_path,
+            &Payload {
+                history: self.history.clone(),
+                bookmarks: self.bookmarks.clone(),
+                next_bookmark_id: self.next_bookmark_id,
+            },
+        )
     }
 
     /// Upsert by path (mac `recordPlay`): existing entries keep their position
@@ -225,22 +224,63 @@ impl Library {
     }
 }
 
+/// Write beside the destination, flush before rename, and never truncate the
+/// previous file. Rust's rename replaces existing files on Unix and Windows.
+fn atomic_json_write(path: &Path, value: &impl Serialize) -> Result<(), String> {
+    static NEXT_ID: AtomicU64 = AtomicU64::new(0);
+    let bytes = serde_json::to_vec_pretty(value).map_err(|error| error.to_string())?;
+    let dir = path
+        .parent()
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    std::fs::create_dir_all(dir)
+        .map_err(|error| format!("Cannot create media library directory: {error}"))?;
+    let name = path
+        .file_name()
+        .ok_or("Invalid media library filename")?
+        .to_string_lossy();
+    let (temp, mut file) = loop {
+        let temp = dir.join(format!(
+            ".{name}.{}-{}.tmp",
+            std::process::id(),
+            NEXT_ID.fetch_add(1, Ordering::Relaxed)
+        ));
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temp)
+        {
+            Ok(file) => break (temp, file),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(format!("Cannot save media library: {error}")),
+        }
+    };
+    let result = (|| {
+        file.write_all(&bytes)?;
+        file.sync_all()?;
+        drop(file);
+        std::fs::rename(&temp, path)
+    })();
+    if let Err(error) = result {
+        let _ = std::fs::remove_file(&temp);
+        return Err(format!("Cannot save media library: {error}"));
+    }
+    Ok(())
+}
+
 /// Saved playlist: a plain JSON array of paths in `playlist.json`.
-pub fn save_playlist_file(playlist_path: &Path, paths: &[String]) {
-    if let Some(dir) = playlist_path.parent() {
-        if let Err(error) = std::fs::create_dir_all(dir) {
-            log::warn!("Cannot create playlist directory {}: {error}", dir.display());
-            return;
-        }
-    }
-    match serde_json::to_string_pretty(paths) {
+pub fn save_playlist_file(playlist_path: &Path, paths: &[String]) -> Result<(), String> {
+    match std::fs::read_to_string(playlist_path) {
         Ok(text) => {
-            if let Err(error) = std::fs::write(playlist_path, text) {
-                log::warn!("Cannot write playlist {}: {error}", playlist_path.display());
-            }
+            serde_json::from_str::<Vec<String>>(&text).map_err(|_| {
+                "The saved playlist could not be read; its original data has been preserved"
+                    .to_string()
+            })?;
         }
-        Err(error) => log::warn!("Cannot encode playlist: {error}"),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+        Err(error) => return Err(format!("Cannot read saved playlist: {error}")),
     }
+    atomic_json_write(playlist_path, &paths)
 }
 
 pub fn load_playlist_file(playlist_path: &Path) -> Vec<String> {
@@ -259,13 +299,13 @@ pub fn load_playlist_file(playlist_path: &Path) -> Vec<String> {
     }
 }
 
-/// Tauri-managed state: the app data directory plus the library lock. Every
-/// mutation persists immediately under the lock (small files; the mac app's
-/// debounced save is unnecessary because writes already run off the UI thread).
+/// Tauri-managed state. Commit the in-memory mutation only after persistence
+/// succeeds, so callers can report failures without showing unsaved changes.
+#[derive(Clone)]
 pub struct LibraryStore {
     library_path: PathBuf,
     playlist_path: PathBuf,
-    library: Mutex<Library>,
+    library: Arc<Mutex<Library>>,
 }
 
 impl LibraryStore {
@@ -284,65 +324,61 @@ impl LibraryStore {
         });
         let library_path = dir.join(LIBRARY_FILE);
         Self {
-            library: Mutex::new(Library::load(&library_path)),
+            library: Arc::new(Mutex::new(Library::load(&library_path))),
             library_path,
             playlist_path: dir.join(PLAYLIST_FILE),
         }
     }
 
-    pub fn record_play(&self, path: &str, title: &str) {
+    fn mutate<T>(&self, change: impl FnOnce(&mut Library) -> T) -> Result<T, String> {
         let mut library = self.library.lock();
-        library.record_play(path, title);
-        library.save(&self.library_path);
+        let mut candidate = library.clone();
+        let result = change(&mut candidate);
+        candidate.save(&self.library_path)?;
+        *library = candidate;
+        Ok(result)
     }
 
-    pub fn update_position(&self, path: &str, position: f64, duration: f64) {
-        let mut library = self.library.lock();
-        library.update_position(path, position, duration);
-        library.save(&self.library_path);
+    pub fn record_play(&self, path: &str, title: &str) -> Result<(), String> {
+        self.mutate(|library| library.record_play(path, title))
+    }
+
+    pub fn update_position(&self, path: &str, position: f64, duration: f64) -> Result<(), String> {
+        self.mutate(|library| library.update_position(path, position, duration))
     }
 
     pub fn list_history(&self) -> Vec<HistoryEntry> {
         self.library.lock().list_history()
     }
 
-    pub fn remove_history(&self, path: &str) {
-        let mut library = self.library.lock();
-        library.remove_history(path);
-        library.save(&self.library_path);
+    pub fn remove_history(&self, path: &str) -> Result<(), String> {
+        self.mutate(|library| library.remove_history(path))
     }
 
-    pub fn clear_history(&self) {
-        let mut library = self.library.lock();
-        library.clear_history();
-        library.save(&self.library_path);
+    pub fn clear_history(&self) -> Result<(), String> {
+        self.mutate(|library| library.clear_history())
     }
 
-    pub fn add_bookmark(&self, path: &str, time: f64, title: &str) -> Bookmark {
-        let mut library = self.library.lock();
-        let bookmark = library.add_bookmark(path, time, title);
-        library.save(&self.library_path);
-        bookmark
+    pub fn add_bookmark(&self, path: &str, time: f64, title: &str) -> Result<Bookmark, String> {
+        self.mutate(|library| library.add_bookmark(path, time, title))
     }
 
     pub fn list_bookmarks(&self, path: &str) -> Vec<Bookmark> {
         self.library.lock().list_bookmarks(path)
     }
 
-    pub fn remove_bookmark(&self, id: u64) {
-        let mut library = self.library.lock();
-        library.remove_bookmark(id);
-        library.save(&self.library_path);
+    pub fn remove_bookmark(&self, id: u64) -> Result<(), String> {
+        self.mutate(|library| library.remove_bookmark(id))
     }
 
-    pub fn clear_bookmarks(&self, path: &str) {
-        let mut library = self.library.lock();
-        library.clear_bookmarks(path);
-        library.save(&self.library_path);
+    pub fn clear_bookmarks(&self, path: &str) -> Result<(), String> {
+        self.mutate(|library| library.clear_bookmarks(path))
     }
 
-    pub fn save_playlist(&self, paths: &[String]) {
-        save_playlist_file(&self.playlist_path, paths);
+    pub fn save_playlist(&self, paths: &[String]) -> Result<(), String> {
+        // Also serializes concurrent playlist saves.
+        let _guard = self.library.lock();
+        save_playlist_file(&self.playlist_path, paths)
     }
 
     pub fn load_playlist(&self) -> Vec<String> {
@@ -454,7 +490,7 @@ mod tests {
         library.update_position("/m/a.mkv", 42.0, 100.0);
         library.record_play("/m/b.mkv", "B");
         library.add_bookmark("/m/a.mkv", 33.0, "Mark");
-        library.save(&path);
+        library.save(&path).unwrap();
         let reloaded = Library::load(&path);
         assert_eq!(reloaded.list_history(), library.list_history());
         assert_eq!(
@@ -493,7 +529,7 @@ mod tests {
         std::fs::write(&path, "not json").unwrap();
         let mut library = Library::load(&path);
         library.record_play("/m/a.mkv", "A");
-        library.save(&path);
+        assert!(library.save(&path).is_err());
         assert_eq!(
             std::fs::read_to_string(&path).unwrap(),
             "not json",
@@ -503,13 +539,60 @@ mod tests {
     }
 
     #[test]
+    fn failed_save_does_not_commit_memory_or_consume_bookmark_ids() {
+        let dir = temp_dir("failed-transaction");
+        let blocker = dir.join("blocked");
+        std::fs::write(&blocker, b"keep").unwrap();
+        let store = LibraryStore {
+            library_path: blocker.join(LIBRARY_FILE),
+            playlist_path: dir.join(PLAYLIST_FILE),
+            library: Arc::new(Mutex::new(Library::default())),
+        };
+        assert!(store.record_play("/a/same.mkv", "A").is_err());
+        assert!(store.add_bookmark("/a/same.mkv", 12.0, "A").is_err());
+        assert!(store.list_history().is_empty());
+        assert!(store.list_bookmarks("/a/same.mkv").is_empty());
+        assert_eq!(std::fs::read(&blocker).unwrap(), b"keep");
+        std::fs::remove_file(&blocker).unwrap();
+        let bookmark = store.add_bookmark("/a/same.mkv", 12.0, "A").unwrap();
+        assert_eq!(bookmark.id, 1);
+        store.record_play("/a/same.mkv", "A").unwrap();
+        store.record_play("/b/same.mkv", "B").unwrap();
+        store.add_bookmark("/b/same.mkv", 24.0, "B").unwrap();
+        let reloaded = Library::load(&store.library_path);
+        assert_eq!(reloaded.list_history().len(), 2);
+        assert_eq!(reloaded.list_bookmarks("/a/same.mkv")[0].time, 12.0);
+        assert_eq!(reloaded.list_bookmarks("/b/same.mkv")[0].time, 24.0);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn atomic_replace_preserves_destination_on_failure_and_cleans_staging_files() {
+        let dir = temp_dir("atomic-failure");
+        let destination = dir.join("existing-directory");
+        std::fs::create_dir(&destination).unwrap();
+        std::fs::write(destination.join("keep"), b"original").unwrap();
+        assert!(atomic_json_write(&destination, &vec!["new"]).is_err());
+        assert_eq!(
+            std::fs::read(destination.join("keep")).unwrap(),
+            b"original"
+        );
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
+        let path = dir.join(PLAYLIST_FILE);
+        std::fs::write(&path, b"damaged original").unwrap();
+        assert!(save_playlist_file(&path, &[]).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), b"damaged original");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn playlist_roundtrip_and_missing_files() {
         let dir = temp_dir("playlist");
         let path = dir.join(PLAYLIST_FILE);
         assert!(load_playlist_file(&path).is_empty());
-        save_playlist_file(&path, &["/m/a.mkv".into(), "/m/b.mkv".into()]);
+        save_playlist_file(&path, &["/m/a.mkv".into(), "/m/b.mkv".into()]).unwrap();
         assert_eq!(load_playlist_file(&path), vec!["/m/a.mkv", "/m/b.mkv"]);
-        save_playlist_file(&path, &[]);
+        save_playlist_file(&path, &[]).unwrap();
         assert!(load_playlist_file(&path).is_empty());
         std::fs::write(&path, "broken").unwrap();
         assert!(load_playlist_file(&path).is_empty());

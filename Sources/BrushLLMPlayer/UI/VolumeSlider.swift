@@ -57,5 +57,11 @@ struct VolumeSlider: View {
             )
         }
         .frame(height: 18)
+        .accessibilityRepresentation {
+            Slider(value: $value, in: range, step: 5) {
+                Text(L("controls.volume", "Volume"))
+            }
+            .accessibilityValue("\(Int(value))%")
+        }
     }
 }

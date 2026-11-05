@@ -1,3 +1,5 @@
+import type { PlayerView } from "./player-state";
+
 // Library data model (history + bookmarks) for the Phase 2 port of the mac
 // HistoryBookmarksPanel. Pure types and formatters only — no Tauri imports —
 // so the node test runner can compile this file directly like player-state.ts.
@@ -68,4 +70,52 @@ export function formatHistorySubtitle(entry: HistoryEntry, now: number): string 
 
 export function formatBookmarkTime(seconds: number): string {
   return formatClock(seconds);
+}
+
+/** Serializable writes produced once per load and at progress/end boundaries. */
+export type HistoryWrite =
+  | { command: "history_record"; args: { path: string; title: string } }
+  | { command: "history_update"; args: { path: string; position: number; duration: number } };
+
+/** Property notifications arrive separately: idle=false can precede path/title.
+ * Keep the last valid position across start-file/EOF resets, and never use a
+ * display filename as an identity. The caller executes writes in order. */
+export class PlaybackHistoryTracker {
+  private active: { key: string; path: string; title: string; position: number; duration: number } | null = null;
+  private recordedKey: string | null = null;
+  private lastSave = 0;
+
+  accept(view: PlayerView, { ended = false, now = Date.now(), hasPosition = true }: {
+    ended?: boolean; now?: number; hasPosition?: boolean;
+  } = {}): HistoryWrite[] {
+    const writes: HistoryWrite[] = [];
+    const p = view.player;
+    const key = `${view.generation}:${view.mediaEpoch}`;
+    const playing = view.connected && !p.idle && !ended && !view.error && p.mediaPath !== "";
+    if (this.active && (!playing || this.active.key !== key || this.active.path !== p.mediaPath)) {
+      const { path, position, duration } = this.active;
+      writes.push({ command: "history_update", args: { path, position, duration } });
+      this.active = null;
+    }
+    if (playing) {
+      if (!this.active) {
+        this.active = { key, path: p.mediaPath, title: p.mediaTitle || p.fileName || p.mediaPath,
+          position: p.position, duration: p.duration };
+        const identity = `${key}:${p.mediaPath}`;
+        if (this.recordedKey !== identity) {
+          this.recordedKey = identity;
+          writes.push({ command: "history_record", args: { path: p.mediaPath, title: this.active.title } });
+        }
+        this.lastSave = now;
+      }
+      if (hasPosition) this.active.position = p.position;
+      this.active.duration = Math.max(this.active.duration, p.duration);
+      if (now - this.lastSave >= 5000) {
+        const { path, position, duration } = this.active;
+        writes.push({ command: "history_update", args: { path, position, duration } });
+        this.lastSave = now;
+      }
+    }
+    return writes;
+  }
 }

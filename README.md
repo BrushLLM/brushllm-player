@@ -66,6 +66,8 @@ cd tauri && npm install
 npx tauri build                  # NSIS installer (mpv goes in src-tauri/bin/)
 ```
 
+For frontend-only layout work, `cd tauri && npm run dev` runs a browser preview without starting mpv. Native file dialogs, server access and playback commands require `npx tauri dev`.
+
 macOS requires Xcode 15+ (Swift 5.9); Swift Package Manager resolves MPVKit automatically. Windows requires Node 18+, Rust, and the [mpv binary](https://mpv.io/installation/) unpacked into `tauri/src-tauri/bin/`.
 
 </details>
@@ -82,7 +84,9 @@ macOS requires Xcode 15+ (Swift 5.9); Swift Package Manager resolves MPVKit auto
 
 ## ⚠️ Known limitations
 
-- The Windows app is a newer cross-platform rewrite — it currently covers playback, controls and file opening; the remaining macOS features are being migrated.
+- The Windows app is a newer Tauri implementation. It includes playback controls, file/URL opening, media servers, playlists, chapters, tracks, history and per-file bookmarks; feature parity with the native macOS app is still in progress.
+- The Tauri build uses a separate mpv video window on Windows. Its macOS build is a development control surface (`vo=null`); use the native Swift app to watch video on macOS.
+- Historical records created by older Tauri versions may contain only a basename. Their original directories cannot be reconstructed reliably; open the original media again to create a complete-path entry.
 - Apps are unsigned (code signing can be added to CI later).
 
 ## 📄 License

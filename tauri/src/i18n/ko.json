@@ -31,6 +31,7 @@
   "controls.speed": "재생 속도",
   "controls.unmute": "음소거 해제",
   "controls.video-settings": "비디오 설정",
+  "controls.progress": "재생 위치",
   "controls.volume": "음량",
   "eq.bass": "저음",
   "eq.mid": "중음",
