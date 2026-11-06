@@ -22,7 +22,7 @@ jobs:
       matrix:
         include:
           - name: macOS ARM
-            os: macos-14
+            os: macos-15
             target: aarch64-apple-darwin
             mpv-url: https://github.com/mpv-player/mpv/releases/download/v0.41.0/mpv-v0.41.0-macos-15-arm.zip
           - name: Windows x64
