@@ -34,7 +34,7 @@ jobs:
         run: |
           set -e
           VERSION="${GITHUB_REF_NAME#v}"
-          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="0.0.8"  # workflow_dispatch: no tag
+          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="$(python3 -c 'import json; print(json.load(open("tauri/package.json"))["version"])')"  # workflow_dispatch: no tag
           APP="build/BrushLLM Player.app"
           DMG="build/BrushLLM.Player-$VERSION-arm64.dmg"
           STAGING=$(mktemp -d)
@@ -70,10 +70,17 @@ jobs:
 
           ## What's new in ${VERSION}
 
-          - **Polished playback-end state** — when a video finishes, the screen settles on a clean black start view instead of freezing on the last frame
-          - **Interface refinements** — clearer disabled buttons, visible selection marks on the subtitle color swatches, one selection style across every tab, unified popover backgrounds, and a redesigned dark About window
-          - **Drag-and-drop hint** on the start screen — the feature was always there, now it says so
-          - **README in 9 languages** — every translation lives in its own file under docs/
+          - **Reliable history and bookmarks** — full media paths keep same-named files separate; reopening history restores the saved position and completed media restarts from the beginning
+          - **Safer library saves** — atomic file replacement preserves existing data on failure; failed saves are visible in the interface and disk writes run in the background
+          - **Lower playback overhead** — isolated timeline updates and coalesced IPC snapshots reduce repeated interface work; large media-server folders render only the visible rows
+          - **Accessible controls** — progress and volume sliders expose adjustable values, toolbar icons have clear labels, and compact windows keep all controls reachable
+          - **Developer and platform clarity** — browser preview works without Tauri, Windows regression tests run in CI, and the README documents platform differences and legacy history limitations
+
+          ### 本次更新
+
+          - 修复历史续播和同名文件书签混淆，保存失败时保留原始数据并提示错误
+          - 优化播放进度刷新和大目录浏览，完善进度条、音量条及按钮的辅助功能支持
+          - 改善小窗口布局与浏览器预览，增加 Windows 回归测试
 
           ## Downloads
 
@@ -96,7 +103,9 @@ jobs:
           - **Subtitles** — auto-load matching files, external loading, live styling
           - **9-language UI** with instant switching, manual update checks
 
-          The Windows app (cross-platform rewrite) currently covers playback, controls and file opening; the remaining macOS features are being migrated.
+          Windows includes playback controls, file/URL opening, media servers, playlists, chapters, tracks, history and per-file bookmarks. Some native macOS features are still being migrated. Windows uses a separate mpv video window; macOS downloads use the native Swift app.
+
+          Older Tauri history records containing only a filename cannot recover their original directory automatically. Open the original media again to create a complete-path record.
 
           ## Notes
 
