@@ -5,7 +5,7 @@
 # Embedding the tables in the binary removes all localization file access at
 # runtime: no SPM resource bundle, no CFBundleCreate during launch. The .strings
 # files remain the editable source of truth — rerun this script after editing
-# them (build-app.sh does it automatically).
+# them (package-macos.sh does it automatically).
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
