@@ -140,8 +140,15 @@ jobs:
           if ($setup.ExitCode -ne 0) { throw "NSIS installation failed with exit code $($setup.ExitCode)" }
           $installed = @(Get-ChildItem $installDir -File -Filter '*.exe' | Where-Object Name -NotLike 'uninstall*')
           if ($installed.Count -ne 1) { throw "Expected a single installed Player executable" }
-          & (Join-Path $installDir "bin/mpv.exe") --version
-          if ($LASTEXITCODE -ne 0) { throw "Bundled mpv did not run" }
+
+          # mpv.exe is a GUI executable. Wait for its process so PowerShell reads its exit code.
+          $mpvLog = Join-Path $env:RUNNER_TEMP "mpv-version-$env:ARCH.txt"
+          $mpv = Start-Process -FilePath (Join-Path $installDir "bin/mpv.exe") `
+            -ArgumentList "--version" -Wait -PassThru -RedirectStandardOutput $mpvLog
+          Get-Content -LiteralPath $mpvLog
+          if ($mpv.ExitCode -ne 0 -or -not (Select-String -LiteralPath $mpvLog -Pattern '^mpv v' -Quiet)) {
+            throw "Bundled mpv version check failed with exit code $($mpv.ExitCode)"
+          }
 
           Add-Type -AssemblyName System.Drawing
           $icon = [System.Drawing.Icon]::ExtractAssociatedIcon($installed[0].FullName)
@@ -152,6 +159,7 @@ jobs:
           if ($color.ToArgb() -ne [System.Drawing.Color]::FromArgb(32, 89, 79).ToArgb()) {
             throw "Installed Player executable is missing the teal app icon"
           }
+          Write-Host "Verified the installed Player icon on Windows $env:ARCH"
 
           New-Item -ItemType Directory -Force installers | Out-Null
           Copy-Item $installers[0].FullName "installers/BrushLLM.Player-$env:VERSION-$env:ARCH.exe"
