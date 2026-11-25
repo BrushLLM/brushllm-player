@@ -1,32 +1,36 @@
 # BrushLLM Player
 
-[English](../README.md) | [Deutsch](README.de.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (BR)](README.pt-BR.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md)
+<p><img src="../Sources/BrushLLMPlayer/Resources/Base.lproj/PlayerIcon.svg" width="88" height="88" alt=""></p>
 
-mpv ベースのオープンソース・クロスプラットフォームメディアプレイヤーです。ほぼすべての形式を再生し、WebDAV / SMB / FTP / Emby / Jellyfin から直接ストリーミングでき、9 言語の UI を搭載しています。
+mpv を使ったデスクトップメディアプレーヤーです。ローカルファイル、メディアサーバー、外部字幕に対応します。
 
-## 機能
-
-- **再生** — mpv が対応するほぼすべての形式（MKV、MP4、AVI、MOV、WebM、FLAC、MP3 など）· ハードウェアデコード（VideoToolbox、ライブ切替）· HDR 出力（PQ + EDR）· ISO ディスクイメージ（Blu-ray メインタイトル、DVD を EDL でシームレスに）· A-B ループ · 速度変更 · コマ送り · チャプター
-- **メディアサーバー** — **WebDAV、SMB、FTP、Emby、Jellyfin** を直接ブラウズして再生。並べ替え可能なブラウザ（名前 / 更新日時 / サイズ）とフォルダーからプレイリストへ
-- **ネットワークストリーム** — HTTP(S) 直接リンクと m3u8/HLS。先読みバッファーと User-Agent を調整可能
-- **字幕** — 一致するファイルの自動読み込み、外部字幕、ライブスタイル調整（フォント、サイズ、色、位置）
-- **ライブラリとツール** — ドラッグで並べ替えるプレイリスト · レジューム付き履歴 · ブックマーク · スクリーンショット · 録画 · イコライザー · ミニウィンドウ
-- **その他** — 9 言語 UI の即時切替 · 手動アップデート確認 · テレメトリなし
+**[最新版をダウンロード](https://github.com/BrushLLM/brushllm-player/releases/latest)** · [製品ページ](https://brushllm.com/player/) · [English](../README.md)
 
 ## ダウンロード
 
-最新のインストーラーは [Releases](https://github.com/BrushLLM/brushllm-player/releases) から：
-
-| プラットフォーム | ファイル |
+| デバイス | インストーラー |
 | --- | --- |
-| macOS — Apple Silicon（M シリーズ） | `.dmg`（arm64） |
-| Windows 10/11 — x64（Intel / AMD） | `.exe`（x64） |
-| Windows 10/11 — ARM64（Snapdragon） | `.exe`（arm64） |
+| Apple シリコン搭載 Mac、macOS 14 以降 | `*-arm64.dmg` |
+| Intel または AMD 搭載 PC、Windows 10 または 11 | `*-x64.exe` |
+| ARM64 版 Windows | `*-arm64.exe` |
 
-> **アプリは未署名です。** macOS：初回起動時に右クリックで「開く」を選択（Gatekeeper）。Windows：SmartScreen の警告で「実行」を選択 — インストーラーは 9 言語のセレクター付きで開き、mpv を同梱しているため追加ダウンロードは不要です。
+Mac ではディスクイメージを開き、**BrushLLM Player** を「アプリケーション」に移動します。Windows では CPU に合ったインストーラーを実行します。どちらも mpv を同梱しています。macOS 版はアドホック署名、Windows インストーラーは未署名のため、システムから確認を求められる場合があります。
 
-## ライセンス
+![macOS のダーク表示でローカル動画を再生する BrushLLM Player](../.github/assets/player-macos-dark.jpg)
 
-GPL v3（mpv / libmpv のライセンス）の下で提供 — [LICENSE](../LICENSE) を参照。
+[macOS のライト表示](../.github/assets/player-macos-light.jpg)
 
-開発とアーキテクチャの詳細は [English](../README.md) を参照。
+## メディアを再生
+
+- **ローカルファイルとリンク。** MP4、MKV、WebM、FLAC、MP3 などの動画・音声を開くか、ウィンドウにドラッグします。「ソース」から HTTP(S) の直接リンクや HLS ストリームを開けます。
+- **メディアサーバー。** 「ソース」から WebDAV、SMB、FTP、Emby、Jellyfin を追加します。フォルダーを参照し、ファイルの再生やフォルダーごとのプレイリスト追加ができます。
+- **字幕とトラック。** 内蔵の字幕や音声トラックを選んだり、SRT や ASS の字幕を読み込んだりできます。mpv はローカル動画に対応する字幕も自動で検索します。
+- **再生操作とライブラリ。** タイムラインでシークし、チャプターや全画面表示を使えます。サイドバーではプレイリスト、続きから再生できる履歴、ブックマークを管理します。
+
+## プラットフォームの違い
+
+macOS 版は SwiftUI と libmpv を使用します。ISO ディスクイメージの再生、字幕検索と表示設定、ストリーム録画、macOS の再生中コントロールにも対応します。
+
+Windows 版は Tauri と同梱の mpv プロセスを使用します。通常、動画はメインウィンドウのネイティブ表示領域に表示されます。この領域を利用できない場合は mpv が別ウィンドウを開くことがあります。内蔵字幕と外部字幕に対応します。レイアウトは共通で、両方のプラットフォームで 9 言語を利用できます。
+
+[ビルドとテスト](../README.md#build-and-test) · [GPL-3.0 ライセンス](../LICENSE)

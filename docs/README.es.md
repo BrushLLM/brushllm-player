@@ -1,32 +1,36 @@
 # BrushLLM Player
 
-[English](../README.md) | [Deutsch](README.de.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (BR)](README.pt-BR.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md)
+<p><img src="../Sources/BrushLLMPlayer/Resources/Base.lproj/PlayerIcon.svg" width="88" height="88" alt=""></p>
 
-Un reproductor multimedia de código abierto basado en mpv — reproduce casi cualquier formato, transmite desde WebDAV / SMB / FTP / Emby / Jellyfin e incluye una interfaz en 9 idiomas.
+Un reproductor de escritorio basado en mpv para archivos locales, servidores multimedia y subtítulos propios.
 
-## Funciones
-
-- **Reproducción** — casi cualquier formato compatible con mpv (MKV, MP4, AVI, MOV, WebM, FLAC, MP3, …) · decodificación por hardware (VideoToolbox, conmutación en vivo) · salida HDR (PQ + EDR) · imágenes de disco ISO (título principal de Blu-ray, DVD sin cortes vía EDL) · bucle A-B · velocidad · avance por fotogramas · capítulos
-- **Servidores multimedia** — explora y reproduce directamente desde **WebDAV, SMB, FTP, Emby y Jellyfin**; navegador ordenable (nombre / modificación / tamaño) y carpeta-a-lista-de-reproducción
-- **Transmisiones de red** — enlaces directos HTTP(S) y m3u8/HLS, con búfer de lectura anticipada y User-Agent ajustables
-- **Subtítulos** — carga automática de archivos coincidentes, subtítulos externos, estilo en vivo (fuente, tamaño, color, posición)
-- **Biblioteca y herramientas** — lista de reproducción con reordenar arrastrando · historial con reanudación · marcadores · capturas · grabaciones · ecualizador · mini ventana
-- **Además** — interfaz en 9 idiomas con cambio instantáneo · comprobación manual de actualizaciones · sin telemetría
+**[Descargar la última versión](https://github.com/BrushLLM/brushllm-player/releases/latest)** · [Página del producto](https://brushllm.com/player/) · [English](../README.md)
 
 ## Descarga
 
-Instaladores actuales en [Releases](https://github.com/BrushLLM/brushllm-player/releases):
-
-| Plataforma | Archivo |
+| Equipo | Instalador |
 | --- | --- |
-| macOS — Apple Silicon (serie M) | `.dmg` (arm64) |
-| Windows 10/11 — x64 (Intel/AMD) | `.exe` (x64) |
-| Windows 10/11 — ARM64 (Snapdragon) | `.exe` (arm64) |
+| Mac con Apple Silicon y macOS 14 o posterior | `*-arm64.dmg` |
+| Windows 10 u 11 con Intel o AMD | `*-x64.exe` |
+| Windows en ARM64 | `*-arm64.exe` |
 
-> **Las apps no están firmadas.** macOS: en el primer inicio, clic derecho en la app → *Abrir* (Gatekeeper). Windows: elegir *Ejecutar de todas formas* cuando aparezca SmartScreen — el instalador se abre con un selector de 9 idiomas e incluye mpv, sin descargas adicionales.
+En Mac, abre la imagen de disco y arrastra **BrushLLM Player** a Aplicaciones. En Windows, ejecuta el instalador de tu procesador. Ambas versiones incluyen mpv. La aplicación de macOS lleva una firma ad hoc y el instalador de Windows no está firmado. El sistema puede pedirte que revises la descarga.
 
-## Licencia
+![BrushLLM Player reproduce un archivo local en macOS con apariencia oscura](../.github/assets/player-macos-dark.jpg)
 
-Licenciado bajo GPL v3 (licencias de mpv / libmpv) — ver [LICENSE](../LICENSE).
+[Apariencia clara en macOS](../.github/assets/player-macos-light.jpg)
 
-Desarrollo y arquitectura: ver [English](../README.md).
+## Reproduce tus archivos
+
+- **Archivos y enlaces.** Abre o arrastra archivos de audio y vídeo como MP4, MKV, WebM, FLAC y MP3. Abre enlaces HTTP(S) directos y emisiones HLS desde Fuentes.
+- **Servidores multimedia.** Añade WebDAV, SMB, FTP, Emby o Jellyfin desde Fuentes. Explora carpetas, reproduce un archivo o añade una carpeta a la lista de reproducción.
+- **Subtítulos y pistas.** Selecciona pistas de audio o subtítulos integrados, o carga un archivo SRT o ASS. mpv encuentra subtítulos locales que coincidan con el vídeo.
+- **Reproducción y biblioteca.** Usa la barra de progreso, navega por capítulos o entra en pantalla completa. La barra lateral reúne la lista, el historial con reanudación y los marcadores.
+
+## Diferencias entre plataformas
+
+La aplicación de macOS usa SwiftUI y libmpv. También admite imágenes de disco ISO, búsqueda y estilos de subtítulos, grabación de emisiones e integración con los controles de reproducción de macOS.
+
+La aplicación de Windows usa Tauri y un proceso mpv incluido. El vídeo suele aparecer en la superficie nativa de la ventana principal. Si esa superficie no está disponible, mpv puede abrir su propia ventana. Windows permite usar subtítulos integrados y externos. Ambas aplicaciones comparten el diseño y admiten nueve idiomas.
+
+[Compilación y pruebas](../README.md#build-and-test) · [Licencia GPL-3.0](../LICENSE)

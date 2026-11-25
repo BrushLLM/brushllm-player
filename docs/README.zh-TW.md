@@ -1,32 +1,36 @@
 # BrushLLM Player
 
-[English](../README.md) | [Deutsch](README.de.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (BR)](README.pt-BR.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md)
+<p><img src="../Sources/BrushLLMPlayer/Resources/Base.lproj/PlayerIcon.svg" width="88" height="88" alt=""></p>
 
-一個基於 mpv 的開源跨平台媒體播放器 —— 支援幾乎所有格式，可從 WebDAV / SMB / FTP / Emby / Jellyfin 串流伺服器直接播放，內建 9 語言介面。
+由 mpv 驅動的桌面播放器，可播放本機檔案、瀏覽媒體伺服器並載入外掛字幕。
 
-## 功能
-
-- **播放** —— mpv 支援的幾乎所有格式（MKV、MP4、AVI、MOV、WebM、FLAC、MP3 等）· 硬體解碼（VideoToolbox，即時切換）· HDR 輸出（PQ + EDR）· ISO 光碟映像檔（藍光主標題、DVD 透過 EDL 無縫多段播放）· A-B 循環 · 變速播放 · 逐幀步進 · 章節
-- **媒體伺服器** —— 直接瀏覽並播放 **WebDAV、SMB、FTP、Emby 和 Jellyfin** 上的內容；可排序的瀏覽器（名稱 / 修改時間 / 大小），資料夾一鍵加入播放清單
-- **網路串流** —— HTTP(S) 直連連結和 m3u8/HLS，可調整預讀緩衝和 User-Agent
-- **字幕** —— 自動載入同名字幕檔案、載入外部字幕、即時樣式調整（字體、大小、顏色、位置）
-- **媒體庫與工具** —— 播放清單拖曳排序 · 帶斷點續播的歷史記錄 · 書籤 · 截圖 · 錄製 · 等化器 · 迷你懸浮窗
-- **更多** —— 9 語言介面即時切換 · 手動檢查更新 · 零遙測
+**[下載最新版本](https://github.com/BrushLLM/brushllm-player/releases/latest)** · [Player 產品頁](https://brushllm.com/zh-CN/player/) · [English](../README.md)
 
 ## 下載
 
-最新安裝包見 [Releases](https://github.com/BrushLLM/brushllm-player/releases)：
-
-| 平台 | 檔案 |
+| 裝置 | 安裝檔 |
 | --- | --- |
-| macOS —— Apple Silicon（M 系列） | `.dmg`（arm64） |
-| Windows 10/11 —— x64（Intel/AMD） | `.exe`（x64） |
-| Windows 10/11 —— ARM64（Snapdragon） | `.exe`（arm64） |
+| Apple 晶片 Mac，macOS 14 或更新版本 | `*-arm64.dmg` |
+| Intel 或 AMD 電腦，Windows 10 或 11 | `*-x64.exe` |
+| Windows ARM64 電腦 | `*-arm64.exe` |
 
-> **應用程式未簽署。** macOS：首次啟動請右鍵選擇「開啟」（Gatekeeper）。Windows：遇到 SmartScreen 警告請選擇「仍要執行」—— 安裝器內建 9 語言選擇器並內建 mpv，無需額外下載。
+在 Mac 上打開磁碟映像檔，將 **BrushLLM Player** 拖進「應用程式」。在 Windows 上執行符合處理器的安裝檔。兩版均內附 mpv。macOS 應用程式採用臨時簽署，Windows 安裝檔未簽署，系統可能要求確認下載。
 
-## 授權
+![BrushLLM Player 在 macOS 深色外觀播放本機影片](../.github/assets/player-macos-dark.jpg)
 
-採用 GPL v3 授權（mpv / libmpv 授權條款）—— 見 [LICENSE](../LICENSE)。
+[macOS 淺色外觀](../.github/assets/player-macos-light.jpg)
 
-開發與架構詳情見 [English](../README.md)。
+## 播放媒體
+
+- **本機檔案與連結。** 開啟或拖入 MP4、MKV、WebM、FLAC、MP3 等影音檔案。也可從「媒體來源」開啟 HTTP(S) 直接連結和 HLS 串流。
+- **媒體伺服器。** 從「媒體來源」加入 WebDAV、SMB、FTP、Emby 或 Jellyfin。可瀏覽資料夾、播放單一檔案或將整個資料夾加入播放清單。
+- **字幕與音軌。** 選擇內嵌字幕或音軌，也可載入 SRT、ASS 等字幕檔。mpv 會在本機影片所在的資料夾尋找相符的字幕。
+- **播放與收藏。** 使用進度列跳轉、切換章節或進入全螢幕。側邊欄集中管理播放清單、續播記錄和書籤。
+
+## 平台差異
+
+macOS 版使用 SwiftUI 與 libmpv，另支援 ISO 光碟映像檔播放、字幕搜尋與樣式調整、串流錄製，以及 macOS「播放中」整合。
+
+Windows 版使用 Tauri 與內附的 mpv 程序。影片通常顯示在主視窗原生區域，桌面無法提供該區域時，mpv 可另開影片視窗。Windows 支援內嵌和外掛字幕。兩版共用版面並支援九種介面語言。
+
+[建置與測試說明](../README.md#build-and-test) · [GPL-3.0 授權](../LICENSE)

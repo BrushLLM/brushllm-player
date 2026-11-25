@@ -1,94 +1,64 @@
 <p align="center">
-  <img src=".github/assets/icon.png" width="128" alt="BrushLLM Player">
+  <img src="Sources/BrushLLMPlayer/Resources/Base.lproj/PlayerIcon.svg" width="104" height="104" alt="">
 </p>
 
 <h1 align="center">BrushLLM Player</h1>
 
-<p align="center">
-  <a href="https://github.com/BrushLLM/brushllm-player/releases"><img src="https://img.shields.io/github/v/release/BrushLLM/brushllm-player?style=flat-square&color=orange" alt="Release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL_v3-blue?style=flat-square" alt="License"></a>
-  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey?style=flat-square" alt="Platforms">
-  <img src="https://img.shields.io/badge/UI-9%20languages-success?style=flat-square" alt="Languages">
-</p>
+<p align="center">An mpv-powered desktop player for your files, media servers, and subtitles.</p>
 
 <p align="center">
-  <strong><a href="https://www.brushllm.com">🌐 brushllm.com</a></strong> · <a href="https://github.com/BrushLLM/brushllm-player/releases">Releases</a>
+  <strong><a href="https://github.com/BrushLLM/brushllm-player/releases/latest">Download the latest release</a></strong> ·
+  <a href="https://brushllm.com/player/">Player product page</a>
 </p>
 
-<p align="center">An open-source cross-platform media player built on mpv — plays virtually every format, streams from WebDAV / SMB / FTP / Emby / Jellyfin, and ships a 9-language UI.</p>
+[Deutsch](docs/README.de.md) · [Español](docs/README.es.md) · [Français](docs/README.fr.md) · [Português (BR)](docs/README.pt-BR.md) · [日本語](docs/README.ja.md) · [한국어](docs/README.ko.md) · [简体中文](docs/README.zh-CN.md) · [繁體中文](docs/README.zh-TW.md)
 
-<p align="center">
-  <img src=".github/assets/screenshot.png" width="800" alt="BrushLLM Player">
-</p>
+## Download
 
-[English](README.md) | [Deutsch](docs/README.de.md) | [Español](docs/README.es.md) | [Français](docs/README.fr.md) | [Português (BR)](docs/README.pt-BR.md) | [日本語](docs/README.ja.md) | [简体中文](docs/README.zh-CN.md) | [繁體中文](docs/README.zh-TW.md) | [한국어](docs/README.ko.md)
-
----
-
-## ✨ Features
-
-- **Playback** — every mpv-supported format (MKV, MP4, AVI, MOV, WebM, FLAC, MP3, …) · hardware decoding (VideoToolbox, live toggle) · HDR output (PQ + EDR) · ISO disc images (Blu-ray largest-title, DVD seamless multi-VOB via EDL) · A-B loop · playback speed · frame stepping · chapters
-- **Media servers** — browse and play directly from **WebDAV, SMB, FTP, Emby and Jellyfin**; sortable browser (name / modified / size) and folder-to-playlist
-- **Network streams** — HTTP(S) direct links and m3u8/HLS, with adjustable read-ahead buffer and User-Agent
-- **Subtitles** — auto-load matching sidecar files, external loading, live styling (font, size, color, position)
-- **Library & tools** — playlist with drag-reorder · history with resume · bookmarks · screenshots · stream recording · equalizer · mini floating window
-- **Also** — 9-language UI with instant switching · manual check-for-updates · zero telemetry
-
-## 📥 Download
-
-Grab the latest installer from [Releases](https://github.com/BrushLLM/brushllm-player/releases):
-
-| Platform | File |
+| Device | Pick this installer |
 | --- | --- |
-| macOS — Apple Silicon (M-series) | `.dmg` (arm64) |
-| Windows 10/11 — x64 (Intel/AMD) | `.exe` (x64) |
-| Windows 10/11 — ARM64 (Snapdragon) | `.exe` (arm64) |
+| Mac with Apple Silicon and macOS 14 or later | `*-arm64.dmg` |
+| Windows 10 or 11 on Intel or AMD | `*-x64.exe` |
+| Windows on ARM64 | `*-arm64.exe` |
 
-> **Apps are unsigned.** macOS: right-click the app → **Open** on first launch (Gatekeeper). Windows: choose **Run anyway** when SmartScreen appears — the installer opens with a 9-language selector and bundles mpv, so no extra downloads are needed.
+On Mac, open the disk image and drag **BrushLLM Player** into Applications. On Windows, run the installer for your processor. Both include mpv. The macOS app is ad hoc signed and the Windows installer is unsigned, so your system may ask you to review the download.
 
-## 🌐 UI Languages
+![BrushLLM Player playing a local file on macOS in dark appearance](.github/assets/player-macos-dark.jpg)
 
-English · Deutsch · Español · Français · Português (Brasil) · 日本語 · 简体中文 · 繁體中文 · 한국어
+[Light appearance on macOS](.github/assets/player-macos-light.jpg)
 
-Switch instantly in Settings — no restart.
+## Watch your media
 
-<details>
-<summary><strong>🛠 Develop</strong></summary>
+- **Local files and links.** Open or drop video and audio files such as MP4, MKV, WebM, FLAC, and MP3. Open direct HTTP(S) and HLS links from Sources.
+- **Media servers.** Add WebDAV, SMB, FTP, Emby, or Jellyfin from Sources. Browse folders, open an item, or add a folder to the playlist.
+- **Subtitles and tracks.** Select an embedded subtitle or audio track, or load a separate subtitle file such as SRT or ASS. mpv also finds matching local subtitles next to your video.
+- **Playback and library.** Seek with the timeline, open chapters, and use fullscreen. The sidebar keeps your playlist, resume history, and bookmarks together.
 
-```bash
-# macOS (Swift)
-./scripts/build-app.sh debug     # build + assemble .app
-./scripts/build-app.sh release   # optimized build
-open "build/BrushLLM Player.app"
+## Platform differences
 
-# Windows (Tauri) — run on Windows
-cd tauri && npm install
-npx tauri build                  # NSIS installer (mpv goes in src-tauri/bin/)
+The macOS app uses SwiftUI and libmpv. It also includes ISO disc image playback, subtitle search and styling, stream recording, and macOS Now Playing integration.
+
+The Windows app uses Tauri and a bundled mpv process. Video normally uses a native surface inside the main window. mpv can open its own video window if the desktop cannot provide that surface. Windows supports embedded and external subtitle tracks. The two apps share the layout and nine interface languages.
+
+## Build and test
+
+**macOS.** Select an installed Xcode toolchain. Swift Package Manager downloads MPVKit. Build the app and disk image locally.
+
+```sh
+bash scripts/package-macos.sh release --dmg
+swift test
 ```
 
-For frontend-only layout work, `cd tauri && npm run dev` runs a browser preview without starting mpv. Native file dialogs, server access and playback commands require `npx tauri dev`.
+**Windows.** Install Node.js 22 and the [Tauri desktop prerequisites](https://v2.tauri.app/start/prerequisites/). Extract `mpv.exe` and any companion DLLs for your processor into `tauri/src-tauri/bin/`. Use the [mpv release archives](https://github.com/mpv-player/mpv/releases/tag/v0.41.0).
 
-macOS requires Xcode 15+ (Swift 5.9); Swift Package Manager resolves MPVKit automatically. Windows requires Node 18+, Rust, and the [mpv binary](https://mpv.io/installation/) unpacked into `tauri/src-tauri/bin/`.
+```sh
+cd tauri
+npm ci
+npm run build
+npm test
+npm run tauri -- build --bundles nsis -- --locked
+```
 
-</details>
+For web layout changes, `npm run dev` opens a browser preview. Run `npm run icons` before running Cargo directly. To run Rust tests without bundled mpv resources, set `TAURI_CONFIG` to `{"bundle":{"resources":[]}}` and run `cargo test --locked` in `src-tauri`. The real-mpv integration test uses the binary specified by `BRUSHPLAYER_TEST_MPV`.
 
-<details>
-<summary><strong>🏗 Architecture</strong></summary>
-
-- **macOS app** — Swift 5 + SwiftUI + AppKit, with the shared light and dark desktop layout. Playback core: libmpv via [MPVKit](https://github.com/MPVKit/MPVKit) (GPL build), OpenGL render API. Media servers: URLSession (WebDAV PROPFIND, Emby/Jellyfin REST), Network.framework (FTP), mount_smbfs (SMB). Persistence: UserDefaults (settings), Keychain (server passwords/tokens), JSON (history/bookmarks).
-- **Windows app** — Tauri 2 + React + Rust; spawns the bundled mpv binary and controls it over JSON IPC (Unix domain socket / Windows named pipe).
-- **Localization** — 9 language tables compiled into the binary; runtime switching with no restart.
-- **Update checks** — manual button in Settings; queries the GitHub releases API and opens the release page in the browser (no automatic downloads).
-
-</details>
-
-## ⚠️ Known limitations
-
-- The Windows app is a newer Tauri implementation. It includes playback controls, file/URL opening, media servers, playlists, chapters, tracks, history and per-file bookmarks; feature parity with the native macOS app is still in progress.
-- On Windows the Tauri build embeds mpv in the playback workspace and can fall back to a separate mpv window if the native video surface cannot be created. The macOS Tauri build is a development control surface (`vo=null`). Use the native Swift app to watch video on macOS.
-- Historical records created by older Tauri versions may contain only a basename. Their original directories cannot be reconstructed reliably; open the original media again to create a complete-path entry.
-- Apps are unsigned (code signing can be added to CI later).
-
-## 📄 License
-
-Licensed under GPL v3 (mpv / libmpv licensing) — see [LICENSE](LICENSE).
+[GPL-3.0 license](LICENSE)

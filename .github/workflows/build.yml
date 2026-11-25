@@ -128,13 +128,31 @@ jobs:
           Get-ChildItem $unpacked -Recurse -File -Filter *.dll | Copy-Item -Destination src-tauri/bin/
       - name: Build the NSIS installer
         run: npm run tauri -- build --target $env:RUST_TARGET --bundles nsis -- --locked
-      - name: Stage installer
+      - name: Verify installed app and stage installer
         env:
           VERSION: ${{ needs.version.outputs.number }}
           ARCH: ${{ matrix.arch }}
         run: |
           $installers = @(Get-ChildItem "src-tauri/target/$env:RUST_TARGET/release/bundle/nsis" -File -Filter '*-setup.exe')
           if ($installers.Count -ne 1) { throw "Expected one NSIS installer" }
+          $installDir = Join-Path $env:RUNNER_TEMP "BrushLLMPlayer-$env:ARCH"
+          $setup = Start-Process $installers[0].FullName -ArgumentList "/S", "/D=$installDir" -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw "NSIS installation failed with exit code $($setup.ExitCode)" }
+          $installed = @(Get-ChildItem $installDir -File -Filter '*.exe' | Where-Object Name -NotLike 'uninstall*')
+          if ($installed.Count -ne 1) { throw "Expected a single installed Player executable" }
+          & (Join-Path $installDir "bin/mpv.exe") --version
+          if ($LASTEXITCODE -ne 0) { throw "Bundled mpv did not run" }
+
+          Add-Type -AssemblyName System.Drawing
+          $icon = [System.Drawing.Icon]::ExtractAssociatedIcon($installed[0].FullName)
+          $bitmap = $icon.ToBitmap()
+          $color = $bitmap.GetPixel([int]($bitmap.Width / 2), [int]($bitmap.Height / 5))
+          $bitmap.Dispose()
+          $icon.Dispose()
+          if ($color.ToArgb() -ne [System.Drawing.Color]::FromArgb(32, 89, 79).ToArgb()) {
+            throw "Installed Player executable is missing the teal app icon"
+          }
+
           New-Item -ItemType Directory -Force installers | Out-Null
           Copy-Item $installers[0].FullName "installers/BrushLLM.Player-$env:VERSION-$env:ARCH.exe"
       - uses: actions/upload-artifact@v4
