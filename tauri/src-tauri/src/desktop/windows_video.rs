@@ -9,13 +9,14 @@ use windows::Win32::UI::Shell::{DragAcceptFiles, DragFinish, DragQueryFileW, HDR
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, GetParent, GetWindowLongPtrW, LoadCursorW, RegisterClassW,
     SetWindowLongPtrW, CS_DBLCLKS, GWLP_HINSTANCE, GWLP_USERDATA, HMENU, IDC_ARROW, WINDOW_EX_STYLE,
-    WM_CONTEXTMENU, WM_DROPFILES, WM_LBUTTONDBLCLK, WM_MOUSEMOVE, WM_NCDESTROY, WNDCLASSW, WS_CHILD,
-    WS_CLIPCHILDREN, WS_CLIPSIBLINGS,
+    WM_CONTEXTMENU, WM_DROPFILES, WM_LBUTTONDBLCLK, WM_MOUSEMOVE, WM_NCDESTROY, WM_SIZE, WNDCLASSW,
+    WS_CHILD, WS_CLIPCHILDREN, WS_CLIPSIBLINGS,
 };
 
 struct VideoEvents {
     app: AppHandle,
-    near_left_edge: Cell<bool>,
+    height: Cell<i32>,
+    near_bottom_edge: Cell<bool>,
 }
 
 pub fn create(window: &WebviewWindow) -> Result<isize, String> {
@@ -52,7 +53,8 @@ pub fn create(window: &WebviewWindow) -> Result<isize, String> {
         // until WM_NCDESTROY, including while mpv restarts its video output.
         let target = Box::into_raw(Box::new(VideoEvents {
             app: window.app_handle().clone(),
-            near_left_edge: Cell::new(false),
+            height: Cell::new(1),
+            near_bottom_edge: Cell::new(false),
         }));
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, target as isize);
         DragAcceptFiles(hwnd, true);
@@ -82,11 +84,19 @@ unsafe extern "system" fn handle_message(
             }
             LRESULT(0)
         }
+        WM_SIZE => {
+            if let Some(target) = target.as_ref() {
+                target.height.set((lparam.0 >> 16) as u16 as i32);
+                target.near_bottom_edge.set(false);
+            }
+            DefWindowProcW(hwnd, message, wparam, lparam)
+        }
         WM_MOUSEMOVE => {
             if let Some(target) = target.as_ref() {
-                let near = (0..12).contains(&(lparam.0 as i16));
+                let y = (lparam.0 >> 16) as i16 as i32;
+                let near = (1..=12).contains(&(target.height.get() - y));
                 // Send one event on entering the edge instead of relaying mouse motion.
-                if !target.near_left_edge.replace(near) && near {
+                if !target.near_bottom_edge.replace(near) && near {
                     let mut tracking = TRACKMOUSEEVENT {
                         cbSize: std::mem::size_of::<TRACKMOUSEEVENT>() as u32,
                         dwFlags: TME_LEAVE,
@@ -94,14 +104,14 @@ unsafe extern "system" fn handle_message(
                         dwHoverTime: 0,
                     };
                     let _ = TrackMouseEvent(&mut tracking);
-                    let _ = target.app.emit("video-left-edge", ());
+                    let _ = target.app.emit("video-bottom-edge", ());
                 }
             }
             DefWindowProcW(hwnd, message, wparam, lparam)
         }
         WM_MOUSELEAVE => {
             if let Some(target) = target.as_ref() {
-                target.near_left_edge.set(false);
+                target.near_bottom_edge.set(false);
             }
             LRESULT(0)
         }

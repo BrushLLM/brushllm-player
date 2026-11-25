@@ -70,7 +70,7 @@ struct PlaybackTools: View {
         .popover(isPresented: Binding(
             get: { selected == panel },
             set: { if !$0 && selected == panel { selected = nil } }
-        ), arrowEdge: fullscreen ? .trailing : .bottom) {
+        ), arrowEdge: .bottom) {
             contents()
                 .foregroundStyle(BrushLLMPlayerTheme.controlText)
                 .presentationBackground(BrushLLMPlayerTheme.panelMaterial)

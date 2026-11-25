@@ -42,48 +42,26 @@ struct ControlBar: View {
     }
 
     private var fullscreenControls: some View {
-        VStack(spacing: 10) {
-            fullscreenToolsButton
+        VStack(spacing: 6) {
             HStack(spacing: 8) {
                 playPauseButton
+                progress(compact: true)
                 fullscreenSpeedButton
                 muteButton
+                fullscreenButton
+                fullscreenToolsButton
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    progress(compact: true)
-                    Divider()
-                    PlaybackTools(player: player, showChapters: showChapters, fullscreen: true)
-                }
-                .padding(.vertical, 4)
-            }
-
-            fullscreenButton
-                .frame(maxWidth: .infinity, alignment: .leading)
+            Divider()
+            PlaybackTools(player: player, showChapters: showChapters, fullscreen: true)
         }
-        .padding(8)
-        .frame(width: 224)
-        .frame(maxHeight: .infinity)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
         .background(BrushLLMPlayerTheme.viewingSurface)
-        .overlay(alignment: .trailing) {
-            Rectangle().fill(BrushLLMPlayerTheme.controlSeparator).frame(width: 1)
-        }
     }
 
     private var fullscreenToolsButton: some View {
-        let title = L("player.sidebar-collapse", "Collapse sidebar")
-        return Button(action: hideFullscreenControls) {
-            Label(L("player.options", "Playback options"), systemImage: "chevron.left")
-                .lineLimit(1)
-                .frame(minHeight: 28)
-        }
-        .controlSize(.small)
-        .help(title)
-        .accessibilityLabel(title)
-        .padding(.leading, 4)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        PlayerIconButton(icon: "chevron.down", help: L("player.options", "Playback options"),
+                         action: hideFullscreenControls)
     }
 
     private var fullscreenSpeedButton: some View {
@@ -95,7 +73,7 @@ struct ControlBar: View {
             .help(title)
             .accessibilityLabel(title)
             .accessibilityValue(rate)
-            .popover(isPresented: $speedOpen, arrowEdge: .trailing) {
+            .popover(isPresented: $speedOpen, arrowEdge: .bottom) {
                 PlaybackSpeedPanel(player: player)
                     .presentationBackground(BrushLLMPlayerTheme.panelMaterial)
             }

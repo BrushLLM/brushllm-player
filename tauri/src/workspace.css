@@ -644,8 +644,7 @@
 
 [data-viewing="fullscreen"] .player-workspace {
   position: relative;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   --bg: var(--night-bg);
   --surface: var(--night-bg);
   --text: var(--night-text);
@@ -664,27 +663,20 @@
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
-[data-viewing="fullscreen"] .player-error,
-[data-viewing="fullscreen"] .video-area {
-  grid-column: 2;
-}
-
 .fullscreen-controls {
   grid-column: 1;
-  grid-row: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 224px;
-  min-height: 0;
-  padding: 8px;
+  grid-row: 3;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 8px 16px;
   background: var(--night-bg);
-  border-right: 1px solid var(--night-track);
 }
 
 .fullscreen-disclosure {
-  align-self: flex-start;
-  margin-inline-start: 4px;
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .fullscreen-controls[data-expanded="false"] {
@@ -693,10 +685,13 @@
 
 .fullscreen-controls[data-expanded="false"] .fullscreen-disclosure {
   position: absolute;
-  inset: 0 auto 0 0;
+  grid-column: auto;
+  grid-row: auto;
+  inset: auto 0 0;
   z-index: 1;
-  width: 8px;
-  height: 100%;
+  width: 100%;
+  min-height: 0;
+  height: 8px;
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -704,7 +699,7 @@
 }
 
 .fullscreen-controls[data-expanded="false"] .fullscreen-disclosure:focus-visible {
-  inset: 8px auto auto 8px;
+  inset: auto 8px 8px auto;
   width: 32px;
   height: 28px;
   justify-content: center;
@@ -712,6 +707,8 @@
 }
 
 .fullscreen-transport {
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -723,14 +720,15 @@
   font-variant-numeric: tabular-nums;
 }
 
-.fullscreen-details {
-  min-height: 0;
-  overflow-y: auto;
+.fullscreen-transport .progress-row {
+  flex: 1;
+  gap: 6px;
 }
 
-.fullscreen-details .progress-row {
-  gap: 6px;
-  padding: 2px 2px 6px;
+.fullscreen-details {
+  grid-column: 1 / -1;
+  max-height: 42vh;
+  overflow: auto;
 }
 
 .fullscreen-details .playback-tools,
@@ -741,12 +739,6 @@
 .fullscreen-details .playback-options {
   overflow: visible;
   margin-block-start: 4px;
-}
-
-.fullscreen-exit {
-  display: flex;
-  flex: none;
-  margin-top: auto;
 }
 
 [data-viewing="fullscreen"] .player-error,

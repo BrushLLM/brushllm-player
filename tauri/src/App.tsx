@@ -453,7 +453,7 @@ export default function App() {
       listen<[number, number] | null>("video-context-menu", ({ payload }) => {
         if (active) showVideoSpeedMenu(payload ? new PhysicalPosition(...payload) : undefined);
       }),
-      listen("video-left-edge", () => {
+      listen("video-bottom-edge", () => {
         if (active && fullscreen && !modalOpen) setFullscreenControlsVisible(true);
       }),
     ];

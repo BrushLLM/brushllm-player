@@ -21,32 +21,30 @@ export default function FullscreenControls({
 }: FullscreenControlsProps) {
   const { t } = useI18n();
   const label = t("player.options");
-  const toggleLabel = expanded ? t("player.sidebar-collapse") : label;
 
   return (
     <div className="fullscreen-controls" data-expanded={expanded}>
       <button type="button" className="playback-tool fullscreen-disclosure"
-        aria-label={toggleLabel} title={toggleLabel} aria-expanded={expanded}
+        aria-label={label} title={label} aria-expanded={expanded}
         aria-controls={expanded ? "fullscreen-playback-tools" : undefined}
         onPointerEnter={(event) => {
           if (!expanded && event.pointerType === "mouse") onExpandedChange(true);
         }}
         onClick={() => onExpandedChange(!expanded)}>
-        <PlayerIcon name={expanded ? "chevronLeft" : "chevronRight"} />
-        {expanded && label}
+        <PlayerIcon name={expanded ? "chevronDown" : "chevronUp"} />
       </button>
       {expanded && (
         <>
           <div className="fullscreen-transport">
             {play}
+            {timeline}
             <PlaybackSpeedPicker speed={speed} disabled={!ready} onChange={onSpeedChange} />
             {mute}
+            {exit}
           </div>
           <div className="fullscreen-details" id="fullscreen-playback-tools">
-            {timeline}
             {tools}
           </div>
-          <div className="fullscreen-exit">{exit}</div>
         </>
       )}
     </div>

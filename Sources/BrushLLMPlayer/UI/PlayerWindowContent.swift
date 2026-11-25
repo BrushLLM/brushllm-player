@@ -30,8 +30,6 @@ struct PlayerWindowContent: View {
                                   onSelect: reveal, onOpenFiles: openFiles,
                                   onOpenNetwork: { networkTab = $0 })
                         .id(settings.language)
-                } else if player.isFullscreen && fullscreenControlsVisible {
-                    liveControlBar.id(settings.language)
                 }
 
                 VStack(spacing: 0) {
@@ -41,11 +39,11 @@ struct PlayerWindowContent: View {
                         .padding(.horizontal, viewing ? 0 : 16)
                         .contextMenu { videoContextMenu }
                         .layoutPriority(1)
-                    if !player.isFullscreen { controlBar }
+                    if !player.isFullscreen || fullscreenControlsVisible { controlBar }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .overlay(alignment: .leading) {
+            .overlay(alignment: .bottom) {
                 if player.isFullscreen && !fullscreenControlsVisible { fullscreenRevealHandle }
             }
             .onChange(of: player.isFullscreen) { _, fullscreen in
@@ -137,7 +135,7 @@ struct PlayerWindowContent: View {
 
     @ViewBuilder
     private var controlBar: some View {
-        if player.isLiveResizing, let barSnapshot {
+        if player.isLiveResizing, !player.isFullscreen, let barSnapshot {
             // Do not lay out the live controls during the window animation.
             Image(nsImage: barSnapshot)
                 .resizable()
@@ -159,12 +157,12 @@ struct PlayerWindowContent: View {
             fullscreenControlsVisible = true
         } label: {
             Color.clear
-                .frame(width: 8)
-                .frame(maxHeight: .infinity)
+                .frame(height: 8)
+                .frame(maxWidth: .infinity)
                 .contentShape(.rect)
-                .overlay(alignment: .topLeading) {
+                .overlay(alignment: .bottomTrailing) {
                     if fullscreenRevealFocused {
-                        Image(systemName: "chevron.right")
+                        Image(systemName: "chevron.up")
                             .frame(width: 32, height: 28)
                             .foregroundStyle(BrushLLMPlayerTheme.accentText)
                             .background(BrushLLMPlayerTheme.selectionFill, in: .rect(cornerRadius: DesignRadius.row))
