@@ -329,6 +329,10 @@
   background: var(--bg);
 }
 
+[data-viewing="windowed"] .control-bar {
+  padding-top: 20px;
+}
+
 .progress-row,
 .button-row,
 .transport-group,
@@ -376,8 +380,8 @@
 .seek-time-hint {
   position: absolute;
   z-index: 1;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  bottom: calc(50% + 7px);
+  transform: translateX(-50%);
   padding: 4px 7px;
   border-radius: 5px;
   background: var(--seek-hint-bg);
@@ -666,24 +670,14 @@
 .fullscreen-controls {
   grid-column: 1;
   grid-row: 3;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   padding: 8px 16px;
   background: var(--night-bg);
 }
 
-.fullscreen-disclosure {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.fullscreen-controls[data-expanded="false"] {
-  display: contents;
-}
-
-.fullscreen-controls[data-expanded="false"] .fullscreen-disclosure {
+.fullscreen-reveal {
   position: absolute;
   grid-column: auto;
   grid-row: auto;
@@ -698,17 +692,16 @@
   opacity: 0;
 }
 
-.fullscreen-controls[data-expanded="false"] .fullscreen-disclosure:focus-visible {
+.fullscreen-reveal:focus-visible {
   inset: auto 8px 8px auto;
-  width: 32px;
+  width: auto;
   height: 28px;
+  padding-inline: 8px;
   justify-content: center;
   opacity: 1;
 }
 
 .fullscreen-transport {
-  grid-column: 1;
-  grid-row: 1;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -726,7 +719,6 @@
 }
 
 .fullscreen-details {
-  grid-column: 1 / -1;
   max-height: 42vh;
   overflow: auto;
 }

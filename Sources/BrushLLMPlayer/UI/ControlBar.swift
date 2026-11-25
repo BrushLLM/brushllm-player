@@ -4,8 +4,10 @@ import SwiftUI
 struct ControlBar: View {
     @ObservedObject var player: PlayerCore
     let showChapters: () -> Void
-    let hideFullscreenControls: () -> Void
+    let onFullscreenInteractionChange: (Bool) -> Void
     @State private var speedOpen = false
+    @State private var toolPanelOpen = false
+    @State private var scrubbing = false
 
     var body: some View {
         Group {
@@ -25,7 +27,8 @@ struct ControlBar: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                .padding(.top, player.isMiniWindow ? 8 : 16)
+                .padding(.bottom, 8)
                 .background(player.isMiniWindow ? BrushLLMPlayerTheme.viewingSurface : BrushLLMPlayerTheme.window)
             }
         }
@@ -49,19 +52,17 @@ struct ControlBar: View {
                 fullscreenSpeedButton
                 muteButton
                 fullscreenButton
-                fullscreenToolsButton
             }
             Divider()
-            PlaybackTools(player: player, showChapters: showChapters, fullscreen: true)
+            PlaybackTools(player: player, showChapters: showChapters, fullscreen: true,
+                          onPanelChange: { toolPanelOpen = $0 })
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(BrushLLMPlayerTheme.viewingSurface)
-    }
-
-    private var fullscreenToolsButton: some View {
-        PlayerIconButton(icon: "chevron.down", help: L("player.options", "Playback options"),
-                         action: hideFullscreenControls)
+        .onChange(of: speedOpen || toolPanelOpen || scrubbing) { _, interacting in
+            onFullscreenInteractionChange(interacting)
+        }
     }
 
     private var fullscreenSpeedButton: some View {
@@ -81,7 +82,8 @@ struct ControlBar: View {
     }
 
     private func progress(compact: Bool) -> some View {
-        PlaybackProgressView(player: player, timeline: player.timeline, compact: compact)
+        PlaybackProgressView(player: player, timeline: player.timeline, compact: compact,
+                             onScrubbingChange: { if player.isFullscreen { scrubbing = $0 } })
             .id(player.loadGeneration)
     }
 

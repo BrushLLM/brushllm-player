@@ -1,22 +1,22 @@
 use std::cell::Cell;
 use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 use windows::core::{w, PCWSTR};
-use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, WPARAM};
-use windows::Win32::Graphics::Gdi::ScreenToClient;
+use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
+use windows::Win32::Graphics::Gdi::{ClientToScreen, ScreenToClient};
 use windows::Win32::UI::Controls::WM_MOUSELEAVE;
 use windows::Win32::UI::Input::KeyboardAndMouse::{TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT};
 use windows::Win32::UI::Shell::{DragAcceptFiles, DragFinish, DragQueryFileW, HDROP};
 use windows::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, GetParent, GetWindowLongPtrW, LoadCursorW, RegisterClassW,
-    SetWindowLongPtrW, CS_DBLCLKS, GWLP_HINSTANCE, GWLP_USERDATA, HMENU, IDC_ARROW, WINDOW_EX_STYLE,
-    WM_CONTEXTMENU, WM_DROPFILES, WM_LBUTTONDBLCLK, WM_MOUSEMOVE, WM_NCDESTROY, WM_SIZE, WNDCLASSW,
-    WS_CHILD, WS_CLIPCHILDREN, WS_CLIPSIBLINGS,
+    CreateWindowExW, DefWindowProcW, GetClientRect, GetParent, GetWindowLongPtrW, LoadCursorW,
+    RegisterClassW, SetWindowLongPtrW, CS_DBLCLKS, GWLP_HINSTANCE, GWLP_USERDATA, HMENU, IDC_ARROW,
+    WINDOW_EX_STYLE, WM_CONTEXTMENU, WM_DROPFILES, WM_LBUTTONDBLCLK, WM_MOUSEMOVE, WM_NCDESTROY,
+    WM_SIZE, WNDCLASSW, WS_CHILD, WS_CLIPCHILDREN, WS_CLIPSIBLINGS,
 };
 
 struct VideoEvents {
     app: AppHandle,
     height: Cell<i32>,
-    near_bottom_edge: Cell<bool>,
+    near_bottom_edge: Cell<Option<bool>>,
 }
 
 pub fn create(window: &WebviewWindow) -> Result<isize, String> {
@@ -54,7 +54,7 @@ pub fn create(window: &WebviewWindow) -> Result<isize, String> {
         let target = Box::into_raw(Box::new(VideoEvents {
             app: window.app_handle().clone(),
             height: Cell::new(1),
-            near_bottom_edge: Cell::new(false),
+            near_bottom_edge: Cell::new(None),
         }));
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, target as isize);
         DragAcceptFiles(hwnd, true);
@@ -80,14 +80,16 @@ unsafe extern "system" fn handle_message(
         }
         WM_CONTEXTMENU => {
             if let Some(target) = target.as_ref() {
-                let _ = target.app.emit("video-context-menu", context_menu_position(hwnd, lparam));
+                let _ = target
+                    .app
+                    .emit("video-context-menu", context_menu_position(hwnd, lparam));
             }
             LRESULT(0)
         }
         WM_SIZE => {
             if let Some(target) = target.as_ref() {
                 target.height.set((lparam.0 >> 16) as u16 as i32);
-                target.near_bottom_edge.set(false);
+                target.near_bottom_edge.set(None);
             }
             DefWindowProcW(hwnd, message, wparam, lparam)
         }
@@ -95,8 +97,8 @@ unsafe extern "system" fn handle_message(
             if let Some(target) = target.as_ref() {
                 let y = (lparam.0 >> 16) as i16 as i32;
                 let near = (1..=12).contains(&(target.height.get() - y));
-                // Send one event on entering the edge instead of relaying mouse motion.
-                if !target.near_bottom_edge.replace(near) && near {
+                let previous = target.near_bottom_edge.replace(Some(near));
+                if previous.is_none() {
                     let mut tracking = TRACKMOUSEEVENT {
                         cbSize: std::mem::size_of::<TRACKMOUSEEVENT>() as u32,
                         dwFlags: TME_LEAVE,
@@ -104,14 +106,18 @@ unsafe extern "system" fn handle_message(
                         dwHoverTime: 0,
                     };
                     let _ = TrackMouseEvent(&mut tracking);
-                    let _ = target.app.emit("video-bottom-edge", ());
+                }
+                // The embedded video stops above the controls while they are visible.
+                if previous != Some(near) {
+                    let at_window_bottom = near && touches_window_bottom(hwnd, target.height.get());
+                    let _ = target.app.emit("video-controls-hover", at_window_bottom);
                 }
             }
             DefWindowProcW(hwnd, message, wparam, lparam)
         }
         WM_MOUSELEAVE => {
             if let Some(target) = target.as_ref() {
-                target.near_bottom_edge.set(false);
+                target.near_bottom_edge.set(None);
             }
             LRESULT(0)
         }
@@ -142,6 +148,18 @@ unsafe extern "system" fn handle_message(
     }
 }
 
+unsafe fn touches_window_bottom(hwnd: HWND, height: i32) -> bool {
+    let Ok(parent) = GetParent(hwnd) else {
+        return false;
+    };
+    let mut point = POINT { x: 0, y: height };
+    let mut bounds = RECT::default();
+    ClientToScreen(hwnd, &mut point).as_bool()
+        && ScreenToClient(parent, &mut point).as_bool()
+        && GetClientRect(parent, &mut bounds).is_ok()
+        && point.y == bounds.bottom
+}
+
 unsafe fn context_menu_position(hwnd: HWND, lparam: LPARAM) -> Option<[i32; 2]> {
     // Windows supplies signed screen coordinates or -1 for a keyboard request.
     if lparam.0 == -1 {
@@ -152,5 +170,7 @@ unsafe fn context_menu_position(hwnd: HWND, lparam: LPARAM) -> Option<[i32; 2]> 
         x: lparam.0 as i16 as i32,
         y: (lparam.0 >> 16) as i16 as i32,
     };
-    ScreenToClient(parent, &mut point).as_bool().then_some([point.x, point.y])
+    ScreenToClient(parent, &mut point)
+        .as_bool()
+        .then_some([point.x, point.y])
 }

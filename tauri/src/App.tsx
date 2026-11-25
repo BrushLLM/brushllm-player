@@ -78,7 +78,6 @@ export default function App() {
   };
   const [subtitleAutoLoad, setSubtitleAutoLoad] = useState(readSubtitleAutoLoad);
   const [savingSubtitleAutoLoad, setSavingSubtitleAutoLoad] = useState(false);
-  const [fullscreenControlsVisible, setFullscreenControlsVisible] = useState(false);
   const [networkTab, setNetworkTab] = useState<NetworkTab | null>(null);
   const [clearRequest, setClearRequest] = useState<{ label: string; action: () => void } | null>(null);
   const modalOpen = aboutOpen || settingsOpen || networkTab !== null || clearRequest !== null;
@@ -183,9 +182,6 @@ export default function App() {
   const viewing = mode !== "windowed";
   const fullscreen = mode === "fullscreen";
 
-  useEffect(() => {
-    if (!fullscreen) setFullscreenControlsVisible(false);
-  }, [fullscreen]);
   const hasVideo = state.tracks.some(({ type, selected }) => type === "video" && selected);
 
   const runCommand = useCallback(async (command: string, args?: Record<string, unknown>) => {
@@ -453,9 +449,6 @@ export default function App() {
       listen<[number, number] | null>("video-context-menu", ({ payload }) => {
         if (active) showVideoSpeedMenu(payload ? new PhysicalPosition(...payload) : undefined);
       }),
-      listen("video-bottom-edge", () => {
-        if (active && fullscreen && !modalOpen) setFullscreenControlsVisible(true);
-      }),
     ];
     for (const subscription of subscriptions) {
       void subscription.catch((error) => { if (active) reportDesktopError(error); });
@@ -464,7 +457,7 @@ export default function App() {
       active = false;
       for (const subscription of subscriptions) void subscription.then((stop) => stop()).catch(() => {});
     };
-  }, [fullscreen, output, modalOpen, openDroppedPaths, reportDesktopError, showVideoSpeedMenu, toggleFullscreen]);
+  }, [output, modalOpen, openDroppedPaths, reportDesktopError, showVideoSpeedMenu, toggleFullscreen]);
 
   useEffect(() => {
     if (modalOpen || mode === "windowed") return;
@@ -586,8 +579,7 @@ export default function App() {
         {fullscreen && (
           <FullscreenControls play={playButton} mute={muteButton} exit={fullscreenButton}
             timeline={timeline} tools={playbackOptions}
-            expanded={fullscreenControlsVisible} onExpandedChange={setFullscreenControlsVisible}
-            ready={view.ready} speed={state.speed} onSpeedChange={setSpeed} />
+            ready={view.ready} speed={state.speed} onSpeedChange={setSpeed} onError={reportDesktopError} />
         )}
         <div className="video-area" ref={stageRef} tabIndex={view.ready ? 0 : undefined}
           role="region" aria-label={t("menu.video")}

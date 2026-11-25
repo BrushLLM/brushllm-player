@@ -16,6 +16,8 @@ struct PlayerWindowContent: View {
     @State private var subtitleSearchVisible = false
     @State private var barSnapshot: NSImage?
     @State private var fullscreenControlsVisible = false
+    @State private var pointerAtFullscreenControls = false
+    @State private var usingFullscreenControls = false
     @FocusState private var fullscreenRevealFocused: Bool
 
     private var viewing: Bool { player.isMiniWindow || player.isFullscreen }
@@ -38,8 +40,15 @@ struct PlayerWindowContent: View {
                         .clipShape(RoundedRectangle(cornerRadius: viewing ? 0 : 12))
                         .padding(.horizontal, viewing ? 0 : 16)
                         .contextMenu { videoContextMenu }
+                        .onHover { hovering in
+                            if hovering && player.isFullscreen { pointerAtFullscreenControls = false }
+                        }
                         .layoutPriority(1)
-                    if !player.isFullscreen || fullscreenControlsVisible { controlBar }
+                    if !player.isFullscreen || fullscreenControlsVisible {
+                        controlBar.onHover { hovering in
+                            if player.isFullscreen { pointerAtFullscreenControls = hovering }
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -47,7 +56,11 @@ struct PlayerWindowContent: View {
                 if player.isFullscreen && !fullscreenControlsVisible { fullscreenRevealHandle }
             }
             .onChange(of: player.isFullscreen) { _, fullscreen in
-                if !fullscreen { fullscreenControlsVisible = false }
+                if !fullscreen {
+                    fullscreenControlsVisible = false
+                    pointerAtFullscreenControls = false
+                    usingFullscreenControls = false
+                }
             }
             .onChange(of: narrowLayout, initial: true) { _, value in
                 narrow = value
@@ -57,6 +70,11 @@ struct PlayerWindowContent: View {
                 barSnapshot = resizing && !player.isFullscreen
                     ? renderBarSnapshot(width: geometry.size.width - railWidth) : nil
             }
+        }
+        .task(id: shouldHideFullscreenControls) {
+            guard shouldHideFullscreenControls else { return }
+            try? await Task.sleep(for: .milliseconds(180))
+            if !Task.isCancelled && shouldHideFullscreenControls { fullscreenControlsVisible = false }
         }
         .background(viewing ? BrushLLMPlayerTheme.videoMatte : BrushLLMPlayerTheme.window)
         .frame(minWidth: player.isMiniWindow ? 300 : 640, minHeight: player.isMiniWindow ? 160 : 340)
@@ -148,22 +166,32 @@ struct PlayerWindowContent: View {
 
     private var liveControlBar: some View {
         ControlBar(player: player, showChapters: { reveal(.chapters) },
-                   hideFullscreenControls: { fullscreenControlsVisible = false })
+                   onFullscreenInteractionChange: { usingFullscreenControls = $0 })
             .environment(\.colorScheme, viewing ? .dark : colorScheme)
     }
 
+    private var shouldHideFullscreenControls: Bool {
+        player.isFullscreen && fullscreenControlsVisible && !pointerAtFullscreenControls && !usingFullscreenControls
+    }
+
+    private func revealFullscreenControls() {
+        pointerAtFullscreenControls = true
+        fullscreenControlsVisible = true
+    }
+
     private var fullscreenRevealHandle: some View {
-        Button {
-            fullscreenControlsVisible = true
-        } label: {
+        let label = L("player.options", "Playback options")
+        return Button(action: revealFullscreenControls) {
             Color.clear
                 .frame(height: 8)
                 .frame(maxWidth: .infinity)
                 .contentShape(.rect)
                 .overlay(alignment: .bottomTrailing) {
                     if fullscreenRevealFocused {
-                        Image(systemName: "chevron.up")
-                            .frame(width: 32, height: 28)
+                        Text(label)
+                            .font(.system(size: 12, weight: .medium))
+                            .padding(.horizontal, 8)
+                            .frame(height: 28)
                             .foregroundStyle(BrushLLMPlayerTheme.accentText)
                             .background(BrushLLMPlayerTheme.selectionFill, in: .rect(cornerRadius: DesignRadius.row))
                             .padding(8)
@@ -173,9 +201,9 @@ struct PlayerWindowContent: View {
         }
         .buttonStyle(.plain)
         .focused($fullscreenRevealFocused)
-        .accessibilityLabel(L("player.options", "Playback options"))
+        .accessibilityLabel(label)
         .onHover { hovering in
-            if hovering { fullscreenControlsVisible = true }
+            if hovering { revealFullscreenControls() }
         }
         .environment(\.colorScheme, .dark)
     }

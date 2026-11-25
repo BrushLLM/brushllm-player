@@ -4,6 +4,7 @@ struct PlaybackTools: View {
     @ObservedObject var player: PlayerCore
     let showChapters: () -> Void
     var fullscreen = false
+    var onPanelChange: (Bool) -> Void = { _ in }
 
     @State private var selected: Panel?
 
@@ -56,6 +57,7 @@ struct PlaybackTools: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(L("player.options", "Playback options"))
+        .onChange(of: selected != nil) { _, open in onPanelChange(open) }
     }
 
     private var hasLoop: Bool { player.abLoopA != nil || player.abLoopB != nil }

@@ -87,6 +87,7 @@ struct ProgressBar: View {
             .overlay {
                 if showsTimeHint, let hoverFraction, duration > 0 {
                     let halfWidth: CGFloat = 32
+                    let hintHeight: CGFloat = 18
                     let x = min(max(hoverFraction * width, halfWidth), max(width - halfWidth, halfWidth))
                     Text(playbackClock(Double(hoverFraction) * duration))
                         .font(.system(size: 11, weight: .medium).monospacedDigit())
@@ -94,11 +95,11 @@ struct ProgressBar: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                         .padding(.horizontal, 7)
-                        .padding(.vertical, 4)
+                        .frame(height: hintHeight)
                         .frame(maxWidth: halfWidth * 2)
                         .background(BrushLLMPlayerTheme.seekHintMaterial, in: .rect(cornerRadius: 5))
                         .fixedSize()
-                        .position(x: x, y: height / 2)
+                        .position(x: x, y: barY - 5 - hintHeight / 2)
                         .accessibilityHidden(true)
                 }
             }

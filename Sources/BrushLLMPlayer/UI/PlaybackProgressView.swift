@@ -6,6 +6,7 @@ struct PlaybackProgressView: View {
     @ObservedObject var player: PlayerCore
     @ObservedObject var timeline: PlaybackTimeline
     var compact = false
+    var onScrubbingChange: (Bool) -> Void = { _ in }
     @State private var dragPosition: Double?
 
     var body: some View {
@@ -26,6 +27,8 @@ struct PlaybackProgressView: View {
             )
             timeLabel(player.duration, trailing: false)
         }
+        .onChange(of: dragPosition != nil) { _, dragging in onScrubbingChange(dragging) }
+        .onDisappear { if dragPosition != nil { onScrubbingChange(false) } }
     }
 
     private func timeLabel(_ seconds: Double, trailing: Bool) -> some View {
