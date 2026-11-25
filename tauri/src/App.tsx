@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { LogicalPosition, PhysicalPosition } from "@tauri-apps/api/dpi";
 import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl as openExternal } from "@tauri-apps/plugin-opener";
@@ -23,12 +24,13 @@ import SettingsPanel from "./components/SettingsPanel";
 import NetworkPanel, { type NetworkTab } from "./components/NetworkPanel";
 import PlayerIcon from "./components/PlayerIcon";
 import PlaybackOptions from "./components/PlaybackOptions";
-import PlaybackSpeedPicker from "./components/PlaybackSpeedPicker";
+import FullscreenControls from "./components/FullscreenControls";
 import { readSubtitleAutoLoad, rememberSubtitleAutoLoad } from "./components/SubtitleAutoLoadControl";
 import type { SubtitleAutoLoad } from "./components/SubtitleAutoLoadControl";
 import PlaybackTimeline from "./components/PlaybackTimeline";
 import ClearLibraryDialog from "./components/ClearLibraryDialog";
 import { useNativeVideoSurface, useViewingMode } from "./desktop-window";
+import { useVideoSpeedMenu } from "./video-context-menu";
 
 const GITHUB_PROJECT_URL = "https://github.com/BrushLLM/brushllm-player";
 const GITHUB_RELEASES_URL = "https://github.com/BrushLLM/brushllm-player/releases";
@@ -76,7 +78,6 @@ export default function App() {
   };
   const [subtitleAutoLoad, setSubtitleAutoLoad] = useState(readSubtitleAutoLoad);
   const [savingSubtitleAutoLoad, setSavingSubtitleAutoLoad] = useState(false);
-  const [fullscreenToolsExpanded, setFullscreenToolsExpanded] = useState(false);
   const [networkTab, setNetworkTab] = useState<NetworkTab | null>(null);
   const [clearRequest, setClearRequest] = useState<{ label: string; action: () => void } | null>(null);
   const modalOpen = aboutOpen || settingsOpen || networkTab !== null || clearRequest !== null;
@@ -181,9 +182,6 @@ export default function App() {
   const viewing = mode !== "windowed";
   const fullscreen = mode === "fullscreen";
 
-  useEffect(() => {
-    if (!fullscreen) setFullscreenToolsExpanded(false);
-  }, [fullscreen]);
   const hasVideo = state.tracks.some(({ type, selected }) => type === "video" && selected);
 
   const runCommand = useCallback(async (command: string, args?: Record<string, unknown>) => {
@@ -196,6 +194,17 @@ export default function App() {
     }
     catch (error) { showError(error, generation, sequence); }
   }, [showError]);
+
+  const setSpeed = useCallback((value: string) => {
+    void runCommand("set_property", { name: "speed", value });
+  }, [runCommand]);
+  const popupVideoSpeedMenu = useVideoSpeedMenu(setSpeed, reportDesktopError);
+  const showVideoSpeedMenu = useCallback((position?: LogicalPosition | PhysicalPosition) => {
+    const current = viewRef.current;
+    if (!modalOpen && current.ready) {
+      void popupVideoSpeedMenu(t("controls.speed"), current.player.speed, position);
+    }
+  }, [modalOpen, popupVideoSpeedMenu, t]);
 
   const changeSubtitleAutoLoad = async (mode: SubtitleAutoLoad) => {
     setSavingSubtitleAutoLoad(true);
@@ -437,6 +446,9 @@ export default function App() {
       listen<string[]>("video-files-dropped", (event) => {
         if (active && !modalOpen) void openDroppedPaths(event.payload);
       }),
+      listen<[number, number] | null>("video-context-menu", ({ payload }) => {
+        if (active) showVideoSpeedMenu(payload ? new PhysicalPosition(...payload) : undefined);
+      }),
     ];
     for (const subscription of subscriptions) {
       void subscription.catch((error) => { if (active) reportDesktopError(error); });
@@ -445,7 +457,7 @@ export default function App() {
       active = false;
       for (const subscription of subscriptions) void subscription.then((stop) => stop()).catch(() => {});
     };
-  }, [output, modalOpen, openDroppedPaths, reportDesktopError, toggleFullscreen]);
+  }, [output, modalOpen, openDroppedPaths, reportDesktopError, showVideoSpeedMenu, toggleFullscreen]);
 
   useEffect(() => {
     if (modalOpen || mode === "windowed") return;
@@ -479,6 +491,29 @@ export default function App() {
       disabled={!view.ready || state.idle} aria-label={playLabel} title={playLabel}>
       <PlayerIcon name={state.paused || state.idle ? "play" : "pause"} />
     </button>
+  );
+  const muteButton = (
+    <button className="tool-btn" type="button" onClick={toggleMute} disabled={!view.ready}
+      aria-label={muteLabel} title={muteLabel}>
+      <PlayerIcon name={state.muted ? "mute" : "volume"} />
+    </button>
+  );
+  const fullscreenButton = (
+    <button type="button" className="tool-btn" title={fullscreenLabel} aria-label={fullscreenLabel}
+      onClick={toggleFullscreen} disabled={output === "detached" && state.idle}>
+      <PlayerIcon name={fullscreen ? "fullscreenExit" : "fullscreen"} />
+    </button>
+  );
+  const timeline = (
+    <PlaybackTimeline key={failureKey + "/" + mode} position={state.position} duration={state.duration}
+      abLoopA={state.abLoopA} abLoopB={state.abLoopB} canSeek={canSeek}
+      showTimeHint={!viewing} onSeek={seekFromTimeline} />
+  );
+  const playbackOptions = (
+    <PlaybackOptions state={state} ready={view.ready} modalOpen={modalOpen} fullscreen={fullscreen}
+      subtitleAutoLoad={subtitleAutoLoadControl} onCommand={runCommand}
+      onToggleOnTop={toggleOnTop} onShowChapters={() => showSidebarSection("chapters")}
+      onSelectChapter={selectChapter} />
   );
 
   return (
@@ -541,9 +576,21 @@ export default function App() {
           </div>
         )}
 
-        <div className="video-area" ref={stageRef} onDoubleClick={(event) => {
-          if (event.target === event.currentTarget && !state.idle) toggleFullscreen();
-        }}>
+        {fullscreen && (
+          <FullscreenControls play={playButton} mute={muteButton} exit={fullscreenButton}
+            timeline={timeline} tools={playbackOptions}
+            ready={view.ready} speed={state.speed} onSpeedChange={setSpeed} />
+        )}
+        <div className="video-area" ref={stageRef} tabIndex={view.ready ? 0 : undefined}
+          role="region" aria-label={t("menu.video")}
+          onDoubleClick={(event) => {
+            if (event.target === event.currentTarget && !state.idle) toggleFullscreen();
+          }}
+          onContextMenu={(event) => {
+            if (!isTauri() || modalOpen || !view.ready) return;
+            event.preventDefault();
+            showVideoSpeedMenu(new LogicalPosition(event.clientX, event.clientY));
+          }}>
           {view.loading ? (
             <div className="video-status" role="status">{t("player.loading")}</div>
           ) : state.idle ? (
@@ -576,11 +623,9 @@ export default function App() {
           ) : null}
         </div>
 
-        <div className="control-bar">
+        {!fullscreen && <div className="control-bar">
           {viewing && playButton}
-          <PlaybackTimeline key={failureKey + "/" + mode} position={state.position} duration={state.duration}
-            abLoopA={state.abLoopA} abLoopB={state.abLoopB} canSeek={canSeek}
-            showTimeHint={!viewing} onSeek={seekFromTimeline} />
+          {timeline}
 
           <div className="button-row">
             {!viewing && (
@@ -602,15 +647,8 @@ export default function App() {
             )}
 
             <div className="viewing-group">
-              {fullscreen && (
-                <PlaybackSpeedPicker speed={state.speed} disabled={!view.ready}
-                  onChange={(value) => setProperty("speed", value)} />
-              )}
               <div className="volume-control">
-                <button className="tool-btn" type="button" onClick={toggleMute} disabled={!view.ready}
-                  aria-label={muteLabel} title={muteLabel}>
-                  <PlayerIcon name={state.muted ? "mute" : "volume"} />
-                </button>
+                {muteButton}
                 {!viewing && (
                   <div className="volume-slider" role="slider" tabIndex={view.ready ? 0 : -1}
                     aria-label={t("controls.volume")} aria-valuemin={0} aria-valuemax={130}
@@ -635,36 +673,19 @@ export default function App() {
                   </div>
                 )}
               </div>
-              {fullscreen && (
-                <button type="button" className="playback-tool"
-                  aria-expanded={fullscreenToolsExpanded}
-                  aria-controls={fullscreenToolsExpanded ? "playback-tools" : undefined}
-                  onClick={() => setFullscreenToolsExpanded(!fullscreenToolsExpanded)}>
-                  <PlayerIcon name={fullscreenToolsExpanded ? "chevronDown" : "chevronUp"} />
-                  {t("player.options")}
-                </button>
-              )}
               <div className="window-actions">
-                {mode !== "fullscreen" && output !== "detached" && (
+                {output !== "detached" && (
                   <button type="button" className="tool-btn" title={miniLabel}
                     aria-label={miniLabel} onClick={() => void changeMode(mode === "mini" ? "windowed" : "mini")}>
                     <PlayerIcon name={mode === "mini" ? "miniExit" : "mini"} />
                   </button>
                 )}
-                <button type="button" className="tool-btn" title={fullscreenLabel} aria-label={fullscreenLabel}
-                  onClick={toggleFullscreen} disabled={output === "detached" && state.idle}>
-                  <PlayerIcon name={mode === "fullscreen" ? "fullscreenExit" : "fullscreen"} />
-                </button>
+                {fullscreenButton}
               </div>
             </div>
           </div>
-        </div>
-        {(!viewing || (fullscreen && fullscreenToolsExpanded)) && (
-          <PlaybackOptions key={mode} state={state} ready={view.ready} modalOpen={modalOpen} fullscreen={fullscreen}
-            subtitleAutoLoad={subtitleAutoLoadControl} onCommand={runCommand}
-            onToggleOnTop={toggleOnTop} onShowChapters={() => showSidebarSection("chapters")}
-            onSelectChapter={selectChapter} />
-        )}
+        </div>}
+        {!viewing && playbackOptions}
       </main>
 
       {clearRequest && (

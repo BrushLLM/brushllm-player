@@ -78,7 +78,7 @@ export default function PlaybackOptions({
 
   return (
     <>
-      <div id="playback-tools" className="playback-tools" role="group" aria-label={t("player.options")}>
+      <div className="playback-tools" role="group" aria-label={t("player.options")}>
         {panels.filter(({ id }) => fullscreen ? id !== "speed" : id !== "chapters").map((option) => (
           <button key={option.id} type="button" className="playback-tool"
             disabled={!ready && option.id !== "sub" && option.id !== "chapters"}

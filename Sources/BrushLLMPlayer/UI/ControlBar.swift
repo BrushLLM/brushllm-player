@@ -1,51 +1,79 @@
 import SwiftUI
 
-/// The timeline stays aligned to the stage while transport, sound and viewing
-/// controls form separate groups below it.
+/// Arranges the same transport and timeline for each viewing mode.
 struct ControlBar: View {
     @ObservedObject var player: PlayerCore
     let showChapters: () -> Void
     @State private var speedOpen = false
     @State private var toolsExpanded = false
 
-    private var compact: Bool { player.isMiniWindow || player.isFullscreen }
-
     var body: some View {
         Group {
-            if compact {
-                VStack(spacing: 4) {
-                    viewingControls
-                    if player.isFullscreen && toolsExpanded {
-                        Divider().padding(.vertical, 2)
-                        PlaybackTools(player: player, showChapters: showChapters, fullscreen: true)
+            if player.isFullscreen {
+                fullscreenControls
+            } else {
+                Group {
+                    if player.isMiniWindow {
+                        miniControls
+                    } else {
+                        VStack(spacing: 4) {
+                            progress(compact: false)
+                            transport
+                            Divider().padding(.vertical, 2)
+                            PlaybackTools(player: player, showChapters: showChapters)
+                        }
                     }
                 }
-            } else {
-                VStack(spacing: 4) {
-                    progress(compact: false)
-                    transport
-                    Divider().padding(.vertical, 2)
-                    PlaybackTools(player: player, showChapters: showChapters)
-                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(player.isMiniWindow ? BrushLLMPlayerTheme.viewingSurface : BrushLLMPlayerTheme.window)
             }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(compact ? BrushLLMPlayerTheme.viewingSurface : BrushLLMPlayerTheme.window)
-        .onChange(of: player.isFullscreen) { _, fullscreen in
-            if !fullscreen { toolsExpanded = false }
         }
     }
 
-    private var viewingControls: some View {
+    private var miniControls: some View {
         HStack(spacing: 8) {
             playPauseButton
             progress(compact: true)
-            if player.isFullscreen { fullscreenSpeedButton }
             muteButton
-            if player.isFullscreen { fullscreenToolsButton }
-            if player.isMiniWindow { miniButton }
+            miniButton
             fullscreenButton
+        }
+    }
+
+    private var fullscreenControls: some View {
+        VStack(spacing: 10) {
+            fullscreenToolsButton
+            let layout = toolsExpanded ? AnyLayout(HStackLayout(spacing: 8)) : AnyLayout(VStackLayout(spacing: 8))
+            layout {
+                playPauseButton
+                fullscreenSpeedButton
+                muteButton
+            }
+            .frame(maxWidth: .infinity, alignment: toolsExpanded ? .leading : .center)
+
+            if toolsExpanded {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 10) {
+                        progress(compact: true)
+                        Divider()
+                        PlaybackTools(player: player, showChapters: showChapters, fullscreen: true)
+                    }
+                    .padding(.vertical, 4)
+                }
+            } else {
+                Spacer(minLength: 0)
+            }
+
+            fullscreenButton
+                .frame(maxWidth: .infinity, alignment: toolsExpanded ? .leading : .center)
+        }
+        .padding(8)
+        .frame(width: toolsExpanded ? 224 : 64)
+        .frame(maxHeight: .infinity)
+        .background(BrushLLMPlayerTheme.viewingSurface)
+        .overlay(alignment: .trailing) {
+            Rectangle().fill(BrushLLMPlayerTheme.controlSeparator).frame(width: 1)
         }
     }
 
@@ -53,11 +81,15 @@ struct ControlBar: View {
         Button {
             toolsExpanded.toggle()
         } label: {
-            Label(L("player.options", "Playback options"),
-                  systemImage: toolsExpanded ? "chevron.down" : "chevron.up")
-                .lineLimit(1)
+            HStack(spacing: 6) {
+                Image(systemName: toolsExpanded ? "chevron.left" : "chevron.right")
+                if toolsExpanded { Text(L("player.options", "Playback options")).lineLimit(1) }
+            }
+            .frame(minWidth: 32, minHeight: 28)
         }
         .controlSize(.small)
+        .help(L("player.options", "Playback options"))
+        .accessibilityLabel(L("player.options", "Playback options"))
         .accessibilityAddTraits(toolsExpanded ? .isSelected : [])
     }
 
@@ -70,7 +102,7 @@ struct ControlBar: View {
             .help(title)
             .accessibilityLabel(title)
             .accessibilityValue(rate)
-            .popover(isPresented: $speedOpen, arrowEdge: .bottom) {
+            .popover(isPresented: $speedOpen, arrowEdge: .trailing) {
                 PlaybackSpeedPanel(player: player)
                     .presentationBackground(BrushLLMPlayerTheme.panelMaterial)
             }

@@ -1,11 +1,12 @@
 use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 use windows::core::{w, PCWSTR};
-use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, WPARAM};
+use windows::Win32::Graphics::Gdi::ScreenToClient;
 use windows::Win32::UI::Shell::{DragAcceptFiles, DragFinish, DragQueryFileW, HDROP};
 use windows::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, GetWindowLongPtrW, LoadCursorW, RegisterClassW,
+    CreateWindowExW, DefWindowProcW, GetParent, GetWindowLongPtrW, LoadCursorW, RegisterClassW,
     SetWindowLongPtrW, CS_DBLCLKS, GWLP_HINSTANCE, GWLP_USERDATA, HMENU, IDC_ARROW,
-    WINDOW_EX_STYLE, WM_DROPFILES, WM_LBUTTONDBLCLK, WM_NCDESTROY, WNDCLASSW, WS_CHILD,
+    WINDOW_EX_STYLE, WM_CONTEXTMENU, WM_DROPFILES, WM_LBUTTONDBLCLK, WM_NCDESTROY, WNDCLASSW, WS_CHILD,
     WS_CLIPCHILDREN, WS_CLIPSIBLINGS,
 };
 
@@ -64,6 +65,12 @@ unsafe extern "system" fn handle_message(
             }
             LRESULT(0)
         }
+        WM_CONTEXTMENU => {
+            if let Some(target) = target.as_ref() {
+                let _ = target.emit("video-context-menu", context_menu_position(hwnd, lparam));
+            }
+            LRESULT(0)
+        }
         WM_DROPFILES => {
             let drop = HDROP(wparam.0 as _);
             let count = DragQueryFileW(drop, u32::MAX, None);
@@ -89,4 +96,17 @@ unsafe extern "system" fn handle_message(
         }
         _ => DefWindowProcW(hwnd, message, wparam, lparam),
     }
+}
+
+unsafe fn context_menu_position(hwnd: HWND, lparam: LPARAM) -> Option<[i32; 2]> {
+    // Windows supplies signed screen coordinates or -1 for a keyboard request.
+    if lparam.0 == -1 {
+        return None;
+    }
+    let parent = GetParent(hwnd).ok()?;
+    let mut point = POINT {
+        x: lparam.0 as i16 as i32,
+        y: (lparam.0 >> 16) as i16 as i32,
+    };
+    ScreenToClient(parent, &mut point).as_bool().then_some([point.x, point.y])
 }

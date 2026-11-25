@@ -28,6 +28,8 @@ struct PlayerWindowContent: View {
                                   onSelect: reveal, onOpenFiles: openFiles,
                                   onOpenNetwork: { networkTab = $0 })
                         .id(settings.language)
+                } else if player.isFullscreen {
+                    liveControlBar.id(settings.language)
                 }
 
                 VStack(spacing: 0) {
@@ -37,7 +39,7 @@ struct PlayerWindowContent: View {
                         .padding(.horizontal, viewing ? 0 : 16)
                         .contextMenu { videoContextMenu }
                         .layoutPriority(1)
-                    controlBar
+                    if !player.isFullscreen { controlBar }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -46,7 +48,8 @@ struct PlayerWindowContent: View {
             }
             .onChange(of: player.isLiveResizing) { _, resizing in
                 let railWidth: CGFloat = viewing ? 0 : (compact ? 64 : 200)
-                barSnapshot = resizing ? renderBarSnapshot(width: geometry.size.width - railWidth) : nil
+                barSnapshot = resizing && !player.isFullscreen
+                    ? renderBarSnapshot(width: geometry.size.width - railWidth) : nil
             }
         }
         .background(viewing ? BrushLLMPlayerTheme.videoMatte : BrushLLMPlayerTheme.window)
@@ -211,6 +214,20 @@ struct PlayerWindowContent: View {
         Divider()
         Button(L("menu.next", "Next")) { player.playlistNext() }
         Button(L("menu.previous", "Previous")) { player.playlistPrevious() }
+        Divider()
+        Menu(L("controls.speed", "Playback speed")) {
+            ForEach(PlaybackSpeedPanel.rates(including: player.speed), id: \.self) { rate in
+                Button {
+                    player.speed = rate
+                } label: {
+                    if rate == player.speed {
+                        Label(PlaybackSpeedPanel.label(rate), systemImage: "checkmark")
+                    } else {
+                        Text(PlaybackSpeedPanel.label(rate))
+                    }
+                }
+            }
+        }
         Divider()
         if !player.audioTracks.isEmpty {
             Menu(L("menu.audio", "Audio")) {

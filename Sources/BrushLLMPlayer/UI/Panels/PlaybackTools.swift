@@ -70,7 +70,7 @@ struct PlaybackTools: View {
         .popover(isPresented: Binding(
             get: { selected == panel },
             set: { if !$0 && selected == panel { selected = nil } }
-        ), arrowEdge: .bottom) {
+        ), arrowEdge: fullscreen ? .trailing : .bottom) {
             contents()
                 .foregroundStyle(BrushLLMPlayerTheme.controlText)
                 .presentationBackground(BrushLLMPlayerTheme.panelMaterial)
@@ -99,6 +99,12 @@ struct PlaybackTools: View {
 struct PlaybackSpeedPanel: View {
     @ObservedObject var player: PlayerCore
 
+    private static let presets: [Double] = [0.5, 0.75, 1, 1.25, 1.5, 2]
+
+    static func rates(including speed: Double) -> [Double] {
+        presets.contains(speed) ? presets : (presets + [speed]).sorted()
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(L("controls.speed", "Playback speed"))
@@ -118,7 +124,7 @@ struct PlaybackSpeedPanel: View {
             }
             Divider()
             HStack(spacing: 4) {
-                ForEach([0.5, 0.75, 1, 1.25, 1.5, 2], id: \.self) { option in
+                ForEach(Self.presets, id: \.self) { option in
                     Button(Self.label(option)) { player.speed = option }
                         .accessibilityAddTraits(player.speed == option ? .isSelected : [])
                 }
