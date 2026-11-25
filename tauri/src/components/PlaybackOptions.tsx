@@ -4,6 +4,8 @@ import type { PlayerState } from "../player-state";
 import { useI18n } from "../i18n";
 import PlayerIcon from "./PlayerIcon";
 import type { PlayerIconName } from "./PlayerIcon";
+import PlaybackSpeedPicker from "./PlaybackSpeedPicker";
+import ChaptersPanel from "./ChaptersPanel";
 import TrackMenu from "./TrackMenu";
 import VideoSettingsMenu from "./VideoSettingsMenu";
 import VideoEqMenu from "./VideoEqMenu";
@@ -14,9 +16,11 @@ interface PlaybackOptionsProps {
   state: PlayerState;
   ready: boolean;
   modalOpen: boolean;
+  fullscreen: boolean;
   subtitleAutoLoad: SubtitleAutoLoadProps;
   onCommand: (command: string, args?: Record<string, unknown>) => void;
   onShowChapters: () => void;
+  onSelectChapter: (index: number) => void;
   onToggleOnTop: () => void;
 }
 
@@ -26,10 +30,11 @@ const panels = [
   { id: "sub", title: "panel.tracks.subtitle", icon: "captions" },
   { id: "video", title: "controls.video-settings", icon: "adjustments" },
   { id: "equalizer", title: "controls.equalizer", icon: "equalizer" },
+  { id: "chapters", title: "panel.chapters", icon: "playlist" },
 ] as const satisfies ReadonlyArray<{ id: string; title: string; icon: PlayerIconName }>;
 
 export default function PlaybackOptions({
-  state, ready, modalOpen, subtitleAutoLoad, onCommand, onShowChapters, onToggleOnTop,
+  state, ready, modalOpen, fullscreen, subtitleAutoLoad, onCommand, onShowChapters, onSelectChapter, onToggleOnTop,
 }: PlaybackOptionsProps) {
   const { t } = useI18n();
   const [section, setSection] = useState<typeof panels[number] | null>(null);
@@ -52,8 +57,8 @@ export default function PlaybackOptions({
       event.preventDefault();
       closePanel();
     };
-    window.addEventListener("keydown", onEscape);
-    return () => window.removeEventListener("keydown", onEscape);
+    window.addEventListener("keydown", onEscape, true);
+    return () => window.removeEventListener("keydown", onEscape, true);
   }, [closePanel, modalOpen, section]);
 
   const setProperty = (name: string, value: string) => onCommand("set_property", { name, value });
@@ -73,10 +78,10 @@ export default function PlaybackOptions({
 
   return (
     <>
-      <div className="playback-tools" role="group" aria-label={t("player.options")}>
-        {panels.map((option) => (
+      <div id="playback-tools" className="playback-tools" role="group" aria-label={t("player.options")}>
+        {panels.filter(({ id }) => fullscreen ? id !== "speed" : id !== "chapters").map((option) => (
           <button key={option.id} type="button" className="playback-tool"
-            disabled={!ready && option.id !== "sub"}
+            disabled={!ready && option.id !== "sub" && option.id !== "chapters"}
             aria-expanded={section === option}
             aria-controls={section === option ? "playback-options" : undefined}
             onClick={(event) => {
@@ -90,7 +95,7 @@ export default function PlaybackOptions({
             <span>{t(option.title)}</span>
           </button>
         ))}
-        {action("playlist", t("panel.chapters"), onShowChapters)}
+        {!fullscreen && action("playlist", t("panel.chapters"), onShowChapters)}
         {action("camera", t("menu.screenshot"), () => onCommand("screenshot"), !active)}
         {action("repeat", t("menu.ab-loop"), () => sendMpv("ab-loop"), !active,
           state.abLoopA !== null || state.abLoopB !== null)}
@@ -112,13 +117,8 @@ export default function PlaybackOptions({
             </button>
           </header>
           {section.id === "speed" && (
-            <label className="options-speed">
-              <select aria-label={t("controls.speed")} disabled={!ready} value={state.speed}
-                onChange={(event) => setProperty("speed", event.target.value)}>
-                {[...new Set([0.5, 0.75, 1, 1.25, 1.5, 2, state.speed])].sort((a, b) => a - b)
-                  .map((speed) => <option key={speed} value={speed}>{Number(speed.toFixed(2))}×</option>)}
-              </select>
-            </label>
+            <PlaybackSpeedPicker speed={state.speed} disabled={!ready}
+              onChange={(speed) => setProperty("speed", speed)} />
           )}
           {(section.id === "audio" || section.id === "sub") && (
             <>
@@ -148,6 +148,10 @@ export default function PlaybackOptions({
             <VideoEqMenu brightness={state.brightness} contrast={state.contrast}
               saturation={state.saturation} deinterlace={state.deinterlace}
               onSetProperty={setProperty} />
+          )}
+          {section.id === "chapters" && (
+            <ChaptersPanel chapters={state.chapters} currentChapter={state.currentChapter}
+              onSelect={onSelectChapter} showTitle={false} />
           )}
         </section>
       )}

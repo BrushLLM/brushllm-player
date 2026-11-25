@@ -3,16 +3,21 @@ import SwiftUI
 struct PlaybackTools: View {
     @ObservedObject var player: PlayerCore
     let showChapters: () -> Void
+    var fullscreen = false
 
     @State private var selected: Panel?
 
     private enum Panel {
-        case speed, audio, subtitles, video, effects, loop
+        case speed, audio, subtitles, video, effects, chapters, loop
     }
 
     var body: some View {
         WrappingRows() {
-            panelButton(.speed, icon: "gauge.medium", title: L("controls.speed", "Playback speed")) { speed }
+            if !fullscreen {
+                panelButton(.speed, icon: "gauge.medium", title: L("controls.speed", "Playback speed")) {
+                    PlaybackSpeedPanel(player: player)
+                }
+            }
             panelButton(.audio, icon: "headphones", title: L("panel.tracks.audio", "Audio")) {
                 TrackPanel(player: player, initialSection: .audio)
             }
@@ -25,7 +30,14 @@ struct PlaybackTools: View {
             panelButton(.effects, icon: "waveform", title: L("controls.audio-effects", "Audio Effects")) {
                 AudioEffectsPanel(player: player)
             }
-            toolButton(icon: "list.bullet", title: L("panel.chapters", "Chapters"), action: showChapters)
+            if fullscreen {
+                panelButton(.chapters, icon: "list.bullet", title: L("panel.chapters", "Chapters")) {
+                    PlayerLibraryPanel(player: player, section: .chapters)
+                        .frame(width: 260, height: 220)
+                }
+            } else {
+                toolButton(icon: "list.bullet", title: L("panel.chapters", "Chapters"), action: showChapters)
+            }
             toolButton(icon: "camera", title: L("menu.screenshot", "Screenshot"), action: player.screenshot)
                 .disabled(player.isIdle)
                 .opacity(player.isIdle ? BrushLLMPlayerTheme.disabledOpacity : 1)
@@ -82,8 +94,12 @@ struct PlaybackTools: View {
                         in: .rect(cornerRadius: DesignRadius.row))
             .contentShape(.rect)
     }
+}
 
-    private var speed: some View {
+struct PlaybackSpeedPanel: View {
+    @ObservedObject var player: PlayerCore
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(L("controls.speed", "Playback speed"))
                 .font(.headline)
@@ -94,7 +110,7 @@ struct PlaybackTools: View {
             .tint(BrushLLMPlayerTheme.accent)
             .accessibilityLabel(L("controls.speed", "Playback speed"))
             HStack {
-                Text(speedLabel(player.speed))
+                Text(Self.label(player.speed))
                     .monospacedDigit()
                     .foregroundStyle(BrushLLMPlayerTheme.accentText)
                 Spacer()
@@ -103,7 +119,7 @@ struct PlaybackTools: View {
             Divider()
             HStack(spacing: 4) {
                 ForEach([0.5, 0.75, 1, 1.25, 1.5, 2], id: \.self) { option in
-                    Button(speedLabel(option)) { player.speed = option }
+                    Button(Self.label(option)) { player.speed = option }
                         .accessibilityAddTraits(player.speed == option ? .isSelected : [])
                 }
             }
@@ -111,9 +127,10 @@ struct PlaybackTools: View {
         }
         .padding(12)
         .frame(minWidth: 228)
+        .foregroundStyle(BrushLLMPlayerTheme.controlText)
     }
 
-    private func speedLabel(_ speed: Double) -> String {
+    static func label(_ speed: Double) -> String {
         "\(speed.formatted(.number.precision(.fractionLength(0...2))))×"
     }
 }

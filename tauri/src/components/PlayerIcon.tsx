@@ -29,6 +29,8 @@ const icons = {
   seekForward: <path d="m5 7 6 5-6 5m8-10 6 5-6 5" />,
   fullscreen: <path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5" />,
   fullscreenExit: <path d="M4 9h5V4m11 5h-5V4m-6 16v-5H4m11 5v-5h5" />,
+  chevronUp: <path d="m6 15 6-6 6 6" />,
+  chevronDown: <path d="m6 9 6 6 6-6" />,
   mini: <><rect x="3" y="5" width="18" height="14" rx="2" /><rect x="12" y="12" width="6" height="4" rx="0.5" /></>,
   miniExit: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M12 13h5m0 0V8m0 5 3-3" /></>,
   close: <path d="m6 6 12 12M18 6 6 18" />,

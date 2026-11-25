@@ -23,6 +23,7 @@ import SettingsPanel from "./components/SettingsPanel";
 import NetworkPanel, { type NetworkTab } from "./components/NetworkPanel";
 import PlayerIcon from "./components/PlayerIcon";
 import PlaybackOptions from "./components/PlaybackOptions";
+import PlaybackSpeedPicker from "./components/PlaybackSpeedPicker";
 import { readSubtitleAutoLoad, rememberSubtitleAutoLoad } from "./components/SubtitleAutoLoadControl";
 import type { SubtitleAutoLoad } from "./components/SubtitleAutoLoadControl";
 import PlaybackTimeline from "./components/PlaybackTimeline";
@@ -75,6 +76,7 @@ export default function App() {
   };
   const [subtitleAutoLoad, setSubtitleAutoLoad] = useState(readSubtitleAutoLoad);
   const [savingSubtitleAutoLoad, setSavingSubtitleAutoLoad] = useState(false);
+  const [fullscreenToolsExpanded, setFullscreenToolsExpanded] = useState(false);
   const [networkTab, setNetworkTab] = useState<NetworkTab | null>(null);
   const [clearRequest, setClearRequest] = useState<{ label: string; action: () => void } | null>(null);
   const modalOpen = aboutOpen || settingsOpen || networkTab !== null || clearRequest !== null;
@@ -177,6 +179,11 @@ export default function App() {
   }, [showError]);
   const { mode, changeMode } = useViewingMode(state.onTop, reportDesktopError);
   const viewing = mode !== "windowed";
+  const fullscreen = mode === "fullscreen";
+
+  useEffect(() => {
+    if (!fullscreen) setFullscreenToolsExpanded(false);
+  }, [fullscreen]);
   const hasVideo = state.tracks.some(({ type, selected }) => type === "video" && selected);
 
   const runCommand = useCallback(async (command: string, args?: Record<string, unknown>) => {
@@ -595,6 +602,10 @@ export default function App() {
             )}
 
             <div className="viewing-group">
+              {fullscreen && (
+                <PlaybackSpeedPicker speed={state.speed} disabled={!view.ready}
+                  onChange={(value) => setProperty("speed", value)} />
+              )}
               <div className="volume-control">
                 <button className="tool-btn" type="button" onClick={toggleMute} disabled={!view.ready}
                   aria-label={muteLabel} title={muteLabel}>
@@ -624,6 +635,15 @@ export default function App() {
                   </div>
                 )}
               </div>
+              {fullscreen && (
+                <button type="button" className="playback-tool"
+                  aria-expanded={fullscreenToolsExpanded}
+                  aria-controls={fullscreenToolsExpanded ? "playback-tools" : undefined}
+                  onClick={() => setFullscreenToolsExpanded(!fullscreenToolsExpanded)}>
+                  <PlayerIcon name={fullscreenToolsExpanded ? "chevronDown" : "chevronUp"} />
+                  {t("player.options")}
+                </button>
+              )}
               <div className="window-actions">
                 {mode !== "fullscreen" && output !== "detached" && (
                   <button type="button" className="tool-btn" title={miniLabel}
@@ -639,10 +659,11 @@ export default function App() {
             </div>
           </div>
         </div>
-        {!viewing && (
-          <PlaybackOptions state={state} ready={view.ready} modalOpen={modalOpen}
+        {(!viewing || (fullscreen && fullscreenToolsExpanded)) && (
+          <PlaybackOptions key={mode} state={state} ready={view.ready} modalOpen={modalOpen} fullscreen={fullscreen}
             subtitleAutoLoad={subtitleAutoLoadControl} onCommand={runCommand}
-            onToggleOnTop={toggleOnTop} onShowChapters={() => showSidebarSection("chapters")} />
+            onToggleOnTop={toggleOnTop} onShowChapters={() => showSidebarSection("chapters")}
+            onSelectChapter={selectChapter} />
         )}
       </main>
 

@@ -570,7 +570,7 @@
 
 .playback-tool:focus-visible,
 .subtitle-auto-load select:focus-visible,
-.options-speed select:focus-visible {
+.playback-speed-picker:focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: -2px;
 }
@@ -594,7 +594,6 @@
   flex: none;
 }
 
-.options-speed,
 .subtitle-auto-load {
   display: grid;
   gap: 5px;
@@ -622,7 +621,7 @@
 }
 
 .subtitle-auto-load select,
-.options-speed select {
+.playback-speed-picker {
   min-height: 28px;
   width: 100%;
   padding: 2px 4px;
@@ -643,9 +642,30 @@
   background: var(--matte);
 }
 
-[data-viewing="fullscreen"] .player-workspace,
+[data-viewing="fullscreen"] .player-workspace {
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  --bg: var(--night-bg);
+  --surface: var(--night-bg);
+  --text: var(--night-text);
+  --text-dim: var(--night-text-dim);
+  --hover: var(--night-hover);
+  --selection: var(--night-selection);
+  --accent-text: var(--brand-sage);
+  --bg-card-border: var(--night-track);
+  color-scheme: dark;
+}
+
 [data-viewing="mini"] .player-workspace {
   grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+[data-viewing="fullscreen"] .playback-options {
+  grid-row: 2;
+  margin-block: 8px;
+}
+
+[data-viewing="fullscreen"] .playback-tools {
+  grid-row: 4;
 }
 
 [data-viewing="fullscreen"] .player-error,
@@ -681,6 +701,20 @@
 [data-viewing="fullscreen"] .progress-row,
 [data-viewing="mini"] .progress-row {
   flex: 1;
+}
+
+[data-viewing="fullscreen"] .playback-speed-picker {
+  width: auto;
+  min-width: 56px;
+  color-scheme: dark;
+  background: var(--night-bg);
+  border-color: var(--night-track);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-viewing="fullscreen"] .playback-speed-picker:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
 }
 
 [data-viewing="fullscreen"] .time-label,

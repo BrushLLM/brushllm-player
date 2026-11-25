@@ -6,13 +6,14 @@ export interface ChaptersPanelProps {
   chapters: Chapter[];
   currentChapter: number | null;
   onSelect: (index: number) => void;
+  showTitle?: boolean;
 }
 
-export default function ChaptersPanel({ chapters, currentChapter, onSelect }: ChaptersPanelProps) {
+export default function ChaptersPanel({ chapters, currentChapter, onSelect, showTitle = true }: ChaptersPanelProps) {
   const { t } = useI18n();
   return (
     <>
-      <h2 className="sidebar-section-title">{t("panel.chapters")}</h2>
+      {showTitle && <h2 className="sidebar-section-title">{t("panel.chapters")}</h2>}
       <div className="pl-list" role="list">
         {chapters.length === 0 ? (
           <div className="pl-empty">{t("panel.chapters.none")}</div>

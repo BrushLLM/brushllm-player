@@ -5,13 +5,21 @@ import SwiftUI
 struct ControlBar: View {
     @ObservedObject var player: PlayerCore
     let showChapters: () -> Void
+    @State private var speedOpen = false
+    @State private var toolsExpanded = false
 
     private var compact: Bool { player.isMiniWindow || player.isFullscreen }
 
     var body: some View {
         Group {
             if compact {
-                viewingControls
+                VStack(spacing: 4) {
+                    viewingControls
+                    if player.isFullscreen && toolsExpanded {
+                        Divider().padding(.vertical, 2)
+                        PlaybackTools(player: player, showChapters: showChapters, fullscreen: true)
+                    }
+                }
             } else {
                 VStack(spacing: 4) {
                     progress(compact: false)
@@ -24,16 +32,49 @@ struct ControlBar: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(compact ? BrushLLMPlayerTheme.viewingSurface : BrushLLMPlayerTheme.window)
+        .onChange(of: player.isFullscreen) { _, fullscreen in
+            if !fullscreen { toolsExpanded = false }
+        }
     }
 
     private var viewingControls: some View {
         HStack(spacing: 8) {
             playPauseButton
             progress(compact: true)
+            if player.isFullscreen { fullscreenSpeedButton }
             muteButton
+            if player.isFullscreen { fullscreenToolsButton }
             if player.isMiniWindow { miniButton }
             fullscreenButton
         }
+    }
+
+    private var fullscreenToolsButton: some View {
+        Button {
+            toolsExpanded.toggle()
+        } label: {
+            Label(L("player.options", "Playback options"),
+                  systemImage: toolsExpanded ? "chevron.down" : "chevron.up")
+                .lineLimit(1)
+        }
+        .controlSize(.small)
+        .accessibilityAddTraits(toolsExpanded ? .isSelected : [])
+    }
+
+    private var fullscreenSpeedButton: some View {
+        let title = L("controls.speed", "Playback speed")
+        let rate = PlaybackSpeedPanel.label(player.speed)
+        return Button(rate) { speedOpen.toggle() }
+            .controlSize(.small)
+            .monospacedDigit()
+            .help(title)
+            .accessibilityLabel(title)
+            .accessibilityValue(rate)
+            .popover(isPresented: $speedOpen, arrowEdge: .bottom) {
+                PlaybackSpeedPanel(player: player)
+                    .presentationBackground(BrushLLMPlayerTheme.panelMaterial)
+            }
+            .onDisappear { speedOpen = false }
     }
 
     private func progress(compact: Bool) -> some View {
