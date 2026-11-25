@@ -147,8 +147,8 @@
   "settings.video.hwdec": "하드웨어 디코딩 (VideoToolbox)",
   "settings.video.hwdec.hint": "H.264, H.265, AV1 디코딩을 가속화합니다.",
   "settings.video.hwdec.note": "즉시 적용됩니다. 재생에 문제가 있으면 파일을 다시 여세요.",
-  "subtitle.auto-load": "일치하는 자막 자동 불러오기",
-  "subtitle.auto-load-hint": "비디오 폴더에서 같은 이름의 자막 파일을 불러옵니다. 크거나 클라우드 동기화된 폴더에서는 느릴 수 있습니다.",
+  "subtitle.auto-load": "자막 자동 불러오기",
+  "subtitle.auto-load-hint": "다음에 동영상을 열 때 적용됩니다.",
   "subtitle.border-color": "테두리 색",
   "subtitle.border-size": "테두리 두께",
   "subtitle.color": "글자 색",
@@ -234,5 +234,11 @@
   "panel.clear.question": "이 목록을 비울까요?",
   "panel.clear.description": "이 목록의 모든 항목을 삭제합니다.",
   "player.loading": "미디어를 여는 중…",
-  "player.advanced-controls": "고급 제어"
+  "player.advanced-controls": "고급 제어",
+  "subtitle.auto-load-matching": "동영상 파일 이름과 일치",
+  "subtitle.auto-load-folder": "같은 폴더의 모든 자막",
+  "settings.file-associations": "파일 연결",
+  "settings.file-associations-windows-hint": "Windows 기본 앱에서 아래 형식에 BrushLLM Player를 선택할 수 있습니다.",
+  "settings.file-associations-open": "Windows 기본 앱 열기",
+  "settings.file-associations-failed": "Windows 기본 앱 설정을 열 수 없습니다."
 }

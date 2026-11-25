@@ -1,10 +1,11 @@
 mod desktop;
+mod file_associations;
 mod library;
 mod mpv;
 mod servers;
 
 use library::{Bookmark, HistoryEntry, LibraryStore};
-use mpv::controller::{CommandResult, MpvPlayer, PlayerError, StateSnapshot};
+use mpv::controller::{CommandResult, MpvPlayer, PlayerError, StateSnapshot, SubtitleAutoLoad};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use tauri::{Emitter, Manager};
@@ -16,7 +17,17 @@ struct Player(Arc<MpvPlayer>);
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     env_logger::init();
-    let app = tauri::Builder::default()
+    let builder = tauri::Builder::default().manage(file_associations::OpenRequests::default());
+    #[cfg(windows)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+        file_associations::queue_open_files(app, args.iter().skip(1), std::path::Path::new(&cwd));
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.show();
+            let _ = window.unminimize();
+            let _ = window.set_focus();
+        }
+    }));
+    let app = builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
@@ -49,11 +60,18 @@ pub fn run() {
             app.manage(Player(Arc::new(player)));
             app.manage(LibraryStore::open(app.handle()));
             app.manage(servers::model::ServerStore::open(app.handle()));
+            #[cfg(windows)]
+            if let Ok(cwd) = std::env::current_dir() {
+                file_associations::queue_open_files(app.handle(), std::env::args_os().skip(1), &cwd);
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             player_ready,
             player_snapshot,
+            set_subtitle_auto_load,
+            file_associations::take_open_files,
+            file_associations::open_default_apps,
             desktop::video_output,
             desktop::place_video_surface,
             desktop::set_viewing_mode,
@@ -180,12 +198,32 @@ async fn command(
 }
 
 #[tauri::command]
-async fn player_ready(player: tauri::State<'_, Player>) -> Result<StateSnapshot, PlayerError> {
+async fn player_ready(
+    player: tauri::State<'_, Player>,
+    subtitle_auto_load: Option<SubtitleAutoLoad>,
+) -> Result<StateSnapshot, PlayerError> {
     let player = player.0.clone();
     let fallback = player.clone();
-    tauri::async_runtime::spawn_blocking(move || player.ready())
+    tauri::async_runtime::spawn_blocking(move || {
+        if let Some(mode) = subtitle_auto_load {
+            player.set_subtitle_auto_load(mode)?;
+        }
+        player.ready()
+    })
         .await
         .map_err(|e| fallback.error(format!("Player startup failed: {e}")))?
+}
+
+#[tauri::command]
+async fn set_subtitle_auto_load(
+    player: tauri::State<'_, Player>,
+    mode: SubtitleAutoLoad,
+) -> Result<(), PlayerError> {
+    let player = player.0.clone();
+    let fallback = player.clone();
+    tauri::async_runtime::spawn_blocking(move || player.set_subtitle_auto_load(mode))
+        .await
+        .map_err(|error| fallback.error(format!("Subtitle settings failed: {error}")))?
 }
 
 #[tauri::command]

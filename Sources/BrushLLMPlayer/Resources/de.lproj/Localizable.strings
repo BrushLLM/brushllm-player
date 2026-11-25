@@ -150,8 +150,8 @@
 "player.record-failed" = "Aufnahme fehlgeschlagen: dieser Stream lässt sich nicht direkt kopieren";
 "player.slow-load-hint" = "Lädt noch… Dateizugriff in Systemeinstellungen → Datenschutz & Sicherheit prüfen";
 
-"subtitle.auto-load" = "Passende Untertitel automatisch laden";
-"subtitle.auto-load-hint" = "Lädt gleichnamige Untertiteldateien aus dem Video-Ordner; kann in großen oder cloud-synchronisierten Ordnern langsam sein.";
+"subtitle.auto-load" = "Untertitel automatisch laden";
+"subtitle.auto-load-hint" = "Gilt beim nächsten Öffnen eines Videos.";
 
 /* Crop & Rotation */
 "video.rotate" = "Drehung";
@@ -289,3 +289,13 @@
 "player.fullscreen-exit" = "Vollbild verlassen";
 "panel.clear.question" = "Liste leeren?";
 "panel.clear.description" = "Alle Einträge in dieser Liste entfernen.";
+
+"subtitle.auto-load-matching" = "Passender Videodateiname";
+"subtitle.auto-load-folder" = "Alle aus demselben Ordner";
+"settings.file-associations" = "Dateizuordnungen";
+"settings.file-associations-mac-hint" = "BrushLLM Player als Standard-App für die aufgeführten Video-, Audio-, Wiedergabelisten- und Datenträgerabbildformate festlegen.";
+"settings.file-associations-apply" = "Alle Formate zuordnen…";
+"settings.file-associations-confirm" = "BrushLLM Player als Standard festlegen?";
+"settings.file-associations-confirm-apply" = "Als Standard festlegen";
+"settings.file-associations-done" = "BrushLLM Player ist die Standard-App für alle aufgeführten Formate.";
+"settings.file-associations-partial" = "macOS konnte %d Dateityp(en) nicht ändern.";

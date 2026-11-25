@@ -42,7 +42,20 @@ mkdir -p "$contents/MacOS" "$resources"
 cp "$executable" "$contents/MacOS/BrushLLMPlayer"
 cp LICENSE "$resources/"
 cp -R Sources/BrushLLMPlayer/Resources/*.lproj "$resources/"
-cp scripts/Info.plist "$contents/Info.plist"
+python3 - scripts/Info.plist shared/media-formats.json "$contents/Info.plist" <<'PYTHON'
+import json
+import plistlib
+import sys
+from pathlib import Path
+
+template, manifest, output = map(Path, sys.argv[1:])
+info = plistlib.loads(template.read_bytes())
+formats = json.loads(manifest.read_text())
+for declaration in info["UTImportedTypeDeclarations"]:
+    group = declaration["UTTypeIdentifier"].rsplit(".", 1)[-1]
+    declaration["UTTypeTagSpecification"]["public.filename-extension"] = formats[group]
+output.write_bytes(plistlib.dumps(info, sort_keys=False))
+PYTHON
 plutil -replace CFBundleShortVersionString -string "$version" "$contents/Info.plist"
 plutil -replace CFBundleVersion -string "$version" "$contents/Info.plist"
 

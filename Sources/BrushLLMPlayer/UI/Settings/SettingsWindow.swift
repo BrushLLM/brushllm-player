@@ -70,6 +70,8 @@ struct SettingsWindow: View {
                 .tabItem { Label(L("settings.video", "Video"), systemImage: "rectangle.on.rectangle") }
             SubtitleSettingsTab()
                 .tabItem { Label(L("settings.subtitle", "Subtitles"), systemImage: "captions.bubble") }
+            FileAssociationsTab()
+                .tabItem { Label(L("settings.file-associations", "File Associations"), systemImage: "doc.badge.gearshape") }
         }
         // Each Form uses the same tint as the main window.
         .tint(BrushLLMPlayerTheme.settingsAccent)

@@ -23,6 +23,8 @@ import SettingsPanel from "./components/SettingsPanel";
 import NetworkPanel, { type NetworkTab } from "./components/NetworkPanel";
 import PlayerIcon from "./components/PlayerIcon";
 import PlaybackOptions from "./components/PlaybackOptions";
+import { readSubtitleAutoLoad, rememberSubtitleAutoLoad } from "./components/SubtitleAutoLoadControl";
+import type { SubtitleAutoLoad } from "./components/SubtitleAutoLoadControl";
 import PlaybackTimeline from "./components/PlaybackTimeline";
 import ClearLibraryDialog from "./components/ClearLibraryDialog";
 import { useNativeVideoSurface, useViewingMode } from "./desktop-window";
@@ -71,23 +73,19 @@ export default function App() {
   const setSidebarCompact = (compact: boolean) => {
     setSidebarPreferences((previous) => ({ ...previous, [widthClass]: compact }));
   };
-  const [optionsOpen, setOptionsOpen] = useState(false);
-  const optionsTrigger = useRef<HTMLButtonElement>(null);
+  const [subtitleAutoLoad, setSubtitleAutoLoad] = useState(readSubtitleAutoLoad);
+  const [savingSubtitleAutoLoad, setSavingSubtitleAutoLoad] = useState(false);
   const [networkTab, setNetworkTab] = useState<NetworkTab | null>(null);
   const [clearRequest, setClearRequest] = useState<{ label: string; action: () => void } | null>(null);
   const modalOpen = aboutOpen || settingsOpen || networkTab !== null || clearRequest !== null;
   // Library data (history is global; bookmarks are per-file).
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
-  const restoredPlaylist = useRef(false);
+  const restoredPlaylist = useRef<Promise<unknown> | null>(null);
 
   const closeAbout = useCallback(() => setAboutOpen(false), []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
   const closeNetwork = useCallback(() => setNetworkTab(null), []);
-  const closeOptions = useCallback(() => {
-    setOptionsOpen(false);
-    optionsTrigger.current?.focus();
-  }, []);
 
   useEffect(() => {
     const sync = (event: MediaQueryListEvent) => setAutoCompact(event.matches);
@@ -192,64 +190,98 @@ export default function App() {
     catch (error) { showError(error, generation, sequence); }
   }, [showError]);
 
+  const changeSubtitleAutoLoad = async (mode: SubtitleAutoLoad) => {
+    setSavingSubtitleAutoLoad(true);
+    try {
+      if (isTauri()) await invoke("set_subtitle_auto_load", { mode });
+      setSubtitleAutoLoad(mode);
+      rememberSubtitleAutoLoad(mode);
+    } catch (error) {
+      reportDesktopError(error);
+    } finally {
+      setSavingSubtitleAutoLoad(false);
+    }
+  };
+  const subtitleAutoLoadControl = {
+    mode: subtitleAutoLoad, pending: savingSubtitleAutoLoad, onChange: changeSubtitleAutoLoad,
+  };
+
+  const openDroppedPaths = useCallback(async (paths: string[]) => {
+    const subtitles = paths.filter((path) => SUBTITLE_EXTENSIONS.has(fileExtension(path)));
+    const media = paths.filter((path) => !SUBTITLE_EXTENSIONS.has(fileExtension(path)));
+    if (media.length > 0) await runCommand("load_files", { paths: media });
+    for (const path of subtitles) await runCommand("add_subtitle", { path });
+  }, [runCommand]);
+
+  const restorePlaylist = useCallback(() => {
+    restoredPlaylist.current ??= invoke("playlist_restore").catch(() => {});
+    return restoredPlaylist.current;
+  }, []);
+
+  // Also restore when opening a file recovers from an initial mpv startup failure.
+  useEffect(() => {
+    if (view.ready) void restorePlaylist();
+  }, [restorePlaylist, view.ready]);
+
   useEffect(() => {
     mounted.current = true;
     let cancelled = false;
-    let unlisten: (() => void) | undefined;
+    let opened = false;
+    const unlisten: (() => void)[] = [];
     let sequence = commandGate.current.begin();
     if (!isTauri()) return () => { mounted.current = false; };
-    void (async () => {
-      try {
-        // Listener registration is awaited before readiness/snapshot acquisition.
-        const stop = await listen<StateSnapshot>("mpv-state", (event) => {
-          if (!cancelled) acceptSnapshot(event.payload);
-        });
-        if (cancelled) { stop(); return; }
-        unlisten = stop;
-        sequence = commandGate.current.begin();
-        const snapshot = await invoke<StateSnapshot>("player_ready");
-        if (!cancelled) acceptSnapshot(snapshot);
-      } catch (error) {
-        if (!cancelled) showError(error, viewRef.current.generation, sequence);
-      }
-    })();
+    let pendingOpens = Promise.resolve();
+    const drainOpenRequests = () => {
+      if (!opened || cancelled) return;
+      pendingOpens = pendingOpens.then(async () => {
+        if (cancelled) return;
+        const paths = await invoke<string[]>("take_open_files");
+        if (!cancelled && paths.length) await openDroppedPaths(paths);
+      }).catch((error) => { if (!cancelled) reportDesktopError(error); });
+    };
+    const subscriptions = [
+      listen<StateSnapshot>("mpv-state", (event) => {
+        if (!cancelled) acceptSnapshot(event.payload);
+      }),
+      listen("system-open-files", drainOpenRequests),
+    ].map((subscription) => subscription.then((stop) => {
+      if (cancelled) stop();
+      else unlisten.push(stop);
+    }));
+    void Promise.all(subscriptions).then(async () => {
+      if (cancelled) return;
+      sequence = commandGate.current.begin();
+      const snapshot = await invoke<StateSnapshot>("player_ready", { subtitleAutoLoad: readSubtitleAutoLoad() });
+      if (cancelled) return;
+      acceptSnapshot(snapshot);
+      // Restore before applying an Explorer activation, which may replace the playlist.
+      await restorePlaylist();
+    }).catch((error) => {
+      if (!cancelled) showError(error, viewRef.current.generation, sequence);
+    }).finally(() => {
+      opened = true;
+      drainOpenRequests();
+    });
     return () => {
       cancelled = true;
       mounted.current = false;
       commandGate.current.invalidate();
-      unlisten?.();
+      unlisten.forEach((stop) => stop());
     };
-  }, [acceptSnapshot, showError]);
-
-  const openDroppedPaths = useCallback((paths: string[]) => {
-    const subtitles = paths.filter((path) => SUBTITLE_EXTENSIONS.has(fileExtension(path)));
-    const media = paths.filter((path) => !SUBTITLE_EXTENSIONS.has(fileExtension(path)));
-    void (async () => {
-      if (media.length > 0) await runCommand("load_files", { paths: media });
-      for (const path of subtitles) await runCommand("add_subtitle", { path });
-    })();
-  }, [runCommand]);
+  }, [acceptSnapshot, openDroppedPaths, reportDesktopError, restorePlaylist, showError]);
 
   useEffect(() => {
     if (!isTauri()) return;
     let active = true;
     let unlisten: (() => void) | undefined;
     void getCurrentWebview().onDragDropEvent((event) => {
-      if (active && event.payload.type === "drop") openDroppedPaths(event.payload.paths);
+      if (active && event.payload.type === "drop") void openDroppedPaths(event.payload.paths);
     }).then((stop) => {
       if (active) unlisten = stop;
       else stop();
     }).catch((error) => { if (active) reportDesktopError(error); });
     return () => { active = false; unlisten?.(); };
   }, [openDroppedPaths, reportDesktopError]);
-
-  // Restore the persisted playlist once the player is ready (idle append,
-  // nothing auto-plays).
-  useEffect(() => {
-    if (!view.ready || restoredPlaylist.current) return;
-    restoredPlaylist.current = true;
-    void invoke("playlist_restore").catch(() => {});
-  }, [view.ready]);
 
   // History list: refresh when the history tab becomes visible and after
   // every media change (a play was recorded).
@@ -386,7 +418,6 @@ export default function App() {
   };
 
   const toggleFullscreen = useCallback(() => {
-    setOptionsOpen(false);
     if (output === "detached") void runCommand("send_command", { args: ["cycle", "fullscreen"] });
     else void changeMode(mode === "fullscreen" ? "windowed" : "fullscreen");
   }, [output, runCommand, changeMode, mode]);
@@ -397,7 +428,7 @@ export default function App() {
     const subscriptions = [
       listen("video-toggle-fullscreen", () => { if (active && !modalOpen) toggleFullscreen(); }),
       listen<string[]>("video-files-dropped", (event) => {
-        if (active && !modalOpen) openDroppedPaths(event.payload);
+        if (active && !modalOpen) void openDroppedPaths(event.payload);
       }),
     ];
     for (const subscription of subscriptions) {
@@ -410,16 +441,15 @@ export default function App() {
   }, [output, modalOpen, openDroppedPaths, reportDesktopError, toggleFullscreen]);
 
   useEffect(() => {
-    if (modalOpen || (!optionsOpen && mode === "windowed")) return;
+    if (modalOpen || mode === "windowed") return;
     const escape = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
       event.preventDefault();
-      if (optionsOpen) closeOptions();
-      else void changeMode("windowed");
+      void changeMode("windowed");
     };
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);
-  }, [changeMode, closeOptions, modalOpen, mode, optionsOpen]);
+  }, [changeMode, modalOpen, mode]);
 
   const handleKeyAction = useCallback(({ command, args }: { command: string; args?: string[] }) => {
     if (command === "toggle_fullscreen") toggleFullscreen();
@@ -594,21 +624,10 @@ export default function App() {
                   </div>
                 )}
               </div>
-              {!viewing && (
-                <button ref={optionsTrigger} type="button" className="tool-btn" title={t("player.options")}
-                  aria-label={t("player.options")} aria-expanded={optionsOpen}
-                  aria-controls={optionsOpen ? "playback-options" : undefined}
-                  onClick={() => setOptionsOpen(!optionsOpen)}>
-                  <PlayerIcon name="options" />
-                </button>
-              )}
               <div className="window-actions">
                 {mode !== "fullscreen" && output !== "detached" && (
                   <button type="button" className="tool-btn" title={miniLabel}
-                    aria-label={miniLabel} onClick={() => {
-                      setOptionsOpen(false);
-                      void changeMode(mode === "mini" ? "windowed" : "mini");
-                    }}>
+                    aria-label={miniLabel} onClick={() => void changeMode(mode === "mini" ? "windowed" : "mini")}>
                     <PlayerIcon name={mode === "mini" ? "miniExit" : "mini"} />
                   </button>
                 )}
@@ -620,13 +639,10 @@ export default function App() {
             </div>
           </div>
         </div>
-        {!viewing && optionsOpen && (
-          <PlaybackOptions state={state} ready={view.ready} onCommand={runCommand} onToggleOnTop={toggleOnTop}
-            onShowChapters={() => {
-              showSidebarSection("chapters");
-              closeOptions();
-            }}
-            onClose={closeOptions} />
+        {!viewing && (
+          <PlaybackOptions state={state} ready={view.ready} modalOpen={modalOpen}
+            subtitleAutoLoad={subtitleAutoLoadControl} onCommand={runCommand}
+            onToggleOnTop={toggleOnTop} onShowChapters={() => showSidebarSection("chapters")} />
         )}
       </main>
 
@@ -638,7 +654,7 @@ export default function App() {
           }} />
       )}
 
-      {settingsOpen && <SettingsPanel onClose={closeSettings} />}
+      {settingsOpen && <SettingsPanel onClose={closeSettings} subtitleAutoLoad={subtitleAutoLoadControl} />}
 
       {networkTab !== null && (
         <NetworkPanel initialTab={networkTab} onClose={closeNetwork}

@@ -90,10 +90,7 @@ final class MPVController {
         setOption("load-scripts", "no")
         setOption("terminal", "no")
         setOption("msg-level", "all=warn")
-        // The app manages external subtitles explicitly (sub-add); mpv's own
-        // directory scan for matching sidecar files can stall on large or
-        // cloud-synced folders (e.g. Downloads) — off unless the user opts in.
-        setOption("sub-auto", AppSettings.shared.autoLoadSubtitles ? "exact" : "no")
+        setOption("sub-auto", AppSettings.shared.subtitleAutoLoad.rawValue)
         setOption("audio-file-auto", "no")
         setOption("cover-art-auto", "no")
         setOption("vo", headless ? "null" : "libmpv")

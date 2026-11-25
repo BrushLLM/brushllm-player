@@ -1,88 +1,86 @@
 import SwiftUI
 
-/// Playback options that are useful but do not need their own transport button.
 struct PlaybackTools: View {
     @ObservedObject var player: PlayerCore
     let showChapters: () -> Void
 
-    @State private var visible = false
-    @State private var section: Section = .options
+    @State private var selected: Panel?
 
-    private enum Section {
-        case options, speed, audio, subtitles, video, effects
+    private enum Panel {
+        case speed, audio, subtitles, video, effects, loop
     }
 
     var body: some View {
-        PlayerIconButton(icon: "ellipsis", help: L("player.options", "Playback options"), active: visible) {
-            section = .options
-            visible.toggle()
-        }
-        .popover(isPresented: $visible, arrowEdge: .bottom) {
-            VStack(spacing: 0) {
-                if section != .options {
-                    HStack {
-                        Button {
-                            section = .options
-                        } label: {
-                            Label(L("player.options", "Playback options"), systemImage: "chevron.left")
-                                .font(.system(size: 12, weight: .medium))
-                        }
-                        .buttonStyle(.plain)
-                        Spacer()
-                    }
-                    .padding(12)
-                    Divider()
-                }
-                panel
+        WrappingRows() {
+            panelButton(.speed, icon: "gauge.medium", title: L("controls.speed", "Playback speed")) { speed }
+            panelButton(.audio, icon: "headphones", title: L("panel.tracks.audio", "Audio")) {
+                TrackPanel(player: player, initialSection: .audio)
             }
+            panelButton(.subtitles, icon: "captions.bubble", title: L("panel.tracks.subtitle", "Subtitles")) {
+                TrackPanel(player: player, initialSection: .subtitle)
+            }
+            panelButton(.video, icon: "slider.horizontal.3", title: L("controls.video-settings", "Video settings")) {
+                VideoSettingsPanel(player: player)
+            }
+            panelButton(.effects, icon: "waveform", title: L("controls.audio-effects", "Audio Effects")) {
+                AudioEffectsPanel(player: player)
+            }
+            toolButton(icon: "list.bullet", title: L("panel.chapters", "Chapters"), action: showChapters)
+            toolButton(icon: "camera", title: L("menu.screenshot", "Screenshot"), action: player.screenshot)
+                .disabled(player.isIdle)
+                .opacity(player.isIdle ? BrushLLMPlayerTheme.disabledOpacity : 1)
+            panelButton(.loop, icon: "repeat", title: L("menu.ab-loop", "A-B Loop"), active: hasLoop) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Button(L("ab-loop.set-a", "Set Point A"), action: player.setABLoopA).disabled(player.isIdle)
+                    Button(L("ab-loop.set-b", "Set Point B"), action: player.setABLoopB).disabled(player.isIdle)
+                    Button(L("ab-loop.clear", "Clear A-B Loop"), action: player.clearABLoop).disabled(!hasLoop)
+                }
+                .padding(12)
+            }
+            toolButton(icon: "pin", title: L("video.ontop", "Always on Top"), active: player.isOnTop) {
+                player.isOnTop.toggle()
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(L("player.options", "Playback options"))
+    }
+
+    private var hasLoop: Bool { player.abLoopA != nil || player.abLoopB != nil }
+
+    private func panelButton<Contents: View>(
+        _ panel: Panel, icon: String, title: String, active: Bool = false,
+        @ViewBuilder contents: @escaping () -> Contents
+    ) -> some View {
+        toolButton(icon: icon, title: title, active: selected == panel || active) {
+            selected = selected == panel ? nil : panel
+        }
+        .popover(isPresented: Binding(
+            get: { selected == panel },
+            set: { if !$0 && selected == panel { selected = nil } }
+        ), arrowEdge: .bottom) {
+            contents()
                 .foregroundStyle(BrushLLMPlayerTheme.controlText)
                 .presentationBackground(BrushLLMPlayerTheme.panelMaterial)
         }
     }
 
-    @ViewBuilder
-    private var panel: some View {
-        switch section {
-        case .options:
-            options
-        case .speed:
-            speed
-        case .audio:
-            TrackPanel(player: player, initialSection: .audio)
-        case .subtitles:
-            TrackPanel(player: player, initialSection: .subtitle)
-        case .video:
-            VideoSettingsPanel(player: player)
-        case .effects:
-            AudioEffectsPanel(player: player)
-        }
+    private func toolButton(icon: String, title: String, active: Bool = false,
+                            action: @escaping () -> Void) -> some View {
+        Button(action: action) { label(icon: icon, title: title, active: active) }
+            .buttonStyle(PressedDimButtonStyle())
+            .accessibilityAddTraits(active ? .isSelected : [])
     }
 
-    private var options: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button(L("controls.speed", "Playback speed")) { section = .speed }
-            Button(L("panel.tracks.audio", "Audio")) { section = .audio }
-            Button(L("panel.tracks.subtitle", "Subtitles")) { section = .subtitles }
-            Button(L("controls.video-settings", "Video settings")) { section = .video }
-            Button(L("controls.audio-effects", "Audio Effects")) { section = .effects }
-            Button(L("panel.chapters", "Chapters")) {
-                visible = false
-                showChapters()
-            }
-            Divider()
-            Button(L("menu.screenshot", "Screenshot"), action: player.screenshot)
-                .disabled(player.isIdle)
-            Menu(L("menu.ab-loop", "A-B Loop")) {
-                Button(L("ab-loop.set-a", "Set Point A"), action: player.setABLoopA).disabled(player.isIdle)
-                Button(L("ab-loop.set-b", "Set Point B"), action: player.setABLoopB).disabled(player.isIdle)
-                Button(L("ab-loop.clear", "Clear A-B Loop"), action: player.clearABLoop)
-                    .disabled(player.abLoopA == nil && player.abLoopB == nil)
-            }
-            Toggle(L("video.ontop", "Always on Top"), isOn: $player.isOnTop)
-        }
-        .controlSize(.small)
-        .frame(minWidth: 196, alignment: .leading)
-        .padding(12)
+    private func label(icon: String, title: String, active: Bool) -> some View {
+        Label(title, systemImage: icon)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(active ? BrushLLMPlayerTheme.accentText : BrushLLMPlayerTheme.controlText)
+            .padding(.horizontal, 8)
+            .frame(height: 28)
+            .background(active ? BrushLLMPlayerTheme.selectionFill : BrushLLMPlayerTheme.hoverFill,
+                        in: .rect(cornerRadius: DesignRadius.row))
+            .contentShape(.rect)
     }
 
     private var speed: some View {

@@ -4,6 +4,35 @@ import Libmpv
 
 final class PlayerCoreIntegrationTests: XCTestCase {
     @MainActor
+    func testLoadsMatchingSidecarFromOriginalVideoFolder() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let video = directory.appendingPathComponent("字幕 sample.y4m")
+        var frames = Data("YUV4MPEG2 W16 H16 F24:1 Ip A1:1 C420jpeg\n".utf8)
+        for _ in 0..<48 {
+            frames.append(Data("FRAME\n".utf8))
+            frames.append(Data(repeating: 128, count: 16 * 16 * 3 / 2))
+        }
+        try frames.write(to: video)
+        let matching = directory.appendingPathComponent("字幕 sample.eng.srt")
+        let unrelated = directory.appendingPathComponent("another clip.srt")
+        for subtitle in [matching, unrelated] {
+            try "1\n00:00:00,000 --> 00:00:01,500\nSidecar\n".write(to: subtitle, atomically: true, encoding: .utf8)
+        }
+
+        let store = PlaybackStore(fileURL: directory.appendingPathComponent("history.json"), secretStore: MemorySecrets())
+        let player = PlayerCore(playbackStore: store, headless: true)
+        defer { player.shutdown() }
+        player.mpv.setFlag("pause", true)
+        player.mpv.setString("sub-auto", "fuzzy")
+        player.open(video)
+        try await waitUntil { player.canSeekTimeline && player.subtitleTracks.contains { $0.isSelected } }
+        XCTAssertEqual(player.subtitleTracks.compactMap(\.externalFilename).map { URL(fileURLWithPath: $0).lastPathComponent },
+                       [matching.lastPathComponent])
+    }
+
+    @MainActor
     func testLogicalPlaylistSwitchStopAndResumeWithActualMPV() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)

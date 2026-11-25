@@ -10,4 +10,5 @@ tauri/dist/
 tauri/src-tauri/target/
 tauri/src-tauri/bin/
 tauri/src-tauri/generated-icons/
+tauri/src-tauri/installer/media-extensions.nsh
 tauri/installers/

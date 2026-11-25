@@ -147,8 +147,8 @@
   "settings.video.hwdec": "Decodificación por hardware (VideoToolbox)",
   "settings.video.hwdec.hint": "Acelera la decodificación de H.264, H.265 y AV1.",
   "settings.video.hwdec.note": "Se aplica de inmediato; si la reproducción falla, vuelve a abrir el archivo.",
-  "subtitle.auto-load": "Cargar automáticamente subtítulos coincidentes",
-  "subtitle.auto-load-hint": "Carga archivos de subtítulos con el mismo nombre desde la carpeta del vídeo; puede ser lento en carpetas grandes o sincronizadas en la nube.",
+  "subtitle.auto-load": "Cargar subtítulos automáticamente",
+  "subtitle.auto-load-hint": "Se aplica la próxima vez que abras un vídeo.",
   "subtitle.border-color": "Color del contorno",
   "subtitle.border-size": "Ancho del contorno",
   "subtitle.color": "Color del texto",
@@ -234,5 +234,11 @@
   "panel.clear.question": "¿Vaciar esta lista?",
   "panel.clear.description": "Se eliminarán todas las entradas de esta lista.",
   "player.loading": "Abriendo medio…",
-  "player.advanced-controls": "Controles avanzados"
+  "player.advanced-controls": "Controles avanzados",
+  "subtitle.auto-load-matching": "Nombre de vídeo coincidente",
+  "subtitle.auto-load-folder": "Todos los de la misma carpeta",
+  "settings.file-associations": "Asociaciones de archivos",
+  "settings.file-associations-windows-hint": "En Aplicaciones predeterminadas de Windows, elige BrushLLM Player para los formatos de la lista que quieras.",
+  "settings.file-associations-open": "Abrir Aplicaciones predeterminadas",
+  "settings.file-associations-failed": "No se pudo abrir la configuración de Aplicaciones predeterminadas de Windows."
 }

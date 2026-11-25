@@ -320,12 +320,11 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
             .store(in: &cancellables)
 
         // Subtitle auto-loading can be toggled in settings while playing.
-        NotificationCenter.default.publisher(for: .brushPlayerSubAutoChanged)
-            .compactMap { $0.userInfo?["enabled"] as? Bool }
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] enabled in
-                self?.mpv.setString("sub-auto", enabled ? "exact" : "no")
-                DebugLog.log("sub-auto runtime change: \(enabled ? "exact" : "no")")
+        settings.$subtitleAutoLoad
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] mode in
+                self?.mpv.setString("sub-auto", mode.rawValue)
             }
             .store(in: &cancellables)
 
@@ -401,7 +400,11 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     }
 
     private func register(_ reference: MediaReference) -> String {
-        let target = "brushplayer://media/\(UUID().uuidString)"
+        // mpv finds sidecar subtitles using the playlist filename, before
+        // considering a stream path supplied by the load hook.
+        let target = reference.kind == .localFile && !MediaTypes.isDiscImage(reference.location)
+            ? URL(fileURLWithPath: reference.location).path
+            : "brushplayer://media/\(UUID().uuidString)"
         queueReferences[target] = reference
         return target
     }
@@ -1073,7 +1076,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
                 var resource: DiscImageResource?
                 switch original.kind {
                 case .localFile:
-                    if ["iso", "iso9660"].contains(URL(fileURLWithPath: original.location).pathExtension.lowercased()) {
+                    if MediaTypes.isDiscImage(original.location) {
                         if let mounted = self.discResources[media.key] {
                             resource = mounted
                         } else {

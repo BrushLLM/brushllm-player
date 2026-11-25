@@ -9,6 +9,12 @@ final class AppSettings: ObservableObject {
 
     static let shared = AppSettings()
 
+    enum SubtitleAutoLoad: String, CaseIterable {
+        case off = "no"
+        case matching = "fuzzy"
+        case folder = "all"
+    }
+
     private let defaults: UserDefaults
 
     // MARK: Keys
@@ -24,6 +30,7 @@ final class AppSettings: ObservableObject {
         static let screenshotDirectory = "screenshotDirectory"
         static let recordingDirectory = "recordingDirectory"
         static let autoLoadSubtitles = "autoLoadSubtitles"
+        static let subtitleAutoLoad = "subtitleAutoLoad"
         static let mediaSort = "mediaSort"
         static let mediaSortAscending = "mediaSortAscending"
         static let userAgent = "userAgent"
@@ -106,18 +113,8 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(recordingDirectory, forKey: Key.recordingDirectory) }
     }
 
-    /// Auto-load subtitle files matching the video's name from its folder.
-    /// Off by default: the directory scan can stall on large or cloud-synced
-    /// folders.
-    @Published var autoLoadSubtitles: Bool {
-        didSet {
-            defaults.set(autoLoadSubtitles, forKey: Key.autoLoadSubtitles)
-            NotificationCenter.default.post(
-                name: .brushPlayerSubAutoChanged,
-                object: nil,
-                userInfo: ["enabled": autoLoadSubtitles]
-            )
-        }
+    @Published var subtitleAutoLoad: SubtitleAutoLoad {
+        didSet { defaults.set(subtitleAutoLoad.rawValue, forKey: Key.subtitleAutoLoad) }
     }
 
     /// User-Agent sent with every network request. A browser UA by default:
@@ -183,8 +180,8 @@ final class AppSettings: ObservableObject {
         screenshotDirectory = (savedScreenshotDir?.isEmpty ?? true) ? pictures : savedScreenshotDir!
         let savedRecordingDir = defaults.string(forKey: Key.recordingDirectory)
         recordingDirectory = (savedRecordingDir?.isEmpty ?? true) ? movies : savedRecordingDir!
-        // On by default: matching sidecar subtitles load automatically.
-        autoLoadSubtitles = defaults.object(forKey: Key.autoLoadSubtitles) as? Bool ?? true
+        subtitleAutoLoad = defaults.string(forKey: Key.subtitleAutoLoad).flatMap(SubtitleAutoLoad.init(rawValue:))
+            ?? (defaults.object(forKey: Key.autoLoadSubtitles) as? Bool == false ? .off : .matching)
         let savedUserAgent = defaults.string(forKey: Key.userAgent)
         userAgent = (savedUserAgent?.isEmpty ?? true) ? Self.defaultUserAgent : savedUserAgent!
         readaheadSeconds = defaults.object(forKey: Key.readaheadSecs) as? Double ?? 20
@@ -204,7 +201,6 @@ final class AppSettings: ObservableObject {
 
 extension Notification.Name {
     static let brushPlayerHWDecChanged = Notification.Name("dev.brushllm.player.hwdecChanged")
-    static let brushPlayerSubAutoChanged = Notification.Name("dev.brushllm.player.subAutoChanged")
     static let brushPlayerUserAgentChanged = Notification.Name("dev.brushllm.player.userAgentChanged")
     static let brushPlayerReadaheadChanged = Notification.Name("dev.brushllm.player.readaheadChanged")
     static let brushPlayerBufferChanged = Notification.Name("dev.brushllm.player.bufferChanged")

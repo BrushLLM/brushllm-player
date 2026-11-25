@@ -1,5 +1,13 @@
 {
+  "build": {
+    "beforeBuildCommand": "npm run icons && npm run build && npm run associations"
+  },
   "bundle": {
+    "windows": {
+      "nsis": {
+        "installerHooks": "installer/file-associations.nsh"
+      }
+    },
     "resources": [
       "bin/mpv.exe",
       "bin/*.dll"

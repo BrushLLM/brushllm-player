@@ -150,8 +150,8 @@
 "player.record-failed" = "녹화 실패: 이 스트림은 직접 복사할 수 없습니다";
 "player.slow-load-hint" = "불러오는 중… 시스템 설정 → 개인정보 보호 및 보안의 파일 접근 권한을 확인하세요";
 
-"subtitle.auto-load" = "일치하는 자막 자동 불러오기";
-"subtitle.auto-load-hint" = "비디오 폴더에서 같은 이름의 자막 파일을 불러옵니다. 크거나 클라우드 동기화된 폴더에서는 느릴 수 있습니다.";
+"subtitle.auto-load" = "자막 자동 불러오기";
+"subtitle.auto-load-hint" = "다음에 동영상을 열 때 적용됩니다.";
 
 /* Crop & Rotation */
 "video.rotate" = "회전";
@@ -289,3 +289,13 @@
 "player.fullscreen-exit" = "전체 화면 종료";
 "panel.clear.question" = "이 목록을 비울까요?";
 "panel.clear.description" = "이 목록의 모든 항목을 삭제합니다.";
+
+"subtitle.auto-load-matching" = "동영상 파일 이름과 일치";
+"subtitle.auto-load-folder" = "같은 폴더의 모든 자막";
+"settings.file-associations" = "파일 연결";
+"settings.file-associations-mac-hint" = "목록의 동영상, 오디오, 재생 목록 및 디스크 이미지 형식을 여는 기본 앱을 BrushLLM Player로 설정합니다.";
+"settings.file-associations-apply" = "모든 형식 연결…";
+"settings.file-associations-confirm" = "BrushLLM Player를 기본 앱으로 설정하시겠습니까?";
+"settings.file-associations-confirm-apply" = "기본 앱으로 설정";
+"settings.file-associations-done" = "목록의 모든 형식에 대해 BrushLLM Player를 기본 앱으로 설정했습니다.";
+"settings.file-associations-partial" = "macOS에서 파일 유형 %d개의 기본 앱을 변경하지 못했습니다.";

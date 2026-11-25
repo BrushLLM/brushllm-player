@@ -147,8 +147,8 @@
   "settings.video.hwdec": "Décodage matériel (VideoToolbox)",
   "settings.video.hwdec.hint": "Accélère le décodage H.264, H.265 et AV1.",
   "settings.video.hwdec.note": "Appliqué immédiatement ; en cas de problème, rouvrez le fichier.",
-  "subtitle.auto-load": "Charger automatiquement les sous-titres correspondants",
-  "subtitle.auto-load-hint": "Charge les fichiers de sous-titres du même nom depuis le dossier de la vidéo ; peut être lent dans les dossiers volumineux ou synchronisés dans le cloud.",
+  "subtitle.auto-load": "Chargement automatique des sous-titres",
+  "subtitle.auto-load-hint": "S’applique à la prochaine ouverture d’une vidéo.",
   "subtitle.border-color": "Couleur du contour",
   "subtitle.border-size": "Épaisseur du contour",
   "subtitle.color": "Couleur du texte",
@@ -234,5 +234,11 @@
   "panel.clear.question": "Vider cette liste ?",
   "panel.clear.description": "Supprimer toutes les entrées de cette liste.",
   "player.loading": "Ouverture du média…",
-  "player.advanced-controls": "Commandes avancées"
+  "player.advanced-controls": "Commandes avancées",
+  "subtitle.auto-load-matching": "Nom de vidéo correspondant",
+  "subtitle.auto-load-folder": "Tous ceux du même dossier",
+  "settings.file-associations": "Associations de fichiers",
+  "settings.file-associations-windows-hint": "Dans les applications par défaut de Windows, choisissez BrushLLM Player pour les formats souhaités.",
+  "settings.file-associations-open": "Ouvrir les applications par défaut",
+  "settings.file-associations-failed": "Impossible d’ouvrir les applications par défaut de Windows."
 }

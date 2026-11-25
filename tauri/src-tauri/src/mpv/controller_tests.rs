@@ -495,6 +495,32 @@ impl Drop for TempMedia {
 
 #[cfg(not(target_os = "windows"))]
 #[test]
+fn subtitle_auto_load_reaches_the_running_and_restarted_player() {
+    let temp = TempMedia::new();
+    let mut player = MpvPlayer::new(no_events());
+    player.config = temp.config();
+    let get_mode = || {
+        player
+            .command(&[json!("get_property"), json!("sub-auto")], true)
+            .unwrap()
+    };
+
+    player.set_subtitle_auto_load(SubtitleAutoLoad::Off).unwrap();
+    let first = get_mode();
+    assert_eq!(first.data, json!(false));
+    player.set_subtitle_auto_load(SubtitleAutoLoad::Folder).unwrap();
+    assert_eq!(get_mode().data, json!("all"));
+    player.command(&[json!("quit")], false).ok();
+    wait_for(|| !player.snapshot().connected);
+
+    let restarted = get_mode();
+    assert!(restarted.generation > first.generation);
+    assert_eq!(restarted.data, json!("all"));
+    player.shutdown().unwrap();
+}
+
+#[cfg(not(target_os = "windows"))]
+#[test]
 fn real_isolated_mpv_subscriptions_playback_failures_eof_and_reconnect() {
     let temp = TempMedia::new();
     let long = temp.wav("synthetic.wav", 6);

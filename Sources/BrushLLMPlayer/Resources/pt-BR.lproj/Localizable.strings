@@ -150,8 +150,8 @@
 "player.record-failed" = "Falha na gravação: esta transmissão não pode ser copiada diretamente";
 "player.slow-load-hint" = "Carregando… verifique as permissões de acesso a arquivos em Ajustes do Sistema → Privacidade e Segurança";
 
-"subtitle.auto-load" = "Carregar automaticamente legendas correspondentes";
-"subtitle.auto-load-hint" = "Carrega arquivos de legenda com o mesmo nome da pasta do vídeo; pode ser lento em pastas grandes ou sincronizadas na nuvem.";
+"subtitle.auto-load" = "Carregar legendas automaticamente";
+"subtitle.auto-load-hint" = "É aplicado na próxima vez que você abrir um vídeo.";
 
 /* Crop & Rotation */
 "video.rotate" = "Rotação";
@@ -289,3 +289,13 @@
 "player.fullscreen-exit" = "Sair da tela cheia";
 "panel.clear.question" = "Limpar esta lista?";
 "panel.clear.description" = "Remover todos os itens desta lista.";
+
+"subtitle.auto-load-matching" = "Nome de vídeo correspondente";
+"subtitle.auto-load-folder" = "Todas da mesma pasta";
+"settings.file-associations" = "Associações de arquivos";
+"settings.file-associations-mac-hint" = "Defina o BrushLLM Player como aplicativo padrão dos formatos de vídeo, áudio, listas de reprodução e imagens de disco listados.";
+"settings.file-associations-apply" = "Associar todos os formatos…";
+"settings.file-associations-confirm" = "Definir o BrushLLM Player como padrão?";
+"settings.file-associations-confirm-apply" = "Definir como padrão";
+"settings.file-associations-done" = "O BrushLLM Player é o aplicativo padrão de todos os formatos listados.";
+"settings.file-associations-partial" = "O macOS não conseguiu alterar %d tipo(s) de arquivo.";

@@ -147,8 +147,8 @@
   "settings.video.hwdec": "ハードウェアデコード (VideoToolbox)",
   "settings.video.hwdec.hint": "H.264・H.265・AV1 のデコードを高速化します。",
   "settings.video.hwdec.note": "すぐに適用されます。再生に問題がある場合はファイルを開き直してください。",
-  "subtitle.auto-load": "一致する字幕を自動読み込み",
-  "subtitle.auto-load-hint": "動画と同じフォルダから同名の字幕ファイルを読み込みます。大きなフォルダやクラウド同期フォルダでは時間がかかる場合があります。",
+  "subtitle.auto-load": "字幕の自動読み込み",
+  "subtitle.auto-load-hint": "次に動画を開いたときに適用されます。",
   "subtitle.border-color": "縁取りの色",
   "subtitle.border-size": "縁取りの太さ",
   "subtitle.color": "文字色",
@@ -234,5 +234,11 @@
   "panel.clear.question": "このリストを消去しますか？",
   "panel.clear.description": "このリストの項目をすべて削除します。",
   "player.loading": "メディアを開いています…",
-  "player.advanced-controls": "詳細コントロール"
+  "player.advanced-controls": "詳細コントロール",
+  "subtitle.auto-load-matching": "動画名と一致",
+  "subtitle.auto-load-folder": "同じフォルダー内のすべて",
+  "settings.file-associations": "ファイルの関連付け",
+  "settings.file-associations-windows-hint": "Windows の「既定のアプリ」で、以下の形式に BrushLLM Player を選択できます。",
+  "settings.file-associations-open": "Windows の既定のアプリを開く",
+  "settings.file-associations-failed": "Windows の既定のアプリを開けませんでした。"
 }

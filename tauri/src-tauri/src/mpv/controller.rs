@@ -2,7 +2,7 @@
 //! writing and never wait while owning a writer.
 use super::transport::{self, Cancel, Transport};
 use parking_lot::Mutex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, HashMap};
 use std::io::Read;
@@ -787,7 +787,28 @@ pub struct MpvPlayer {
     exiting: AtomicBool,
     sink: StateSink,
     config: LaunchConfig,
+    subtitle_auto_load: Mutex<SubtitleAutoLoad>,
 }
+
+#[derive(Clone, Copy, Default, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SubtitleAutoLoad {
+    Off,
+    #[default]
+    Matching,
+    Folder,
+}
+
+impl SubtitleAutoLoad {
+    fn mpv_value(self) -> &'static str {
+        match self {
+            Self::Off => "no",
+            Self::Matching => "fuzzy",
+            Self::Folder => "all",
+        }
+    }
+}
+
 impl MpvPlayer {
     pub fn new(sink: StateSink) -> Self {
         Self {
@@ -797,6 +818,7 @@ impl MpvPlayer {
             exiting: AtomicBool::new(false),
             sink,
             config: LaunchConfig::default(),
+            subtitle_auto_load: Mutex::default(),
         }
     }
     /// Setup-time only (before the player is shared behind an Arc), so a
@@ -869,8 +891,11 @@ impl MpvPlayer {
                     message: "Player is shutting down".into(),
                 });
             }
+            let mut config = self.config.clone();
+            let subtitle_mode = self.subtitle_auto_load.lock().mpv_value();
+            config.args.push(format!("--sub-auto={subtitle_mode}"));
             let controller = Arc::new(
-                MpvController::spawn(generation, self.sink.clone(), &self.config).map_err(
+                MpvController::spawn(generation, self.sink.clone(), &config).map_err(
                     |message| PlayerError {
                         generation,
                         message,
@@ -892,6 +917,21 @@ impl MpvPlayer {
     }
     pub fn ready(&self) -> Result<StateSnapshot, PlayerError> {
         Ok(self.ensure()?.snapshot())
+    }
+
+    pub fn set_subtitle_auto_load(&self, mode: SubtitleAutoLoad) -> Result<(), PlayerError> {
+        let _startup = self
+            .startup
+            .try_lock_for(STARTUP_TIMEOUT + SHUTDOWN_TIMEOUT)
+            .ok_or_else(|| self.error("Timed out waiting for player startup"))?;
+        let current = self.current.lock().clone().filter(|player| player.is_ready());
+        if let Some(current) = current {
+            current
+                .send_command(&[json!("set_property"), json!("sub-auto"), json!(mode.mpv_value())])
+                .map_err(|message| self.error(message))?;
+        }
+        *self.subtitle_auto_load.lock() = mode;
+        Ok(())
     }
     pub fn command(&self, args: &[Value], reopen: bool) -> Result<CommandResult, PlayerError> {
         let current = if reopen {

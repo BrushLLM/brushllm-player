@@ -147,8 +147,8 @@
   "settings.video.hwdec": "硬件解码 (VideoToolbox)",
   "settings.video.hwdec.hint": "加速 H.264、H.265 和 AV1 的解码。",
   "settings.video.hwdec.note": "立即生效；如播放异常，请重新打开文件。",
-  "subtitle.auto-load": "自动加载匹配字幕",
-  "subtitle.auto-load-hint": "从视频所在文件夹加载同名字幕文件；在大型或云同步文件夹中可能较慢。",
+  "subtitle.auto-load": "自动加载字幕",
+  "subtitle.auto-load-hint": "下次打开视频时生效。",
   "subtitle.border-color": "描边颜色",
   "subtitle.border-size": "描边宽度",
   "subtitle.color": "文字颜色",
@@ -234,5 +234,11 @@
   "panel.clear.question": "清空此列表？",
   "panel.clear.description": "将移除此列表中的所有条目。",
   "player.loading": "正在打开媒体…",
-  "player.advanced-controls": "高级控制"
+  "player.advanced-controls": "高级控制",
+  "subtitle.auto-load-matching": "匹配视频文件名",
+  "subtitle.auto-load-folder": "同一文件夹内的全部字幕",
+  "settings.file-associations": "文件关联",
+  "settings.file-associations-windows-hint": "在 Windows 的「默认应用」中为下列格式选择 BrushLLM Player。",
+  "settings.file-associations-open": "打开 Windows 默认应用",
+  "settings.file-associations-failed": "无法打开 Windows 的默认应用设置。"
 }

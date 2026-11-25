@@ -147,8 +147,8 @@
   "settings.video.hwdec": "Hardware decoding (VideoToolbox)",
   "settings.video.hwdec.hint": "Accelerates decoding of H.264, H.265 and AV1.",
   "settings.video.hwdec.note": "Applies immediately; if playback misbehaves, reopen the file.",
-  "subtitle.auto-load": "Auto-load matching subtitles",
-  "subtitle.auto-load-hint": "Loads same-named subtitle files from the video's folder; may be slow in large or cloud-synced folders.",
+  "subtitle.auto-load": "Auto-load subtitles",
+  "subtitle.auto-load-hint": "Applies the next time you open a video.",
   "subtitle.border-color": "Outline color",
   "subtitle.border-size": "Outline width",
   "subtitle.color": "Text color",
@@ -234,5 +234,11 @@
   "panel.clear.question": "Clear this list?",
   "panel.clear.description": "Remove all entries from this list.",
   "player.loading": "Opening media…",
-  "player.advanced-controls": "Advanced controls"
+  "player.advanced-controls": "Advanced controls",
+  "subtitle.auto-load-matching": "Matching video name",
+  "subtitle.auto-load-folder": "All in the same folder",
+  "settings.file-associations": "File Associations",
+  "settings.file-associations-windows-hint": "Choose BrushLLM Player in Windows Default Apps for any of the supported formats below.",
+  "settings.file-associations-open": "Open Windows Default Apps",
+  "settings.file-associations-failed": "Windows Default Apps could not be opened."
 }

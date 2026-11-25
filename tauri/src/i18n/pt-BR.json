@@ -147,8 +147,8 @@
   "settings.video.hwdec": "Decodificação por hardware (VideoToolbox)",
   "settings.video.hwdec.hint": "Acelera a decodificação de H.264, H.265 e AV1.",
   "settings.video.hwdec.note": "Aplicado imediatamente; se a reprodução falhar, reabra o arquivo.",
-  "subtitle.auto-load": "Carregar automaticamente legendas correspondentes",
-  "subtitle.auto-load-hint": "Carrega arquivos de legenda com o mesmo nome da pasta do vídeo; pode ser lento em pastas grandes ou sincronizadas na nuvem.",
+  "subtitle.auto-load": "Carregar legendas automaticamente",
+  "subtitle.auto-load-hint": "É aplicado na próxima vez que você abrir um vídeo.",
   "subtitle.border-color": "Cor do contorno",
   "subtitle.border-size": "Largura do contorno",
   "subtitle.color": "Cor do texto",
@@ -234,5 +234,11 @@
   "panel.clear.question": "Limpar esta lista?",
   "panel.clear.description": "Remover todos os itens desta lista.",
   "player.loading": "Abrindo mídia…",
-  "player.advanced-controls": "Controles avançados"
+  "player.advanced-controls": "Controles avançados",
+  "subtitle.auto-load-matching": "Nome de vídeo correspondente",
+  "subtitle.auto-load-folder": "Todas da mesma pasta",
+  "settings.file-associations": "Associações de arquivos",
+  "settings.file-associations-windows-hint": "Em Aplicativos padrão do Windows, selecione o BrushLLM Player para os formatos desejados.",
+  "settings.file-associations-open": "Abrir Aplicativos padrão do Windows",
+  "settings.file-associations-failed": "Não foi possível abrir os Aplicativos padrão do Windows."
 }

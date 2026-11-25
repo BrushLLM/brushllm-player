@@ -2,7 +2,6 @@ import SwiftUI
 
 /// Subtitle styling settings: size, colors, border and position, applied live.
 struct SubtitleSettingsTab: View {
-    @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var player = PlayerCore.sharedForSettings
 
     private let colorSwatches: [(String, String, String)] = [
@@ -17,16 +16,10 @@ struct SubtitleSettingsTab: View {
     var body: some View {
         Form {
             Section(L("settings.subtitle", "Subtitles")) {
-                Toggle(isOn: $settings.autoLoadSubtitles) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(L("subtitle.auto-load", "Auto-load matching subtitles"))
-                        Text(L("subtitle.auto-load-hint", "Loads same-named subtitle files from the video's folder; may be slow in large or cloud-synced folders."))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .toggleStyle(ThemedSwitchToggleStyle(onColor: BrushLLMPlayerTheme.settingsAccent,
-                                                     onKnobColor: .white))
+                SubtitleAutoLoadPicker()
+                Text(L("subtitle.auto-load-hint", "Applies the next time you open a video."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                 LabeledContent(L("subtitle.font-size", "Font size")) {
                     Slider(value: $player.subtitleFontSize, in: 12...72, step: 1)
@@ -97,6 +90,18 @@ struct SubtitleSettingsTab: View {
                 .buttonStyle(.plain)
                 .help(L(swatch.2, swatch.0.capitalized))
             }
+        }
+    }
+}
+
+struct SubtitleAutoLoadPicker: View {
+    @ObservedObject private var settings = AppSettings.shared
+
+    var body: some View {
+        Picker(L("subtitle.auto-load", "Auto-load subtitles"), selection: $settings.subtitleAutoLoad) {
+            Text(L("panel.tracks.off", "Off")).tag(AppSettings.SubtitleAutoLoad.off)
+            Text(L("subtitle.auto-load-matching", "Matching video name")).tag(AppSettings.SubtitleAutoLoad.matching)
+            Text(L("subtitle.auto-load-folder", "All in the same folder")).tag(AppSettings.SubtitleAutoLoad.folder)
         }
     }
 }

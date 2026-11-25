@@ -16,6 +16,8 @@ struct ControlBar: View {
                 VStack(spacing: 4) {
                     progress(compact: false)
                     transport
+                    Divider().padding(.vertical, 2)
+                    PlaybackTools(player: player, showChapters: showChapters)
                 }
             }
         }
@@ -55,7 +57,6 @@ struct ControlBar: View {
                     .frame(width: 68)
                 EmptyView()
             }
-            PlaybackTools(player: player, showChapters: showChapters)
             Rectangle()
                 .fill(BrushLLMPlayerTheme.controlSeparator)
                 .frame(width: 1, height: 16)

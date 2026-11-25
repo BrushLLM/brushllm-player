@@ -9,7 +9,7 @@ The desktop window is a workspace for finding media and watching it. The two imp
 │ History           │                                            │
 │ Bookmarks         ├─ Elapsed ───────── Timeline ───── Duration ┤
 │ Selected section  │ Transport              Sound · Viewing    │
-│ Settings · About  │                                            │
+│ Settings · About  │ Speed · Audio · Subtitles · Viewing tools  │
 └───────────────────┴────────────────────────────────────────────┘
 ```
 
@@ -32,7 +32,7 @@ The desktop window is a workspace for finding media and watching it. The two imp
 - Use the Player icon with the full product name in the sidebar. Use line icons, 8 px control corners, a 12 px screen corner, and a 4/8 px spacing rhythm.
 - The sidebar is 200 px expanded and 64 px compact. It condenses below 800 px. Selecting a destination in the compact rail expands its content. The sidebar remembers the user’s choice separately at wide and narrow widths, including across viewing modes. Keyboard focus uses a visible outline, and selected destinations expose their state to assistive technology.
 - Sources keeps file, URL and server entry points together. Playlist, history and bookmarks render beneath the navigation, leaving the video visible. Chapters are available from playback options.
-- The video matte and full-width timeline form the primary visual unit. Previous, play/pause, next and stop are grouped. Sound and viewing actions are separated from transport. Less frequent options stay in a secondary panel.
+- The video matte and full-width timeline form the primary visual unit. Previous, play/pause, next and stop are grouped. A separate row shows labelled playback tools that wrap as the window narrows. Track selectors and detailed adjustments open from their own controls.
 - The media title uses the theme text color. Hovering the timeline in the ordinary window shows the target time.
 - Fullscreen and mini remove navigation and the media header. Playback remains available through compact dark controls and existing shortcuts. Fullscreen fills the viewport and mini restores the ordinary window when closed.
 

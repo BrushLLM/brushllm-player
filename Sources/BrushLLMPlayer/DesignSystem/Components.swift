@@ -21,6 +21,42 @@ struct PlayerIcon: View {
     }
 }
 
+/// Packs controls or short labels in rows at their intrinsic widths.
+struct WrappingRows: Layout {
+    var spacing: CGFloat = 4
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        positions(for: subviews, width: proposal.width ?? .infinity).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let pack = positions(for: subviews, width: bounds.width)
+        for (index, point) in pack.origins.enumerated() {
+            subviews[index].place(at: CGPoint(x: bounds.minX + point.x, y: bounds.minY + point.y),
+                                  anchor: .topLeading, proposal: .unspecified)
+        }
+    }
+
+    private func positions(for subviews: Subviews, width: CGFloat) -> (origins: [CGPoint], size: CGSize) {
+        var point = CGPoint.zero
+        var rowHeight: CGFloat = 0
+        var usedWidth: CGFloat = 0
+        var origins: [CGPoint] = []
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if point.x > 0, point.x + size.width > width {
+                point = CGPoint(x: 0, y: point.y + rowHeight + spacing)
+                rowHeight = 0
+            }
+            origins.append(point)
+            rowHeight = max(rowHeight, size.height)
+            usedWidth = max(usedWidth, point.x + size.width)
+            point.x += size.width + spacing
+        }
+        return (origins, CGSize(width: usedWidth, height: point.y + rowHeight))
+    }
+}
+
 // MARK: - Chrome icon button
 
 /// Chrome icon button with hover, focus, pressed, disabled and active states.

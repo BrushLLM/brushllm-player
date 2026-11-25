@@ -150,8 +150,8 @@
 "player.record-failed" = "録画に失敗しました：このストリームは直接コピーできません";
 "player.slow-load-hint" = "読み込み中… システム設定 → プライバシーとセキュリティのファイルアクセス権限を確認してください";
 
-"subtitle.auto-load" = "一致する字幕を自動読み込み";
-"subtitle.auto-load-hint" = "動画と同じフォルダから同名の字幕ファイルを読み込みます。大きなフォルダやクラウド同期フォルダでは時間がかかる場合があります。";
+"subtitle.auto-load" = "字幕の自動読み込み";
+"subtitle.auto-load-hint" = "次に動画を開いたときに適用されます。";
 
 /* Crop & Rotation */
 "video.rotate" = "回転";
@@ -289,3 +289,13 @@
 "player.fullscreen-exit" = "フルスクリーンを終了";
 "panel.clear.question" = "このリストを消去しますか？";
 "panel.clear.description" = "このリストの項目をすべて削除します。";
+
+"subtitle.auto-load-matching" = "動画名と一致";
+"subtitle.auto-load-folder" = "同じフォルダー内のすべて";
+"settings.file-associations" = "ファイルの関連付け";
+"settings.file-associations-mac-hint" = "一覧にある動画、音声、プレイリスト、ディスクイメージの既定のアプリを BrushLLM Player に設定します。";
+"settings.file-associations-apply" = "すべての形式を関連付ける…";
+"settings.file-associations-confirm" = "BrushLLM Player を既定のアプリに設定しますか？";
+"settings.file-associations-confirm-apply" = "既定に設定";
+"settings.file-associations-done" = "一覧にあるすべての形式の既定のアプリを BrushLLM Player に設定しました。";
+"settings.file-associations-partial" = "macOS で %d 種類の既定のアプリを変更できませんでした。";

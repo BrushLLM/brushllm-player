@@ -150,8 +150,8 @@
 "player.record-failed" = "Échec de l’enregistrement : ce flux ne peut pas être copié directement";
 "player.slow-load-hint" = "Chargement… vérifiez les autorisations d’accès aux fichiers dans Réglages Système → Confidentialité et sécurité";
 
-"subtitle.auto-load" = "Charger automatiquement les sous-titres correspondants";
-"subtitle.auto-load-hint" = "Charge les fichiers de sous-titres du même nom depuis le dossier de la vidéo ; peut être lent dans les dossiers volumineux ou synchronisés dans le cloud.";
+"subtitle.auto-load" = "Chargement automatique des sous-titres";
+"subtitle.auto-load-hint" = "S’applique à la prochaine ouverture d’une vidéo.";
 
 /* Crop & Rotation */
 "video.rotate" = "Rotation";
@@ -289,3 +289,13 @@
 "player.fullscreen-exit" = "Quitter le plein écran";
 "panel.clear.question" = "Vider cette liste ?";
 "panel.clear.description" = "Supprimer toutes les entrées de cette liste.";
+
+"subtitle.auto-load-matching" = "Nom de vidéo correspondant";
+"subtitle.auto-load-folder" = "Tous ceux du même dossier";
+"settings.file-associations" = "Associations de fichiers";
+"settings.file-associations-mac-hint" = "Définissez BrushLLM Player comme application par défaut pour les formats vidéo, audio, de listes de lecture et d’images disque indiqués.";
+"settings.file-associations-apply" = "Associer tous les formats…";
+"settings.file-associations-confirm" = "Définir BrushLLM Player par défaut ?";
+"settings.file-associations-confirm-apply" = "Définir par défaut";
+"settings.file-associations-done" = "BrushLLM Player est l’application par défaut pour tous les formats indiqués.";
+"settings.file-associations-partial" = "macOS n’a pas pu modifier %d type(s) de fichier.";

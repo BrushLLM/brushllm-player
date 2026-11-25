@@ -150,8 +150,8 @@
 "player.record-failed" = "錄製失敗：此串流的編碼格式無法直接拷貝錄製";
 "player.slow-load-hint" = "仍在載入…請檢查系統設定 → 隱私權與安全性中的檔案存取權限";
 
-"subtitle.auto-load" = "自動載入匹配字幕";
-"subtitle.auto-load-hint" = "從影片所在資料夾載入同名字幕檔案；在大型或雲端同步資料夾中可能較慢。";
+"subtitle.auto-load" = "自動載入字幕";
+"subtitle.auto-load-hint" = "下次開啟影片時生效。";
 
 /* Crop & Rotation */
 "video.rotate" = "旋轉";
@@ -289,3 +289,13 @@
 "player.fullscreen-exit" = "退出全螢幕";
 "panel.clear.question" = "清空此清單？";
 "panel.clear.description" = "將移除此清單中的所有項目。";
+
+"subtitle.auto-load-matching" = "比對影片檔名";
+"subtitle.auto-load-folder" = "同一資料夾內的所有字幕";
+"settings.file-associations" = "檔案關聯";
+"settings.file-associations-mac-hint" = "將 BrushLLM Player 設為下列影片、音訊、播放清單和光碟映像檔格式的預設應用程式。";
+"settings.file-associations-apply" = "關聯所有格式…";
+"settings.file-associations-confirm" = "要將 BrushLLM Player 設為預設應用程式嗎？";
+"settings.file-associations-confirm-apply" = "設為預設";
+"settings.file-associations-done" = "BrushLLM Player 已設為所列全部格式的預設應用程式。";
+"settings.file-associations-partial" = "macOS 無法變更 %d 種檔案類型的預設應用程式。";

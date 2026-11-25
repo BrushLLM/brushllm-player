@@ -54,7 +54,7 @@
             <key>CFBundleTypeRole</key>
             <string>Viewer</string>
             <key>LSHandlerRank</key>
-            <string>Owner</string>
+            <string>Alternate</string>
             <key>LSItemContentTypes</key>
             <array>
                 <string>public.audiovisual-content</string>
@@ -78,7 +78,7 @@
             <key>CFBundleTypeRole</key>
             <string>Viewer</string>
             <key>LSHandlerRank</key>
-            <string>Owner</string>
+            <string>Alternate</string>
             <key>LSItemContentTypes</key>
             <array>
                 <string>public.audio</string>
@@ -98,9 +98,11 @@
             <key>CFBundleTypeRole</key>
             <string>Viewer</string>
             <key>LSHandlerRank</key>
-            <string>Owner</string>
+            <string>Alternate</string>
             <key>LSItemContentTypes</key>
             <array>
+                <string>public.m3u-playlist</string>
+                <string>public.pls-playlist</string>
                 <string>dev.brushllm.playlist</string>
             </array>
         </dict>
@@ -110,7 +112,7 @@
             <key>CFBundleTypeRole</key>
             <string>Viewer</string>
             <key>LSHandlerRank</key>
-            <string>Owner</string>
+            <string>Alternate</string>
             <key>LSItemContentTypes</key>
             <array>
                 <string>public.iso-image</string>
@@ -132,34 +134,7 @@
             <key>UTTypeTagSpecification</key>
             <dict>
                 <key>public.filename-extension</key>
-                <array>
-                    <string>mkv</string>
-                    <string>mp4</string>
-                    <string>m4v</string>
-                    <string>mov</string>
-                    <string>avi</string>
-                    <string>wmv</string>
-                    <string>flv</string>
-                    <string>f4v</string>
-                    <string>ts</string>
-                    <string>m2ts</string>
-                    <string>mts</string>
-                    <string>vob</string>
-                    <string>3gp</string>
-                    <string>ogv</string>
-                    <string>rm</string>
-                    <string>rmvb</string>
-                    <string>asf</string>
-                    <string>divx</string>
-                    <string>mxf</string>
-                    <string>m2v</string>
-                    <string>mpg</string>
-                    <string>mpeg</string>
-                    <string>bik</string>
-                    <string>ivf</string>
-                    <string>y4m</string>
-                    <string>webm</string>
-                </array>
+                <array/>
             </dict>
         </dict>
         <dict>
@@ -174,30 +149,7 @@
             <key>UTTypeTagSpecification</key>
             <dict>
                 <key>public.filename-extension</key>
-                <array>
-                    <string>mp3</string>
-                    <string>m4a</string>
-                    <string>aac</string>
-                    <string>flac</string>
-                    <string>ogg</string>
-                    <string>oga</string>
-                    <string>opus</string>
-                    <string>wav</string>
-                    <string>aif</string>
-                    <string>aiff</string>
-                    <string>caf</string>
-                    <string>wma</string>
-                    <string>ape</string>
-                    <string>ac3</string>
-                    <string>dts</string>
-                    <string>mka</string>
-                    <string>amr</string>
-                    <string>mpc</string>
-                    <string>wv</string>
-                    <string>spx</string>
-                    <string>dsf</string>
-                    <string>tta</string>
-                </array>
+                <array/>
             </dict>
         </dict>
         <dict>
@@ -207,16 +159,12 @@
             <string>Playlist</string>
             <key>UTTypeConformsTo</key>
             <array>
-                <string>public.data</string>
+                <string>public.playlist</string>
             </array>
             <key>UTTypeTagSpecification</key>
             <dict>
                 <key>public.filename-extension</key>
-                <array>
-                    <string>m3u</string>
-                    <string>m3u8</string>
-                    <string>pls</string>
-                </array>
+                <array/>
             </dict>
         </dict>
         <dict>
@@ -226,14 +174,12 @@
             <string>Disc image</string>
             <key>UTTypeConformsTo</key>
             <array>
-                <string>public.data</string>
+                <string>public.disk-image</string>
             </array>
             <key>UTTypeTagSpecification</key>
             <dict>
                 <key>public.filename-extension</key>
-                <array>
-                    <string>iso</string>
-                </array>
+                <array/>
             </dict>
         </dict>
     </array>

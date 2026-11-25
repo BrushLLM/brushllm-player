@@ -8,16 +8,23 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { openUrl as openExternal } from "@tauri-apps/plugin-opener";
+import mediaFormats from "../../../shared/media-formats.json";
 
 import { LANGUAGES, languageLabel, useI18n } from "../i18n";
 import type { LanguageCode } from "../i18n";
+import SubtitleAutoLoadControl from "./SubtitleAutoLoadControl";
+import type { SubtitleAutoLoadProps } from "./SubtitleAutoLoadControl";
 
 const GITHUB_API_LATEST = "https://api.github.com/repos/BrushLLM/brushllm-player/releases/latest";
 const GITHUB_RELEASES_URL = "https://github.com/BrushLLM/brushllm-player/releases";
+const extensions = [...mediaFormats.video, ...mediaFormats.audio, ...mediaFormats.playlist]
+  .sort().map((extension) => "." + extension).join("  ");
 
 export interface SettingsPanelProps {
   onClose: () => void;
+  subtitleAutoLoad: SubtitleAutoLoadProps;
 }
 
 type UpdateState =
@@ -42,10 +49,11 @@ function isNewerVersion(latest: string, current: string): boolean {
   return false;
 }
 
-export default function SettingsPanel({ onClose }: SettingsPanelProps) {
+export default function SettingsPanel({ onClose, subtitleAutoLoad }: SettingsPanelProps) {
   const { t, lang, setLang } = useI18n();
   const [updateState, setUpdateState] = useState<UpdateState>({ kind: "idle" });
   const [appVersion, setAppVersion] = useState<string | null>(null);
+  const [associationError, setAssociationError] = useState(false);
   const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -152,6 +160,25 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
             ))}
           </select>
           <p className="settings-hint">{t("settings.general.language-note")}</p>
+        </div>
+
+        <div className="settings-section">
+          <h3 className="settings-section-title">{t("settings.subtitle")}</h3>
+          <SubtitleAutoLoadControl {...subtitleAutoLoad} />
+        </div>
+
+        <div className="settings-section">
+          <h3 className="settings-section-title">{t("settings.file-associations")}</h3>
+          <p className="settings-hint">{t("settings.file-associations-windows-hint")}</p>
+          <p className="settings-hint supported-extensions">{extensions}</p>
+          <button type="button" className="settings-update-btn" disabled={!isTauri()}
+            onClick={() => {
+              setAssociationError(false);
+              void invoke("open_default_apps").catch(() => setAssociationError(true));
+            }}>
+            {t("settings.file-associations-open")}
+          </button>
+          {associationError && <p className="settings-hint" role="alert">{t("settings.file-associations-failed")}</p>}
         </div>
 
         <div className="settings-section">

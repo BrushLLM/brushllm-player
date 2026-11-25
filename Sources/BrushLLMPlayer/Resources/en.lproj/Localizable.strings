@@ -150,8 +150,8 @@
 "player.record-failed" = "Recording failed: this stream cannot be stream-copied";
 "player.slow-load-hint" = "Still loading… check file access permissions in System Settings → Privacy & Security";
 
-"subtitle.auto-load" = "Auto-load matching subtitles";
-"subtitle.auto-load-hint" = "Loads same-named subtitle files from the video's folder; may be slow in large or cloud-synced folders.";
+"subtitle.auto-load" = "Auto-load subtitles";
+"subtitle.auto-load-hint" = "Applies the next time you open a video.";
 
 /* Crop & Rotation */
 "video.rotate" = "Rotation";
@@ -289,3 +289,13 @@
 "player.fullscreen-exit" = "Exit full screen";
 "panel.clear.question" = "Clear this list?";
 "panel.clear.description" = "Remove all entries from this list.";
+
+"subtitle.auto-load-matching" = "Matching video name";
+"subtitle.auto-load-folder" = "All in the same folder";
+"settings.file-associations" = "File Associations";
+"settings.file-associations-mac-hint" = "Make BrushLLM Player the default app for the listed video, audio, playlist and disc-image formats.";
+"settings.file-associations-apply" = "Associate All Formats…";
+"settings.file-associations-confirm" = "Set BrushLLM Player as the default?";
+"settings.file-associations-confirm-apply" = "Set as Default";
+"settings.file-associations-done" = "BrushLLM Player is set as the default for all listed formats.";
+"settings.file-associations-partial" = "macOS could not change %d file type(s).";

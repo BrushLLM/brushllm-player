@@ -150,8 +150,8 @@
 "player.record-failed" = "Error al grabar: esta transmisión no se puede copiar directamente";
 "player.slow-load-hint" = "Cargando… revisa los permisos de acceso a archivos en Ajustes del Sistema → Privacidad y seguridad";
 
-"subtitle.auto-load" = "Cargar automáticamente subtítulos coincidentes";
-"subtitle.auto-load-hint" = "Carga archivos de subtítulos con el mismo nombre desde la carpeta del vídeo; puede ser lento en carpetas grandes o sincronizadas en la nube.";
+"subtitle.auto-load" = "Cargar subtítulos automáticamente";
+"subtitle.auto-load-hint" = "Se aplica la próxima vez que abras un vídeo.";
 
 /* Crop & Rotation */
 "video.rotate" = "Rotación";
@@ -289,3 +289,13 @@
 "player.fullscreen-exit" = "Salir de pantalla completa";
 "panel.clear.question" = "¿Vaciar esta lista?";
 "panel.clear.description" = "Se eliminarán todas las entradas de esta lista.";
+
+"subtitle.auto-load-matching" = "Nombre de vídeo coincidente";
+"subtitle.auto-load-folder" = "Todos los de la misma carpeta";
+"settings.file-associations" = "Asociaciones de archivos";
+"settings.file-associations-mac-hint" = "Usa BrushLLM Player como aplicación predeterminada para los formatos de vídeo, audio, listas e imágenes de disco indicados.";
+"settings.file-associations-apply" = "Asociar todos los formatos…";
+"settings.file-associations-confirm" = "¿Usar BrushLLM Player de forma predeterminada?";
+"settings.file-associations-confirm-apply" = "Establecer como predeterminada";
+"settings.file-associations-done" = "BrushLLM Player es la aplicación predeterminada para todos los formatos indicados.";
+"settings.file-associations-partial" = "macOS no pudo cambiar %d tipo(s) de archivo.";

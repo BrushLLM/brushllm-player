@@ -4,6 +4,7 @@
   "version": "0.0.11",
   "type": "module",
   "scripts": {
+    "associations": "node scripts/generate-media-associations.mjs",
     "dev": "vite",
     "build": "tsc && vite build",
     "icons": "tauri icon ../Sources/BrushLLMPlayer/Resources/Base.lproj/PlayerIcon.svg --output src-tauri/generated-icons",

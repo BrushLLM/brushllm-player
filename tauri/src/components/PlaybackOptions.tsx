@@ -1,89 +1,156 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import type { PlayerState } from "../player-state";
 import { useI18n } from "../i18n";
 import PlayerIcon from "./PlayerIcon";
+import type { PlayerIconName } from "./PlayerIcon";
 import TrackMenu from "./TrackMenu";
 import VideoSettingsMenu from "./VideoSettingsMenu";
 import VideoEqMenu from "./VideoEqMenu";
+import SubtitleAutoLoadControl from "./SubtitleAutoLoadControl";
+import type { SubtitleAutoLoadProps } from "./SubtitleAutoLoadControl";
 
 interface PlaybackOptionsProps {
   state: PlayerState;
   ready: boolean;
+  modalOpen: boolean;
+  subtitleAutoLoad: SubtitleAutoLoadProps;
   onCommand: (command: string, args?: Record<string, unknown>) => void;
   onShowChapters: () => void;
   onToggleOnTop: () => void;
-  onClose: () => void;
 }
 
+const panels = [
+  { id: "speed", title: "controls.speed", icon: "speed" },
+  { id: "audio", title: "panel.tracks.audio", icon: "volume" },
+  { id: "sub", title: "panel.tracks.subtitle", icon: "captions" },
+  { id: "video", title: "controls.video-settings", icon: "adjustments" },
+  { id: "equalizer", title: "controls.equalizer", icon: "equalizer" },
+] as const satisfies ReadonlyArray<{ id: string; title: string; icon: PlayerIconName }>;
+
 export default function PlaybackOptions({
-  state, ready, onCommand, onShowChapters, onToggleOnTop, onClose,
+  state, ready, modalOpen, subtitleAutoLoad, onCommand, onShowChapters, onToggleOnTop,
 }: PlaybackOptionsProps) {
   const { t } = useI18n();
-  const [section, setSection] = useState<"options" | "audio" | "sub" | "video" | "equalizer">("options");
-  const panel = useRef<HTMLElement>(null);
+  const [section, setSection] = useState<typeof panels[number] | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const firstPanelButton = useRef<HTMLButtonElement>(null);
+
   useLayoutEffect(() => {
-    panel.current?.querySelector<HTMLElement>("button:not([disabled]), select:not([disabled])")?.focus();
-  }, [section]);
+    if (section && !modalOpen) firstPanelButton.current?.focus();
+  }, [section, modalOpen]);
+
+  const closePanel = useCallback(() => {
+    setSection(null);
+    trigger.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!section || modalOpen) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      closePanel();
+    };
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, [closePanel, modalOpen, section]);
 
   const setProperty = (name: string, value: string) => onCommand("set_property", { name, value });
   const sendMpv = (...args: (string | number)[]) => onCommand("send_command", { args });
   const active = ready && !state.idle;
 
+  function action(icon: PlayerIconName, title: string, onClick: () => void, disabled = false,
+                  pressed?: boolean, iconOnly = false): ReactNode {
+    return (
+      <button className="playback-tool" type="button" disabled={disabled}
+        aria-label={title} title={title} aria-pressed={pressed} onClick={onClick}>
+        <PlayerIcon name={icon} />
+        {!iconOnly && <span>{title}</span>}
+      </button>
+    );
+  }
+
   return (
-    <section ref={panel} className="playback-options" id="playback-options" aria-label={t("player.options")}>
-      {section !== "options" && (
-        <button className="tool-btn options-back" type="button" title={t("player.options")}
-          aria-label={t("player.options")} onClick={() => setSection("options")}>
-          <PlayerIcon name="back" />
-        </button>
-      )}
-      {section === "options" && (
-        <div className="options-grid">
-          <label className="options-speed">
-            <span>{t("controls.speed")}</span>
-            <select disabled={!ready} value={state.speed} onChange={(event) => setProperty("speed", event.target.value)}>
-              {[...new Set([0.5, 0.75, 1, 1.25, 1.5, 2, state.speed])].sort((a, b) => a - b)
-                .map((speed) => <option key={speed} value={speed}>{Number(speed.toFixed(2))}×</option>)}
-            </select>
-          </label>
-          <button type="button" onClick={onShowChapters}>{t("panel.chapters")}</button>
-          <div className="options-divider" />
-          <button type="button" disabled={!ready} onClick={() => setSection("audio")}>{t("panel.tracks.audio")}</button>
-          <button type="button" disabled={!ready} onClick={() => setSection("sub")}>{t("panel.tracks.subtitle")}</button>
-          <button type="button" disabled={!active} onClick={() => onCommand("open_subtitle_dialog")}>{t("menu.load-subtitle")}</button>
-          <button type="button" disabled={!ready} onClick={() => setSection("video")}>{t("controls.video-settings")}</button>
-          <button type="button" disabled={!ready} onClick={() => setSection("equalizer")}>{t("controls.equalizer")}</button>
-          <div className="options-divider" />
-          <details className="options-advanced">
-            <summary>{t("player.advanced-controls")}</summary>
-            <div className="options-grid">
-              <button type="button" disabled={!active} onClick={() => onCommand("screenshot")}>{t("menu.screenshot")}</button>
-              <button type="button" disabled={!active} aria-pressed={state.abLoopA !== null || state.abLoopB !== null}
-                onClick={() => sendMpv("ab-loop")}>{t("menu.ab-loop")}</button>
-              <button type="button" disabled={!active} onClick={() => onCommand("seek_relative", { seconds: -5 })}>{t("menu.step-backward")}</button>
-              <button type="button" disabled={!active} onClick={() => onCommand("seek_relative", { seconds: 5 })}>{t("menu.step-forward")}</button>
-              <button type="button" disabled={!active || !state.paused} onClick={() => sendMpv("frame-back-step")}>{t("menu.frame-back-step")}</button>
-              <button type="button" disabled={!active} onClick={() => sendMpv("frame-step")}>{t("menu.frame-step")}</button>
-              <button type="button" aria-pressed={state.onTop} onClick={onToggleOnTop}>{t("video.ontop")}</button>
-            </div>
-          </details>
+    <>
+      <div className="playback-tools" role="group" aria-label={t("player.options")}>
+        {panels.map((option) => (
+          <button key={option.id} type="button" className="playback-tool"
+            disabled={!ready && option.id !== "sub"}
+            aria-expanded={section === option}
+            aria-controls={section === option ? "playback-options" : undefined}
+            onClick={(event) => {
+              if (section === option) closePanel();
+              else {
+                trigger.current = event.currentTarget;
+                setSection(option);
+              }
+            }}>
+            <PlayerIcon name={option.icon} />
+            <span>{t(option.title)}</span>
+          </button>
+        ))}
+        {action("playlist", t("panel.chapters"), onShowChapters)}
+        {action("camera", t("menu.screenshot"), () => onCommand("screenshot"), !active)}
+        {action("repeat", t("menu.ab-loop"), () => sendMpv("ab-loop"), !active,
+          state.abLoopA !== null || state.abLoopB !== null)}
+        {action("pin", t("video.ontop"), onToggleOnTop, false, state.onTop)}
+        <div className="step-tools">
+          {action("seekBack", t("menu.step-backward"), () => onCommand("seek_relative", { seconds: -5 }), !active, undefined, true)}
+          {action("seekForward", t("menu.step-forward"), () => onCommand("seek_relative", { seconds: 5 }), !active, undefined, true)}
+          {action("previous", t("menu.frame-back-step"), () => sendMpv("frame-back-step"), !active || !state.paused, undefined, true)}
+          {action("next", t("menu.frame-step"), () => sendMpv("frame-step"), !active, undefined, true)}
         </div>
+      </div>
+      {section && (
+        <section className="playback-options" id="playback-options" aria-labelledby="playback-options-title">
+          <header className="playback-options-header">
+            <h2 id="playback-options-title">{t(section.title)}</h2>
+            <button ref={firstPanelButton} className="tool-btn" type="button"
+              onClick={closePanel} aria-label={t("panel.cancel")} title={t("panel.cancel")}>
+              <PlayerIcon name="close" />
+            </button>
+          </header>
+          {section.id === "speed" && (
+            <label className="options-speed">
+              <select aria-label={t("controls.speed")} disabled={!ready} value={state.speed}
+                onChange={(event) => setProperty("speed", event.target.value)}>
+                {[...new Set([0.5, 0.75, 1, 1.25, 1.5, 2, state.speed])].sort((a, b) => a - b)
+                  .map((speed) => <option key={speed} value={speed}>{Number(speed.toFixed(2))}×</option>)}
+              </select>
+            </label>
+          )}
+          {(section.id === "audio" || section.id === "sub") && (
+            <>
+              {active && (
+                <TrackMenu kind={section.id} tracks={state.tracks}
+                  currentId={section.id === "audio" ? state.audioTrackId : state.subtitleTrackId}
+                  onSelect={(id) => setProperty(section.id === "audio" ? "aid" : "sid", id === null ? "no" : String(id))}
+                  onClose={closePanel} />
+              )}
+              {section.id === "sub" && (
+                <div className="subtitle-options">
+                  <SubtitleAutoLoadControl {...subtitleAutoLoad} />
+                  <button type="button" className="playback-tool" disabled={!active}
+                    onClick={() => onCommand("open_subtitle_dialog")}>
+                    <PlayerIcon name="folder" />
+                    {t("menu.load-subtitle")}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+          {section.id === "video" && (
+            <VideoSettingsMenu aspectMode={state.aspectMode} rotation={state.rotation}
+              hwdec={state.hwdec} onSetProperty={setProperty} />
+          )}
+          {section.id === "equalizer" && (
+            <VideoEqMenu brightness={state.brightness} contrast={state.contrast}
+              saturation={state.saturation} deinterlace={state.deinterlace}
+              onSetProperty={setProperty} />
+          )}
+        </section>
       )}
-      {(section === "audio" || section === "sub") && (
-        <TrackMenu kind={section} tracks={state.tracks}
-          currentId={section === "audio" ? state.audioTrackId : state.subtitleTrackId}
-          onSelect={(id) => setProperty(section === "audio" ? "aid" : "sid", id === null ? "no" : String(id))}
-          onClose={onClose} />
-      )}
-      {section === "video" && (
-        <VideoSettingsMenu aspectMode={state.aspectMode} rotation={state.rotation}
-          hwdec={state.hwdec} onSetProperty={setProperty} />
-      )}
-      {section === "equalizer" && (
-        <VideoEqMenu brightness={state.brightness} contrast={state.contrast}
-          saturation={state.saturation} deinterlace={state.deinterlace}
-          onSetProperty={setProperty} />
-      )}
-    </section>
+    </>
   );
 }

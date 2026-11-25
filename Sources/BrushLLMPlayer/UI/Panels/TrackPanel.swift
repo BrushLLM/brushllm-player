@@ -28,6 +28,11 @@ struct TrackPanel: View {
                     trackRows(player.subtitleTracks, current: player.currentSubtitleTrack) { id in
                         player.setSubtitleTrack(id)
                     }
+                    SubtitleAutoLoadPicker()
+                    Button(L("menu.load-subtitle", "Load Subtitle File…")) {
+                        SubtitlePanel.present { player.loadExternalSubtitle($0) }
+                    }
+                    .disabled(player.isIdle)
                 }
             }
         }
@@ -43,14 +48,19 @@ struct TrackPanel: View {
                 .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
                 .padding(.bottom, 8)
         } else {
-            // "Off" row (disables the track type).
-            trackRow(label: L("panel.tracks.off", "Off"), isSelected: current == nil) {
-                action(nil)
+            ViewThatFits(in: .vertical) {
+                trackChoices(tracks, current: current, action: action).fixedSize(horizontal: false, vertical: true)
+                ScrollView { trackChoices(tracks, current: current, action: action) }
             }
+            .frame(maxHeight: 220)
+        }
+    }
+
+    private func trackChoices(_ tracks: [TrackInfo], current: Int?, action: @escaping (Int?) -> Void) -> some View {
+        VStack(spacing: 4) {
+            trackRow(label: L("panel.tracks.off", "Off"), isSelected: current == nil) { action(nil) }
             ForEach(tracks) { track in
-                trackRow(label: track.label, isSelected: track.id == current) {
-                    action(track.id)
-                }
+                trackRow(label: track.label, isSelected: track.id == current) { action(track.id) }
             }
         }
     }
