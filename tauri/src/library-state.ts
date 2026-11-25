@@ -26,7 +26,22 @@ export interface Bookmark {
   createdAt: number;
 }
 
-// mm:ss / h:mm:ss clock format shared with ChaptersPanel.formatTime.
+// mpv can use the stream URL as a title. Avoid displaying authentication
+// details or signed query parameters in the workspace and playlist.
+export function displayMediaTitle(value: string): string {
+  value = value.trim();
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) return value;
+  try {
+    const url = new URL(value);
+    const segments = url.pathname.split("/").filter(Boolean);
+    const name = segments[segments.length - 1];
+    return name ? decodeURIComponent(name) : url.hostname;
+  } catch {
+    return "";
+  }
+}
+
+// Time label for the timeline and chapter list.
 export function formatClock(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
   const total = Math.floor(seconds);

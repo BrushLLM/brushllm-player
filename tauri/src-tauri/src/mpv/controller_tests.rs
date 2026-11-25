@@ -46,8 +46,11 @@ fn typed_observers_and_string_end_file_reasons() {
     }
     let shared = Shared::new(8, no_events());
     assert!(shared.connected(&AtomicBool::new(false)));
+    shared.dispatch(json!({"event":"start-file"}));
+    assert!(shared.snapshot().loading);
     for reason in ["eof", "stop", "quit"] {
         shared.dispatch(json!({"event":"end-file", "reason":reason}));
+        assert!(!shared.snapshot().loading);
         assert!(shared.snapshot().error.is_none());
         assert_eq!(shared.snapshot().end_file.unwrap().reason, reason);
     }
@@ -57,7 +60,10 @@ fn typed_observers_and_string_end_file_reasons() {
         shared.snapshot().end_file.unwrap().file_error.as_deref(),
         Some("loading failed")
     );
+    shared.dispatch(json!({"event":"start-file"}));
+    assert!(shared.snapshot().loading);
     shared.dispatch(json!({"event":"file-loaded"}));
+    assert!(!shared.snapshot().loading);
     assert!(shared.snapshot().error.is_none());
 }
 

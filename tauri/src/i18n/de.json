@@ -219,5 +219,20 @@
   "webdav.share": "Freigabe",
   "webdav.title": "Titel",
   "webdav.url": "Server-URL",
-  "webdav.username": "Benutzername"
+  "webdav.username": "Benutzername",
+  "player.workspace": "Player",
+  "player.sources": "Quellen",
+  "player.open-files": "Dateien öffnen…",
+  "player.sidebar-expand": "Seitenleiste einblenden",
+  "player.sidebar-collapse": "Seitenleiste einklappen",
+  "player.options": "Wiedergabeoptionen",
+  "player.settings": "Einstellungen",
+  "player.fullscreen-exit": "Vollbild verlassen",
+  "player.video-detached": "Das Video läuft in einem separaten Fenster.",
+  "player.video-native-mac": "Videos können in der nativen macOS-App abgespielt werden.",
+  "player.desktop-required": "Öffne BrushLLM Player, um Medien zu laden.",
+  "panel.clear.question": "Liste leeren?",
+  "panel.clear.description": "Alle Einträge in dieser Liste entfernen.",
+  "player.loading": "Medium wird geöffnet…",
+  "player.advanced-controls": "Erweiterte Steuerung"
 }

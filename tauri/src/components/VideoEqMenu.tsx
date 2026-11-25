@@ -3,7 +3,6 @@
 // properties of the same name) plus a deinterlace yes/no toggle. All values
 // go through the set_property backend command.
 
-import { useEffect, useRef } from "react";
 import { useI18n } from "../i18n";
 
 export interface VideoEqMenuProps {
@@ -17,8 +16,6 @@ export interface VideoEqMenuProps {
   deinterlace: boolean;
   /** Dispatches a set_property command: (name, value). */
   onSetProperty: (name: string, value: string) => void;
-  /** Called when the menu wants to close (Escape key or outside click). */
-  onClose?: () => void;
 }
 
 interface EqSliderConfig {
@@ -33,39 +30,13 @@ export default function VideoEqMenu({
   saturation,
   deinterlace,
   onSetProperty,
-  onClose,
 }: VideoEqMenuProps) {
   const { t } = useI18n();
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  // Close on Escape and on clicks outside the popup (capture phase so the
-  // opening trigger button also counts as "outside").
-  useEffect(() => {
-    if (!onClose) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.stopPropagation();
-        onClose();
-      }
-    };
-    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-      const root = rootRef.current;
-      if (root && event.target instanceof Node && !root.contains(event.target)) {
-        onClose();
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown, true);
-    document.addEventListener("mousedown", handlePointerDown, true);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown, true);
-      document.removeEventListener("mousedown", handlePointerDown, true);
-    };
-  }, [onClose]);
 
   const sliders: EqSliderConfig[] = [
-    { label: "Brightness", property: "brightness", value: brightness },
-    { label: "Contrast", property: "contrast", value: contrast },
-    { label: "Saturation", property: "saturation", value: saturation },
+    { label: t("video.brightness"), property: "brightness", value: brightness },
+    { label: t("video.contrast"), property: "contrast", value: contrast },
+    { label: t("video.saturation"), property: "saturation", value: saturation },
   ];
 
   const resetAll = () => {
@@ -75,8 +46,8 @@ export default function VideoEqMenu({
   };
 
   return (
-    <div ref={rootRef} className="veq-menu" role="menu" aria-label="Video equalizer">
-      <div className="vsm-section-title">Video Equalizer</div>
+    <div className="veq-menu" role="group" aria-label={t("controls.equalizer")}>
+      <div className="vsm-section-title">{t("controls.equalizer")}</div>
       {sliders.map((slider) => (
         <div key={slider.property} className="veq-slider-row">
           <label className="veq-slider-label" htmlFor={`veq-${slider.property}`}>
@@ -102,11 +73,10 @@ export default function VideoEqMenu({
       <button
         type="button"
         className={`vsm-toggle ${deinterlace ? "active" : ""}`}
-        role="menuitemcheckbox"
-        aria-checked={deinterlace}
+        aria-pressed={deinterlace}
         onClick={() => onSetProperty("deinterlace", deinterlace ? "no" : "yes")}
       >
-        <span className="vsm-toggle-label">Deinterlace</span>
+        <span className="vsm-toggle-label">{t("video.deinterlace")}</span>
         <span className={`vsm-switch ${deinterlace ? "on" : ""}`} aria-hidden="true">
           <span className="vsm-switch-knob" />
         </span>

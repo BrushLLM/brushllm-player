@@ -18,10 +18,9 @@ final class VideoView: NSView {
     /// feeds fill-window mode.
     var onAspectChanged: ((CGFloat) -> Void)?
 
-    /// Called with (resizing, viewWidth) when a live resize or fullscreen
-    /// transition starts/ends; the control bar swaps to a snapshot while
-    /// resizing (see PlayerCore.isLiveResizing).
-    var onLiveResize: ((Bool, CGFloat) -> Void)?
+    /// Reports whether the video view is being live-resized.
+    var onLiveResize: ((Bool) -> Void)?
+    var onWindowChanged: (() -> Void)?
 
     init(controller: MPVController) {
         self.controller = controller
@@ -46,6 +45,11 @@ final class VideoView: NSView {
         videoLayer.update(force: true)
     }
 
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        onWindowChanged?()
+    }
+
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
         if newSize.height > 0 {
@@ -62,12 +66,12 @@ final class VideoView: NSView {
     /// the flag here would switch async drawing off again immediately.
     override func viewWillStartLiveResize() {
         super.viewWillStartLiveResize()
-        onLiveResize?(true, bounds.width)
+        onLiveResize?(true)
     }
 
     override func viewDidEndLiveResize() {
         super.viewDidEndLiveResize()
-        onLiveResize?(false, bounds.width)
+        onLiveResize?(false)
     }
 
     // MARK: - Drag & drop

@@ -219,5 +219,20 @@
   "webdav.share": "공유 이름",
   "webdav.title": "제목",
   "webdav.url": "서버 URL",
-  "webdav.username": "사용자 이름"
+  "webdav.username": "사용자 이름",
+  "player.workspace": "플레이어",
+  "player.sources": "미디어 소스",
+  "player.open-files": "파일 열기…",
+  "player.sidebar-expand": "사이드바 펼치기",
+  "player.sidebar-collapse": "사이드바 접기",
+  "player.options": "재생 옵션",
+  "player.settings": "설정",
+  "player.fullscreen-exit": "전체 화면 종료",
+  "player.video-detached": "동영상이 별도의 창에서 재생 중입니다.",
+  "player.video-native-mac": "macOS 기본 앱에서 동영상을 재생할 수 있습니다.",
+  "player.desktop-required": "미디어를 불러오려면 BrushLLM Player를 여세요.",
+  "panel.clear.question": "이 목록을 비울까요?",
+  "panel.clear.description": "이 목록의 모든 항목을 삭제합니다.",
+  "player.loading": "미디어를 여는 중…",
+  "player.advanced-controls": "고급 제어"
 }

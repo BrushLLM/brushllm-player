@@ -278,3 +278,14 @@
 "servers.error.generic" = "Etwas ist schiefgelaufen";
 
 "controls.progress" = "Wiedergabeposition";
+
+"player.workspace" = "Player";
+"player.sources" = "Quellen";
+"player.open-files" = "Dateien öffnen…";
+"player.sidebar-expand" = "Seitenleiste einblenden";
+"player.sidebar-collapse" = "Seitenleiste einklappen";
+"player.options" = "Wiedergabeoptionen";
+"player.settings" = "Einstellungen";
+"player.fullscreen-exit" = "Vollbild verlassen";
+"panel.clear.question" = "Liste leeren?";
+"panel.clear.description" = "Alle Einträge in dieser Liste entfernen.";

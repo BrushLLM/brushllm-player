@@ -278,3 +278,14 @@
 "servers.error.generic" = "Une erreur s'est produite";
 
 "controls.progress" = "Position de lecture";
+
+"player.workspace" = "Lecteur";
+"player.sources" = "Sources";
+"player.open-files" = "Ouvrir des fichiers…";
+"player.sidebar-expand" = "Développer la barre latérale";
+"player.sidebar-collapse" = "Réduire la barre latérale";
+"player.options" = "Options de lecture";
+"player.settings" = "Réglages";
+"player.fullscreen-exit" = "Quitter le plein écran";
+"panel.clear.question" = "Vider cette liste ?";
+"panel.clear.description" = "Supprimer toutes les entrées de cette liste.";

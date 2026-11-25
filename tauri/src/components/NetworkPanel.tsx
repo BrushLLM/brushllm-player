@@ -8,7 +8,7 @@
 // back navigation, sorting, play and folder-to-playlist enqueue.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 
 import { useI18n } from "../i18n";
 import type { MediaItem, MediaSortMode, ServerSource } from "../server-state";
@@ -19,7 +19,10 @@ import ServerList from "./network/ServerList";
 import AddServerForm from "./network/AddServerForm";
 import BrowserView from "./network/BrowserView";
 
+export type NetworkTab = "stream" | "servers";
+
 export interface NetworkPanelProps {
+  initialTab: NetworkTab;
   onClose: () => void;
   /** Plays a direct URL (stream tab) — routed to the existing open_url. */
   onPlayUrl: (url: string) => void;
@@ -33,9 +36,9 @@ type ServersTabView =
   | { kind: "form"; editing: ServerSource | null }
   | { kind: "browser"; serverId: string };
 
-export default function NetworkPanel({ onClose, onPlayUrl, onEnqueued }: NetworkPanelProps) {
+export default function NetworkPanel({ initialTab, onClose, onPlayUrl, onEnqueued }: NetworkPanelProps) {
   const { t } = useI18n();
-  const [tab, setTab] = useState<"stream" | "servers">("stream");
+  const [tab, setTab] = useState(initialTab);
   const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -53,6 +56,7 @@ export default function NetworkPanel({ onClose, onPlayUrl, onEnqueued }: Network
   // Request tokens: only the newest browse/enqueue may publish results.
   const browseToken = useRef(0);
   const folderToken = useRef(0);
+  const playToken = useRef(0);
 
   const browsingServer = view.kind === "browser" ? servers.find((s) => s.id === view.serverId) ?? null : null;
 
@@ -64,7 +68,7 @@ export default function NetworkPanel({ onClose, onPlayUrl, onEnqueued }: Network
 
   // Load the server list when the panel opens.
   useEffect(() => {
-    refreshServers();
+    if (isTauri()) refreshServers();
   }, [refreshServers]);
 
   // Escape / Tab focus trap / outside-click dismissal, same pattern as the
@@ -98,6 +102,7 @@ export default function NetworkPanel({ onClose, onPlayUrl, onEnqueued }: Network
       document.removeEventListener("keydown", handleKeyDown);
       browseToken.current += 1;
       folderToken.current += 1;
+      playToken.current += 1;
       if (previouslyFocused?.isConnected) previouslyFocused.focus();
     };
   }, [onClose]);
@@ -125,6 +130,7 @@ export default function NetworkPanel({ onClose, onPlayUrl, onEnqueued }: Network
   const enterBrowser = useCallback((server: ServerSource) => {
     browseToken.current += 1;
     folderToken.current += 1;
+    playToken.current += 1;
     setIsLoading(false);
     setAddingFolder(false);
     setBrowseError(null);
@@ -169,13 +175,14 @@ export default function NetworkPanel({ onClose, onPlayUrl, onEnqueued }: Network
   // --- Playing / enqueueing ---
 
   const playItem = useCallback((server: ServerSource, item: MediaItem) => {
-    // Errors surface inside the panel (browse-style error row), not through
-    // the global player error banner: a failed server play keeps the modal
-    // open so the user can retry or pick another item.
-    void invoke("servers_play", { serverId: server.id, itemId: item.id }).catch((error) => {
-      setBrowseError(serverErrorMessage(error, t));
-    });
-  }, []);
+    const token = ++playToken.current;
+    setBrowseError(null);
+    void invoke("servers_play", { serverId: server.id, itemId: item.id })
+      .then(() => { if (playToken.current === token) onClose(); })
+      .catch((error) => {
+        if (playToken.current === token) setBrowseError(serverErrorMessage(error, t));
+      });
+  }, [onClose, t]);
 
   // Folder to playlist: browse the folder, filter playable items (sorted the
   // way the browser currently sorts), enqueue each, then notify the parent to

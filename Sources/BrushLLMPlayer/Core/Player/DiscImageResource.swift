@@ -123,8 +123,7 @@ final class DiscImageResource: @unchecked Sendable {
         private let lock = NSLock()
         private var resource: DiscImageResource?
         fileprivate init(_ resource: DiscImageResource) { self.resource = resource }
-        /// Synchronous, idempotent. The thumbnail owner calls this only AFTER
-        /// ThumbnailMPV.shutdown has drained its processing queue/loaded file.
+        /// Synchronous and idempotent. Release after the final read of the mount.
         func release() {
             lock.lock(); let owner = resource; resource = nil; lock.unlock()
             owner?.releaseConsumer()

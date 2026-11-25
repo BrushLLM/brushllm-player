@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "BrushLLM Player",
-        "width": 900,
-        "height": 500,
+        "width": 1080,
+        "height": 660,
         "minWidth": 640,
         "minHeight": 340,
         "resizable": true,

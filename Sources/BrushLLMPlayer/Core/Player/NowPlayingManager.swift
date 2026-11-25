@@ -36,7 +36,7 @@ final class NowPlayingManager {
 
     /// Registers the remote command handlers with `MPRemoteCommandCenter`.
     /// Called once at app startup (from the playback player's init; headless
-    /// test/thumbnail players never activate it).
+    /// headless test players never activate it).
     func activate() {
         guard !commandsRegistered else { return }
         commandsRegistered = true

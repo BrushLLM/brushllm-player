@@ -219,5 +219,20 @@
   "webdav.share": "共有名",
   "webdav.title": "タイトル",
   "webdav.url": "サーバー URL",
-  "webdav.username": "ユーザー名"
+  "webdav.username": "ユーザー名",
+  "player.workspace": "プレーヤー",
+  "player.sources": "ソース",
+  "player.open-files": "ファイルを開く…",
+  "player.sidebar-expand": "サイドバーを展開",
+  "player.sidebar-collapse": "サイドバーを折りたたむ",
+  "player.options": "再生オプション",
+  "player.settings": "設定",
+  "player.fullscreen-exit": "フルスクリーンを終了",
+  "player.video-detached": "動画は別のウィンドウで再生されています。",
+  "player.video-native-mac": "動画は macOS のネイティブアプリで再生できます。",
+  "player.desktop-required": "メディアを読み込むには BrushLLM Player を開いてください。",
+  "panel.clear.question": "このリストを消去しますか？",
+  "panel.clear.description": "このリストの項目をすべて削除します。",
+  "player.loading": "メディアを開いています…",
+  "player.advanced-controls": "詳細コントロール"
 }

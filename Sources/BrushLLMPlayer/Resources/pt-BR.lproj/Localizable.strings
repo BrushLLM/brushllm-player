@@ -278,3 +278,14 @@
 "servers.error.generic" = "Algo deu errado";
 
 "controls.progress" = "Posição de reprodução";
+
+"player.workspace" = "Reprodutor";
+"player.sources" = "Fontes";
+"player.open-files" = "Abrir arquivos…";
+"player.sidebar-expand" = "Expandir barra lateral";
+"player.sidebar-collapse" = "Recolher barra lateral";
+"player.options" = "Opções de reprodução";
+"player.settings" = "Configurações";
+"player.fullscreen-exit" = "Sair da tela cheia";
+"panel.clear.question" = "Limpar esta lista?";
+"panel.clear.description" = "Remover todos os itens desta lista.";

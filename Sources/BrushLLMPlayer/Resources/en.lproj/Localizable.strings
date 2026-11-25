@@ -278,3 +278,14 @@
 "servers.error.generic" = "Something went wrong";
 
 "controls.progress" = "Playback position";
+
+"player.workspace" = "Player";
+"player.sources" = "Sources";
+"player.open-files" = "Open files…";
+"player.sidebar-expand" = "Expand sidebar";
+"player.sidebar-collapse" = "Collapse sidebar";
+"player.options" = "Playback options";
+"player.settings" = "Settings";
+"player.fullscreen-exit" = "Exit full screen";
+"panel.clear.question" = "Clear this list?";
+"panel.clear.description" = "Remove all entries from this list.";

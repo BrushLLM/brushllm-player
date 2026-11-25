@@ -1,24 +1,14 @@
 import SwiftUI
 import AppKit
 
-/// Native macOS About window — dark, matching the player's cinema identity.
+/// Native macOS About window.
 struct AboutWindow: View {
     private static let projectURL = URL(string: "https://github.com/BrushLLM/brushllm-player")!
     private static let licenseURL = URL(string: "https://github.com/BrushLLM/brushllm-player/blob/main/LICENSE")!
 
     var body: some View {
         VStack(spacing: 14) {
-            if let icon = Bundle.main.image(forResource: "AppIcon") {
-                Image(nsImage: icon)
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: 96, height: 96)
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
-            } else {
-                Image(systemName: "play.rectangle")
-                    .font(.system(size: 72, weight: .light))
-                    .foregroundStyle(BrushLLMPlayerTheme.accent)
-            }
+            BrushBrandMark(size: 96)
 
             Text(L("app.name", "BrushLLM Player"))
                 .font(.title2.weight(.semibold))
@@ -55,7 +45,7 @@ struct AboutWindow: View {
         }
         .padding(28)
         .frame(width: 360)
-        .preferredColorScheme(.dark)
+        .background(BrushLLMPlayerTheme.window)
     }
 
     /// One equal-width link button so the row reads as an aligned group
@@ -81,9 +71,7 @@ struct SettingsWindow: View {
             SubtitleSettingsTab()
                 .tabItem { Label(L("settings.subtitle", "Subtitles"), systemImage: "captions.bubble") }
         }
-        // Each tab's Form carries the brand-violet tint: a tint on the
-        // TabView itself does not propagate into the tab content on macOS.
-        // Player chrome keeps the lemon.
+        // Each Form uses the same tint as the main window.
         .tint(BrushLLMPlayerTheme.settingsAccent)
         .formStyle(.grouped)
         .frame(width: 480)
@@ -295,7 +283,7 @@ private struct PlaybackSettingsTab: View {
 
                 Toggle(L("settings.playback.muted", "Start muted"), isOn: $settings.startMuted)
                     .toggleStyle(ThemedSwitchToggleStyle(onColor: BrushLLMPlayerTheme.settingsAccent,
-                                                         onKnobColor: .white))
+                                                         onKnobColor: BrushLLMPlayerTheme.onAccent))
 
                 Picker(L("settings.playback.loop", "Default loop mode"), selection: $settings.loopMode) {
                     Text(L("loop.off", "No Loop")).tag(LoopMode.off)
@@ -319,7 +307,7 @@ private struct VideoSettingsTab: View {
             Section(L("settings.video", "Video")) {
                 Toggle(L("settings.video.hwdec", "Hardware decoding (VideoToolbox)"), isOn: $settings.hardwareDecoding)
                     .toggleStyle(ThemedSwitchToggleStyle(onColor: BrushLLMPlayerTheme.settingsAccent,
-                                                         onKnobColor: .white))
+                                                         onKnobColor: BrushLLMPlayerTheme.onAccent))
                 Text(L("settings.video.hwdec.hint", "Accelerates decoding of H.264, H.265 and AV1."))
                     .font(.caption)
                     .foregroundStyle(.secondary)

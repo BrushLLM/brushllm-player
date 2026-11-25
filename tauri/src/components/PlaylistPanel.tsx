@@ -1,16 +1,10 @@
-// Right-side playlist sidebar modeled on IINA's SidebarPlaylistPane: current
-// entry highlighted, per-row delete, loop (off/file/playlist) + shuffle +
-// clear in the footer. All actions flow through props; the parent owns the
-// mpv commands (playlist-play-index / playlist-remove / playlist-clear /
-// playlist-shuffle / set_property loop-file,loop-playlist).
-
 import type { PlaylistEntry } from "../player-state";
+import { displayMediaTitle } from "../library-state";
 import { useI18n } from "../i18n";
 
 export type LoopMode = "off" | "file" | "playlist";
 
 export interface PlaylistPanelProps {
-  visible: boolean;
   entries: PlaylistEntry[];
   onPlay: (index: number) => void;
   onRemove: (index: number) => void;
@@ -19,39 +13,28 @@ export interface PlaylistPanelProps {
   loopFile: boolean;
   loopPlaylist: boolean;
   onLoop: (mode: LoopMode) => void;
-  /** Inside the shared Sidebar: skip the .pl-sidebar shell (it provides the
-   *  container and the tab strip) and render only the list + footer. */
-  embedded?: boolean;
 }
 
 function displayName(entry: PlaylistEntry): string {
-  if (entry.title) return entry.title;
-  // filename is a path or URL; show the last segment.
-  const name = entry.filename;
+  const title = displayMediaTitle(entry.title ?? "");
+  if (title) return title;
+  const name = displayMediaTitle(entry.filename);
   const slash = Math.max(name.lastIndexOf("/"), name.lastIndexOf("\\"));
   return slash >= 0 ? name.slice(slash + 1) : name;
 }
 
 export default function PlaylistPanel({
-  visible, entries, onPlay, onRemove, onClear, onShuffle,
-  loopFile, loopPlaylist, onLoop, embedded = false,
+  entries, onPlay, onRemove, onClear, onShuffle,
+  loopFile, loopPlaylist, onLoop,
 }: PlaylistPanelProps) {
   const { t } = useI18n();
-  if (!visible) return null;
 
   const loopMode: LoopMode = loopPlaylist ? "playlist" : loopFile ? "file" : "off";
   const nextLoop: LoopMode =
     loopMode === "off" ? "file" : loopMode === "file" ? "playlist" : "off";
 
-  const body = (
+  return (
     <>
-      {!embedded && (
-        <div className="pl-header">
-          <span className="pl-title">{t("panel.playlist.title")}</span>
-          <span className="pl-count">{entries.length}</span>
-        </div>
-      )}
-
       <div className="pl-list" role="list">
         {entries.length === 0 ? (
           <div className="pl-empty">{t("panel.playlist.empty")}</div>
@@ -67,6 +50,7 @@ export default function PlaylistPanel({
                 className="pl-row-main"
                 onClick={() => onPlay(index)}
                 title={displayName(entry)}
+                aria-current={entry.current ? "true" : undefined}
               >
                 {entry.playing && (
                   <svg className="pl-playing-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -120,6 +104,7 @@ export default function PlaylistPanel({
           type="button"
           className="pl-footer-btn"
           onClick={onShuffle}
+          disabled={entries.length < 2}
           title={t("panel.playlist.shuffle")}
           aria-label={t("panel.playlist.shuffle")}
         >
@@ -142,6 +127,7 @@ export default function PlaylistPanel({
           type="button"
           className="pl-footer-btn pl-clear"
           onClick={onClear}
+          disabled={entries.length === 0}
           title={t("panel.playlist.clear")}
           aria-label={t("panel.playlist.clear")}
         >
@@ -157,5 +143,4 @@ export default function PlaylistPanel({
     </>
   );
 
-  return embedded ? body : <aside className="pl-sidebar" aria-label={t("panel.playlist.title")}>{body}</aside>;
 }

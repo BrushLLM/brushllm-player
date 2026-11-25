@@ -1,3 +1,4 @@
+mod desktop;
 mod library;
 mod mpv;
 mod servers;
@@ -19,8 +20,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            // Preserve the independent video window on every platform. Frontend
-            // installs its listener before player_ready starts IPC/observers.
+            // The frontend installs its listener before player_ready starts mpv.
             let handle = app.handle().clone();
             let mut player = MpvPlayer::new(Arc::new(move |snapshot| {
                 let _ = handle.emit("mpv-state", snapshot);
@@ -29,6 +29,23 @@ pub fn run() {
             // data dir (created on demand by the controller at spawn).
             let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
             player.set_watch_later_dir(data_dir.join("watch_later"));
+            #[cfg(windows)]
+            let video_surface = app
+                .get_webview_window("main")
+                .ok_or_else(|| "Player window is unavailable".to_string())
+                .and_then(|window| desktop::VideoSurface::create(&window))
+                .unwrap_or_else(|error| {
+                    log::warn!("Embedded video is unavailable: {error}");
+                    desktop::VideoSurface::default()
+                });
+            #[cfg(windows)]
+            if let Some(window_id) = video_surface.window_id() {
+                player.set_video_window(window_id);
+            }
+            #[cfg(not(windows))]
+            let video_surface = desktop::VideoSurface::default();
+            app.manage(video_surface);
+            app.manage(desktop::ViewingState::default());
             app.manage(Player(Arc::new(player)));
             app.manage(LibraryStore::open(app.handle()));
             app.manage(servers::model::ServerStore::open(app.handle()));
@@ -37,6 +54,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             player_ready,
             player_snapshot,
+            desktop::video_output,
+            desktop::place_video_surface,
+            desktop::set_viewing_mode,
             load_file,
             load_files,
             open_url,

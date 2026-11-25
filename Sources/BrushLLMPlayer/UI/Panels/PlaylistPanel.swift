@@ -1,115 +1,46 @@
 import SwiftUI
 
-/// Playlist sidebar with two tabs: the playlist and the chapter list.
-struct PlaylistPanel: View {
+/// Contents of the active library section in the desktop sidebar.
+struct PlayerLibraryPanel: View {
     @ObservedObject var player: PlayerCore
-
-    private enum SidebarTab: String, CaseIterable, Identifiable {
-        case playlist
-        case chapters
-        case history
-        case bookmarks
-
-        var id: String { rawValue }
-
-        var title: String {
-            switch self {
-            case .playlist: return L("panel.playlist.title", "Playlist")
-            case .chapters: return L("panel.chapters", "Chapters")
-            case .history: return L("panel.history", "History")
-            case .bookmarks: return L("panel.bookmarks", "Bookmarks")
-            }
-        }
-
-        var icon: String {
-            switch self {
-            case .playlist: return "music.note.list"
-            case .chapters: return "list.and.film"
-            case .history: return "clock.arrow.circlepath"
-            case .bookmarks: return "bookmark"
-            }
-        }
-    }
-
-    @State private var tab: SidebarTab = .playlist
+    let section: PlayerSidebarSection
+    @ObservedObject private var store = PlaybackStore.shared
+    @State private var clearRequested = false
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider().overlay(BrushLLMPlayerTheme.controlSeparator)
-            switch tab {
+            switch section {
+            case .sources:
+                EmptyView()
             case .playlist:
                 playlistContent
             case .chapters:
+                Text(section.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .accessibilityAddTraits(.isHeader)
                 chaptersContent
             case .history:
                 HistoryPanel(player: player)
             case .bookmarks:
                 BookmarksPanel(player: player)
             }
-            Divider().overlay(BrushLLMPlayerTheme.controlSeparator)
-            footer
-        }
-        .background(BrushLLMPlayerTheme.panelMaterial)
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(BrushLLMPlayerTheme.controlSeparator)
-                .frame(width: 0.5)
-        }
-    }
-
-    // MARK: - Header (tab picker)
-
-    /// Tabs adapt to localization length: full icon+label when they fit the
-    /// sidebar, icon-only otherwise (e.g. German "Wiedergabeliste"). The
-    /// selected tab uses the accent capsule — one selection language across
-    /// the whole app.
-    private var header: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 4) {
-                ForEach(SidebarTab.allCases) { candidate in
-                    tabButton(candidate, showLabel: true)
-                }
-                Spacer(minLength: 2)
+            if section != .sources {
+                Divider().padding(.horizontal, 14)
+                footer
             }
-            .fixedSize()
-            HStack(spacing: 4) {
-                ForEach(SidebarTab.allCases) { candidate in
-                    tabButton(candidate, showLabel: false)
-                }
-                Spacer(minLength: 2)
-            }
-            .fixedSize()
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 8)
-    }
-
-    private func tabButton(_ candidate: SidebarTab, showLabel: Bool) -> some View {
-        Button {
-            tab = candidate
-        } label: {
-            HStack(spacing: 3) {
-                Image(systemName: candidate.icon)
-                    .font(.system(size: 9, weight: .bold))
-                if showLabel {
-                    Text(candidate.title)
-                        .font(.system(size: 11, weight: tab == candidate ? .bold : .regular))
-                        .lineLimit(1)
-                }
-            }
-            .foregroundStyle(tab == candidate ? BrushLLMPlayerTheme.onAccent : BrushLLMPlayerTheme.controlTextSecondary)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
-            .background {
-                if tab == candidate {
-                    Capsule().fill(BrushLLMPlayerTheme.accent)
-                }
-            }
-            .contentShape(.rect)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(section.title)
+        .confirmationDialog(L("panel.clear.question", "Clear this list?"), isPresented: $clearRequested,
+                            titleVisibility: .visible) {
+            Button(clearTitle, role: .destructive, action: clearSection)
+            Button(L("panel.cancel", "Cancel"), role: .cancel) {}
+        } message: {
+            Text(L("panel.clear.description", "Remove all entries from this list."))
         }
-        .buttonStyle(PressedDimButtonStyle())
-        .help(candidate.title)
     }
 
     // MARK: - Playlist
@@ -209,7 +140,7 @@ struct PlaylistPanel: View {
                     .foregroundStyle(player.currentChapter == chapter.index ? BrushLLMPlayerTheme.onAccent : BrushLLMPlayerTheme.controlTextSecondary)
                     .lineLimit(1)
                 Spacer()
-                Text(formatTime(chapter.startTime))
+                Text(playbackClock(chapter.startTime))
                     .font(.system(size: 11))
                     .monospacedDigit()
                     .foregroundStyle(player.currentChapter == chapter.index ? BrushLLMPlayerTheme.onAccent : BrushLLMPlayerTheme.controlTextSecondary)
@@ -245,19 +176,19 @@ struct PlaylistPanel: View {
 
             Spacer()
 
-            switch tab {
+            switch section {
+            case .sources:
+                EmptyView()
             case .playlist:
-                footerButton(icon: "square.and.arrow.up", help: L("playlist.export", "Export as M3U…")) {
+                footerButton(icon: "square.and.arrow.up", help: L("playlist.export", "Export as M3U…"),
+                             disabled: player.playlist.isEmpty) {
                     player.exportPlaylist()
                 }
-                footerButton(icon: "shuffle", help: L("panel.playlist.shuffle", "Shuffle")) {
+                footerButton(icon: "shuffle", help: L("panel.playlist.shuffle", "Shuffle"),
+                             disabled: player.playlist.count < 2) {
                     player.shufflePlaylist()
                 }
-                // Destructive clear gets extra separation from Shuffle.
-                footerButton(icon: "trash", help: L("panel.playlist.clear", "Clear")) {
-                    player.clearPlaylist()
-                }
-                .padding(.leading, 8)
+                clearButton(disabled: player.playlist.isEmpty)
             case .chapters:
                 footerButton(icon: "backward.end.fill", help: L("menu.previous-chapter", "Previous Chapter")) {
                     player.previousChapter()
@@ -266,26 +197,43 @@ struct PlaylistPanel: View {
                     player.nextChapter()
                 }
             case .history:
-                footerButton(icon: "trash", help: L("panel.history.clear", "Clear History")) {
-                    PlaybackStore.shared.clearHistory()
-                }
-                .padding(.leading, 8)
+                clearButton(disabled: store.history.isEmpty)
             case .bookmarks:
-                footerButton(icon: "plus", help: L("menu.bookmark-add", "Add Bookmark")) {
+                footerButton(icon: "plus", help: L("menu.bookmark-add", "Add Bookmark"), disabled: player.isIdle) {
                     player.addBookmark()
                 }
-                footerButton(icon: "trash", help: L("panel.bookmarks.clear", "Clear Bookmarks")) {
-                    PlaybackStore.shared.removeBookmarks(at: IndexSet(integersIn: 0..<PlaybackStore.shared.bookmarks.count))
-                }
-                .padding(.leading, 8)
+                clearButton(disabled: store.bookmarks.isEmpty)
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }
 
-    private func footerButton(icon: String, help: String, action: @escaping () -> Void) -> some View {
-        PlayerIconButton(icon: icon, help: help, action: action)
+    private func footerButton(icon: String, help: String, disabled: Bool = false,
+                              action: @escaping () -> Void) -> some View {
+        PlayerIconButton(icon: icon, help: help, disabled: disabled, action: action)
+    }
+
+    private func clearButton(disabled: Bool) -> some View {
+        footerButton(icon: "trash", help: clearTitle, disabled: disabled) { clearRequested = true }
+            .padding(.leading, 8)
+    }
+
+    private var clearTitle: String {
+        switch section {
+        case .history: L("panel.history.clear", "Clear History")
+        case .bookmarks: L("panel.bookmarks.clear", "Clear Bookmarks")
+        default: L("panel.playlist.clear", "Clear Playlist")
+        }
+    }
+
+    private func clearSection() {
+        switch section {
+        case .playlist: player.clearPlaylist()
+        case .history: store.clearHistory()
+        case .bookmarks: store.removeBookmarks(at: IndexSet(integersIn: 0..<store.bookmarks.count))
+        case .sources, .chapters: break
+        }
     }
 
     private var loopIcon: String {
@@ -302,17 +250,5 @@ struct PlaylistPanel: View {
         case .file: return L("loop.file", "Loop File")
         case .playlist: return L("loop.playlist", "Loop Playlist")
         }
-    }
-
-    private func formatTime(_ seconds: Double) -> String {
-        guard seconds.isFinite, seconds >= 0 else { return "0:00" }
-        let total = Int(seconds)
-        let hours = total / 3600
-        let minutes = (total % 3600) / 60
-        let secs = total % 60
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, secs)
-        }
-        return String(format: "%d:%02d", minutes, secs)
     }
 }

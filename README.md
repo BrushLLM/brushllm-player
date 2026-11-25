@@ -75,7 +75,7 @@ macOS requires Xcode 15+ (Swift 5.9); Swift Package Manager resolves MPVKit auto
 <details>
 <summary><strong>🏗 Architecture</strong></summary>
 
-- **macOS app** — Swift 5 + SwiftUI + AppKit, dark glass design system. Playback core: libmpv via [MPVKit](https://github.com/MPVKit/MPVKit) (GPL build), OpenGL render API. Media servers: URLSession (WebDAV PROPFIND, Emby/Jellyfin REST), Network.framework (FTP), mount_smbfs (SMB). Persistence: UserDefaults (settings), Keychain (server passwords/tokens), JSON (history/bookmarks).
+- **macOS app** — Swift 5 + SwiftUI + AppKit, with the shared light and dark desktop layout. Playback core: libmpv via [MPVKit](https://github.com/MPVKit/MPVKit) (GPL build), OpenGL render API. Media servers: URLSession (WebDAV PROPFIND, Emby/Jellyfin REST), Network.framework (FTP), mount_smbfs (SMB). Persistence: UserDefaults (settings), Keychain (server passwords/tokens), JSON (history/bookmarks).
 - **Windows app** — Tauri 2 + React + Rust; spawns the bundled mpv binary and controls it over JSON IPC (Unix domain socket / Windows named pipe).
 - **Localization** — 9 language tables compiled into the binary; runtime switching with no restart.
 - **Update checks** — manual button in Settings; queries the GitHub releases API and opens the release page in the browser (no automatic downloads).
@@ -85,7 +85,7 @@ macOS requires Xcode 15+ (Swift 5.9); Swift Package Manager resolves MPVKit auto
 ## ⚠️ Known limitations
 
 - The Windows app is a newer Tauri implementation. It includes playback controls, file/URL opening, media servers, playlists, chapters, tracks, history and per-file bookmarks; feature parity with the native macOS app is still in progress.
-- The Tauri build uses a separate mpv video window on Windows. Its macOS build is a development control surface (`vo=null`); use the native Swift app to watch video on macOS.
+- On Windows the Tauri build embeds mpv in the playback workspace and can fall back to a separate mpv window if the native video surface cannot be created. The macOS Tauri build is a development control surface (`vo=null`). Use the native Swift app to watch video on macOS.
 - Historical records created by older Tauri versions may contain only a basename. Their original directories cannot be reconstructed reliably; open the original media again to create a complete-path entry.
 - Apps are unsigned (code signing can be added to CI later).
 

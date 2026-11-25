@@ -1,22 +1,69 @@
+@import "./workspace.css";
+
 :root {
-  --bg: #0a0a0c;
-  --bg-card: rgba(255, 255, 255, 0.05);
-  --bg-card-border: rgba(255, 255, 255, 0.1);
-  --text: rgba(255, 255, 255, 0.92);
-  --text-dim: rgba(255, 255, 255, 0.55);
-  /* Lemon accent (matches the macOS app's design system: lemon = selection/
-     activation/primary action). The old violet #893CED is now brand-only
-     (--accent-brand below). */
-  --accent: #E6FF00;
-  --accent-brand: #893CED;
-  --accent-bright: #E6FF00;
-  /* Settings dialog accents (mirrors the macOS Settings window). Fills and
-     outlines use the brand violet; text uses the light violet for contrast
-     on the dark surface (#893CED text is only ~3.3:1 here). */
-  --settings-accent: #893CED;
-  --settings-accent-text: #D3A5F5;
-  --bar-bg: rgba(0, 0, 0, 0.85);
+  color-scheme: light;
+  --brand-teal: #20594f;
+  --brand-sage: #c6ded2;
+  --bg: #f5f4f0;
+  --rail: #ecebe6;
+  --surface: #fffefc;
+  --bg-card: #eeeee9;
+  --bg-card-border: #d4d7d2;
+  --text: #202624;
+  --text-dim: #545d58;
+  --hover: #e6e7e2;
+  --track: #a9b0aa;
+  --selection: #e2eee7;
+  --accent: var(--brand-teal);
+  --accent-text: var(--accent);
+  --on-accent: var(--night-text);
+  --danger-bg: #fbe8e7;
+  --danger-text: #93282f;
+  --success-bg: #e3f3e8;
+  --success-text: #236641;
+  --matte: #101010;
+  --seek-hint-bg: var(--matte);
+  --seek-hint-text: var(--night-text);
+  --night-bg: #171717;
+  --night-text: #f2f2f1;
+  --night-text-dim: #b5b7b4;
+  --night-track: #555a56;
+  --night-hover: #303230;
+  --night-selection: #2a3631;
+  --night-on-accent: #17221e;
   --radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: var(--night-bg);
+    --rail: #1d1d1d;
+    --surface: #252525;
+    --bg-card: #2b2d2b;
+    --bg-card-border: #414441;
+    --text: var(--night-text);
+    --text-dim: var(--night-text-dim);
+    --hover: var(--night-hover);
+    --track: var(--night-track);
+    --selection: var(--night-selection);
+    --accent: var(--brand-sage);
+    --on-accent: var(--night-on-accent);
+    --danger-bg: #442429;
+    --danger-text: #ffb5b4;
+    --success-bg: #253a2d;
+    --success-text: #9be7b9;
+  }
+}
+
+::selection {
+  background: var(--selection);
+  color: var(--accent-text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 * {
@@ -35,259 +82,15 @@ html, body, #root {
   user-select: none;
 }
 
-.app {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.video-area {
-  flex: 1;
-  position: relative;
-  background: #000;
-  min-height: 0;
-}
-
-.control-bar {
-  background: var(--bar-bg);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 6px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.progress-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.time-label {
-  font-size: 11px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  min-width: 44px;
-  white-space: nowrap;
-}
-
-.time-label.dim {
-  color: var(--text-dim);
-}
-
-.progress-track {
-  flex: 1;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  position: relative;
-}
-
-.progress-bg {
-  width: 100%;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.22);
-  position: relative;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 2px;
-  position: absolute;
-  left: 0;
-  top: 0;
-}
-
-.progress-knob {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-  position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  transition: opacity 0.15s;
-}
-
-.button-row {
-  display: flex;
-  flex-wrap: wrap;
-  row-gap: 4px;
-  align-items: center;
-  gap: 2px;
-}
-
-.tool-btn {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  color: var(--text-dim);
-  cursor: pointer;
-  border-radius: 6px;
-  font-size: 13px;
-  transition: color 0.1s, background 0.1s;
-}
-
-.tool-btn:hover {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.tool-btn.active {
-  color: var(--accent);
-}
-
-.tool-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-/* Unsized inline SVGs collapse in WebKit — every icon button needs an
-   explicit box (the About/Close buttons render only because their own
-   rules set this; without it the toolbar icons are invisible). */
-.tool-btn svg {
-  width: 14px;
-  height: 14px;
-  flex: none;
-}
-
-.play-btn {
-  width: 32px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 7px;
-  background: var(--accent);
-  color: #121212;
-  font-size: 15px;
-  cursor: pointer;
-  transition: opacity 0.1s;
-}
-
-/* Unsized SVG collapses in WebKit — the play/pause glyph needs an
-   explicit box (same fix as .tool-btn svg). */
-.play-btn svg {
-  width: 15px;
-  height: 15px;
-  flex: none;
-}
-
-.play-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.play-btn.playing {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text);
-}
-
-.spacer {
-  flex: 1;
-}
-
-.volume-control {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.about-trigger svg,
-.about-close svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.volume-slider {
-  width: 62px;
-  height: 3px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.22);
-  position: relative;
-  cursor: pointer;
-}
-
-.volume-fill {
-  height: 100%;
-  border-radius: 2px;
-  background: var(--accent);
-}
-
-.speed-label {
-  font-size: 11px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-dim);
-  width: 40px;
-  text-align: center;
-  cursor: pointer;
-}
-
-.speed-label:hover {
-  color: var(--text);
-}
-
-.speed-label.active {
-  color: var(--accent);
-}
-
-.empty-state {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  color: var(--text-dim);
-}
-
-.empty-state svg {
-  width: 48px;
-  height: 48px;
-  opacity: 0.5;
-}
-
-.empty-state .hint {
-  font-size: 14px;
-}
-
-.player-error, .connection-status {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  right: 16px;
-  z-index: 1;
-  padding: 10px 14px;
-  border-radius: 6px;
-  background: rgba(40, 40, 45, 0.95);
-  color: var(--text);
-  overflow-wrap: anywhere;
-  pointer-events: none;
-}
-
-/* The error banner is interactive (dismiss button); the status banner stays
-   pointer-transparent. */
 .player-error {
-  background: rgba(115, 30, 35, 0.95);
-  pointer-events: auto;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  margin: 0 16px 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  overflow-wrap: anywhere;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -307,14 +110,13 @@ html, body, #root {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.85);
+  color: currentColor;
   cursor: pointer;
   transition: color 0.1s, background 0.1s;
 }
 
 .player-error-dismiss:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--danger-text) 10%, transparent);
 }
 
 .player-error-dismiss svg {
@@ -323,6 +125,16 @@ html, body, #root {
   stroke: currentColor;
   stroke-width: 2;
   stroke-linecap: round;
+}
+
+.player-error-recover {
+  padding: 6px 8px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
 }
 
 .about-overlay {
@@ -343,9 +155,52 @@ html, body, #root {
   padding: 22px;
   border: 1px solid var(--bg-card-border);
   border-radius: var(--radius);
-  background: #17171c;
+  background: var(--surface);
   box-shadow: 0 18px 54px rgba(0, 0, 0, 0.52);
   color: var(--text);
+}
+
+.clear-dialog {
+  margin: auto;
+}
+
+.clear-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.62);
+}
+
+.clear-dialog h2 {
+  font-size: 18px;
+}
+
+.clear-dialog p {
+  margin-block: 8px 18px;
+  color: var(--text-dim);
+}
+
+.clear-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dialog-action {
+  padding: 8px 12px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.dialog-action:hover {
+  background: var(--hover);
+}
+
+.dialog-action.danger {
+  color: var(--danger-text);
+  background: var(--danger-bg);
 }
 
 .about-header {
@@ -375,7 +230,7 @@ html, body, #root {
 
 .about-description {
   margin-top: 24px;
-  color: var(--accent-bright);
+  color: var(--accent);
   font-size: 14px;
   font-weight: 600;
 }
@@ -414,22 +269,22 @@ html, body, #root {
 
 .about-link:hover {
   border-color: rgba(137, 60, 237, 0.55);
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--settings-accent-text);
+  background: var(--hover);
+  color: var(--accent-text);
 }
 
 .progress-track:focus-visible,
 .volume-slider:focus-visible,
 .tool-btn:focus-visible,
 .play-btn:focus-visible {
-  outline: 2px solid var(--accent-bright);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 /* The about links live in the settings dialog, which uses the violet
    accents (see --settings-accent). */
 .about-link:focus-visible {
-  outline: 2px solid var(--settings-accent);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -450,18 +305,7 @@ html, body, #root {
 
 .vsm-menu,
 .veq-menu {
-  position: absolute;
-  z-index: 5;
-  min-width: 220px;
-  padding: 10px 12px 12px;
-  border: 1px solid var(--bg-card-border);
-  border-radius: var(--radius);
-  background: #17171c;
-  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.52);
-  color: var(--text);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  padding: 4px;
 }
 
 .vsm-section-title {
@@ -493,13 +337,13 @@ html, body, #root {
 
 .vsm-option:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--hover);
 }
 
 .vsm-option.active {
-  color: #121212;
-  border-color: var(--accent-bright);
-  background: var(--accent-bright);
+  color: var(--on-accent);
+  border-color: var(--accent);
+  background: var(--accent);
 }
 
 .vsm-divider {
@@ -532,7 +376,7 @@ html, body, #root {
   width: 30px;
   height: 17px;
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--hover);
   position: relative;
   transition: background 0.15s;
 }
@@ -560,7 +404,7 @@ html, body, #root {
 .vsm-toggle:focus-visible,
 .veq-reset:focus-visible,
 .veq-slider:focus-visible {
-  outline: 2px solid var(--accent-bright);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -584,7 +428,7 @@ html, body, #root {
   appearance: none;
   height: 3px;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--track);
   cursor: pointer;
 }
 
@@ -632,48 +476,13 @@ html, body, #root {
 
 .veq-reset:hover {
   border-color: rgba(230, 255, 0, 0.45);
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--accent-bright);
+  background: var(--hover);
+  color: var(--accent);
 }
 
 /* --- Agent C: playlist/chapters/track UI --- */
 
 /* Shared right sidebar container (PlaylistPanel / ChaptersPanel). */
-.pl-sidebar {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 264px;
-  display: flex;
-  flex-direction: column;
-  background: var(--bar-bg);
-  border-left: 1px solid var(--bg-card-border);
-  z-index: 30;
-}
-
-.pl-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px 8px;
-}
-
-.pl-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.pl-count {
-  font-size: 10px;
-  color: var(--text-dim);
-  padding: 1px 6px;
-  border-radius: 8px;
-  background: var(--bg-card);
-  border: 1px solid var(--bg-card-border);
-}
-
 .pl-list {
   flex: 1;
   overflow-y: auto;
@@ -685,7 +494,7 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px 12px;
+  padding: 24px 10px;
   text-align: center;
   font-size: 12px;
   color: var(--text-dim);
@@ -699,7 +508,7 @@ html, body, #root {
 }
 
 .pl-row.current {
-  background: var(--accent-bright);
+  background: var(--accent);
 }
 
 .pl-row-main {
@@ -720,14 +529,14 @@ html, body, #root {
 }
 
 .pl-row-main:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hover);
   color: var(--text);
 }
 
 .pl-row.current .pl-row-main,
 .pl-row.current .pl-row-main:hover {
   background: transparent;
-  color: #121212;
+  color: var(--on-accent);
   font-weight: 600;
 }
 
@@ -735,11 +544,11 @@ html, body, #root {
   width: 12px;
   height: 12px;
   flex: none;
-  color: var(--accent-bright);
+  color: var(--accent);
 }
 
 .pl-row.current .pl-playing-icon {
-  color: #121212;
+  color: var(--on-accent);
 }
 
 .pl-row-title {
@@ -761,7 +570,6 @@ html, body, #root {
   border-radius: 6px;
   background: transparent;
   color: var(--text-dim);
-  opacity: 0.45;
   cursor: pointer;
   transition: opacity 0.1s, color 0.1s;
 }
@@ -777,7 +585,7 @@ html, body, #root {
 .pl-row-delete:hover {
   opacity: 1;
   color: var(--text);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hover);
 }
 
 /* Chapter rows reuse the row-main styles with a trailing time. */
@@ -789,8 +597,8 @@ html, body, #root {
 
 .pl-chapter-row.current,
 .pl-chapter-row.current:hover {
-  background: var(--accent-bright);
-  color: #121212;
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: 600;
 }
 
@@ -803,7 +611,7 @@ html, body, #root {
 }
 
 .pl-chapter-row.current .pl-chapter-time {
-  color: #121212;
+  color: var(--on-accent);
 }
 
 .pl-footer {
@@ -833,7 +641,7 @@ html, body, #root {
 }
 
 .pl-footer-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -847,19 +655,8 @@ html, body, #root {
 
 /* Track picker popup (TrackMenu) — same floating pattern as .vsm-menu. */
 .tm-menu {
-  position: absolute;
-  bottom: 52px;
-  right: 12px;
-  min-width: 200px;
-  max-width: 280px;
-  max-height: 260px;
-  overflow-y: auto;
-  padding: 6px;
-  background: var(--bg);
-  border: 1px solid var(--bg-card-border);
-  border-radius: var(--radius);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  z-index: 40;
+  display: grid;
+  gap: 2px;
 }
 
 .tm-row {
@@ -879,12 +676,12 @@ html, body, #root {
 }
 
 .tm-row:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hover);
 }
 
 .tm-row.selected {
-  background: var(--accent-bright);
-  color: #121212;
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: 600;
 }
 
@@ -912,22 +709,6 @@ html, body, #root {
 /* --- Integration: menu anchors, A-B markers, URL dialog --- */
 
 /* Trigger buttons wrap their popup so it anchors above the button. */
-.menu-anchor {
-  position: relative;
-  display: inline-flex;
-}
-
-.menu-anchor .vsm-menu,
-.menu-anchor .veq-menu,
-.menu-anchor .tm-menu {
-  top: auto;
-  left: auto;
-  bottom: calc(100% + 10px);
-  right: 0;
-  z-index: 60;
-}
-
-/* A-B loop points on the progress track (IINA PlaySliderLoopKnob). */
 .ab-marker {
   position: absolute;
   top: 50%;
@@ -935,202 +716,12 @@ html, body, #root {
   height: 12px;
   transform: translateY(-50%);
   border-radius: 1.5px;
-  background: var(--accent-bright);
+  background: var(--accent);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
   pointer-events: none;
 }
 
 /* URL open dialog (reuses the About overlay/dialog chrome). */
-.url-dialog {
-  max-width: 420px;
-}
-
-.url-form {
-  display: flex;
-  gap: 10px;
-  margin-top: 6px;
-}
-
-.url-input {
-  flex: 1;
-  min-width: 0;
-  padding: 9px 12px;
-  border: 1px solid var(--bg-card-border);
-  border-radius: 8px;
-  background: var(--bg-card);
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  user-select: text;
-}
-
-.url-input:focus {
-  outline: none;
-  border-color: var(--accent-bright);
-}
-
-.url-submit {
-  flex: none;
-  padding: 0 18px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--accent);
-  color: #121212;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.url-submit:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.url-submit:not(:disabled):hover {
-  background: var(--accent-bright);
-  color: #121212;
-}
-
-/* --- Agent F: history/bookmarks sidebar --- */
-
-/* Tab strip of the unified Sidebar (Playlist/Chapters/History/Bookmarks).
-   Capsule text buttons; the active tab uses --accent-bright with dark text,
-   matching the mac PlaylistPanel tab pills. */
-.pl-tabs {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--bg-card-border);
-}
-
-.pl-tab {
-  min-height: 24px;
-  padding: 0 9px;
-  border: 1px solid var(--bg-card-border);
-  border-radius: 12px;
-  background: var(--bg-card);
-  color: var(--text-dim);
-  cursor: pointer;
-  font: inherit;
-  font-size: 11px;
-  white-space: nowrap;
-  /* Long localizations (English "Bookmarks") must shrink instead of pushing
-     the close button out of the 264px sidebar. */
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  transition: color 0.1s, background 0.1s, border-color 0.1s;
-}
-
-.pl-tab-icon {
-  flex: none;
-  display: grid;
-  place-items: center;
-}
-
-.pl-tab-icon svg {
-  width: 12px;
-  height: 12px;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  fill: none;
-}
-
-.pl-tab-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* When the tab strip is too narrow for full labels (long localizations),
-   the label hides and the icon carries the meaning — the web equivalent
-   of the mac app's ViewThatFits icon fallback. */
-@media (max-width: 280px) {
-  .pl-tab-label {
-    display: none;
-  }
-  .pl-tab {
-    padding: 0 7px;
-  }
-}
-
-.pl-tab:hover {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.pl-tab.active {
-  background: var(--accent-bright);
-  border-color: var(--accent-bright);
-  color: #121212;
-  font-weight: 600;
-}
-
-.pl-tab:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: 2px;
-}
-
-.pl-tab-close {
-  flex: none;
-  width: 24px;
-  height: 24px;
-  margin-left: 2px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: background 0.1s, color 0.1s;
-}
-
-.pl-tab-close svg {
-  width: 12px;
-  height: 12px;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-}
-
-.pl-tab-close:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text);
-}
-
-.pl-tab-close:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: 2px;
-}
-
-/* Panel content below the tab strip. Embedded panels render .pl-list +
-   .pl-footer directly; this wrapper provides the flex column and lets the
-   list scroll. */
-.pl-tab-content {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.pl-tab-content .pl-list {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.pl-tab-content .pl-footer {
-  flex: none;
-}
-
-/* History/bookmark rows: leading icon + two-line text (title + subtitle). */
 .pl-lib-row {
   align-items: flex-start;
   width: 100%;
@@ -1154,7 +745,7 @@ html, body, #root {
 }
 
 .pl-lib-row:hover .pl-bookmark-icon {
-  color: var(--accent-bright);
+  color: var(--accent);
 }
 
 .pl-lib-text {
@@ -1245,7 +836,7 @@ html, body, #root {
 
 .settings-language-select:focus {
   outline: none;
-  border-color: var(--settings-accent);
+  border-color: var(--accent);
 }
 
 .settings-hint {
@@ -1278,8 +869,8 @@ html, body, #root {
 
 .settings-update-btn:not(:disabled):hover {
   border-color: rgba(137, 60, 237, 0.55);
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--settings-accent-text);
+  background: var(--hover);
+  color: var(--accent-text);
 }
 
 .settings-update-btn:disabled {
@@ -1290,7 +881,7 @@ html, body, #root {
 .settings-update-btn:focus-visible,
 .settings-language-select:focus-visible,
 .settings-update-download:focus-visible {
-  outline: 2px solid var(--settings-accent);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -1305,26 +896,26 @@ html, body, #root {
   gap: 8px;
   padding: 7px 12px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-card);
   color: var(--text-dim);
   font-size: 13px;
 }
 
 .settings-update-note.ok {
   background: rgba(74, 222, 128, 0.14);
-  color: #7ee2a8;
+  color: var(--success-text);
 }
 
 .settings-update-note.new {
   flex-wrap: wrap;
   row-gap: 8px;
   background: rgba(137, 60, 237, 0.16);
-  color: var(--settings-accent-text);
+  color: var(--accent-text);
 }
 
 .settings-update-note.failed {
-  background: rgba(255, 90, 90, 0.14);
-  color: #ff9c9c;
+  background: var(--danger-bg);
+  color: var(--danger-text);
 }
 
 .settings-update-download {
@@ -1334,7 +925,7 @@ html, body, #root {
   border: 1px solid rgba(137, 60, 237, 0.55);
   border-radius: 6px;
   background: transparent;
-  color: var(--settings-accent-text);
+  color: var(--accent-text);
   font: inherit;
   font-size: 12px;
   cursor: pointer;
@@ -1342,7 +933,7 @@ html, body, #root {
 }
 
 .settings-update-download:hover {
-  background: var(--settings-accent);
+  background: var(--accent);
   color: #fff;
 }
 
@@ -1350,8 +941,8 @@ html, body, #root {
   width: 12px;
   height: 12px;
   flex: 0 0 auto;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  border-top-color: var(--settings-accent-text);
+  border: 2px solid var(--track);
+  border-top-color: var(--accent-text);
   border-radius: 50%;
   animation: settings-spin 0.8s linear infinite;
 }
@@ -1414,12 +1005,12 @@ html, body, #root {
 }
 
 .net-tab.active {
-  background: var(--accent-bright);
-  color: #121212;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .net-tab:focus-visible {
-  outline: 2px solid var(--accent-bright);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -1475,7 +1066,7 @@ html, body, #root {
 
 .net-stream-input:focus {
   outline: none;
-  border-color: var(--accent-bright);
+  border-color: var(--accent);
 }
 
 .net-stream-play {
@@ -1484,7 +1075,7 @@ html, body, #root {
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: #121212;
+  color: var(--on-accent);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -1492,13 +1083,12 @@ html, body, #root {
 }
 
 .net-stream-play:disabled {
-  opacity: 0.45;
   cursor: default;
 }
 
 .net-stream-play:not(:disabled):hover {
-  background: var(--accent-bright);
-  color: #121212;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .net-stream-paste {
@@ -1509,7 +1099,7 @@ html, body, #root {
   padding: 6px 12px;
   border: 0;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-card);
   color: var(--text-dim);
   font: inherit;
   font-size: 12px;
@@ -1527,7 +1117,7 @@ html, body, #root {
 
 .net-stream-paste:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--hover);
 }
 
 .net-stream-paste:focus-visible,
@@ -1546,7 +1136,7 @@ html, body, #root {
 .net-sort-row:focus-visible,
 .net-browser-row:focus-visible,
 .net-error-retry:focus-visible {
-  outline: 2px solid var(--accent-bright);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -1564,8 +1154,8 @@ html, body, #root {
   margin-bottom: 10px;
   padding: 8px 12px;
   border-radius: 8px;
-  background: rgba(255, 90, 90, 0.14);
-  color: #ff9c9c;
+  background: var(--danger-bg);
+  color: var(--danger-text);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -1597,7 +1187,7 @@ html, body, #root {
   height: 22px;
   display: grid;
   place-items: center;
-  color: var(--accent-brand);
+  color: var(--accent);
 }
 
 .net-server-icon svg {
@@ -1637,7 +1227,7 @@ html, body, #root {
   padding: 1px 6px;
   border: 1px solid var(--bg-card-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-card);
   color: var(--text-dim);
   font-size: 9px;
   font-weight: 700;
@@ -1659,7 +1249,7 @@ html, body, #root {
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: #121212;
+  color: var(--on-accent);
   font: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -1668,8 +1258,8 @@ html, body, #root {
 }
 
 .net-server-connect:hover {
-  background: var(--accent-bright);
-  color: #121212;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .net-server-round {
@@ -1700,7 +1290,7 @@ html, body, #root {
 .net-server-round:hover {
   opacity: 1;
   color: var(--text);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hover);
 }
 
 .net-add-card {
@@ -1709,9 +1299,9 @@ html, body, #root {
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  border: 1px dashed rgba(255, 255, 255, 0.22);
+  border: 1px dashed var(--track);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   color: var(--accent);
   font: inherit;
   font-size: 13px;
@@ -1731,7 +1321,7 @@ html, body, #root {
 
 .net-add-card:hover {
   border-color: rgba(230, 255, 0, 0.45);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-card);
 }
 
 /* Shared empty / error states (server list, browser). */
@@ -1765,7 +1355,7 @@ html, body, #root {
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: #121212;
+  color: var(--on-accent);
   font: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -1773,8 +1363,8 @@ html, body, #root {
 }
 
 .net-empty-action:hover {
-  background: var(--accent-bright);
-  color: #121212;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 /* --- Add/edit form --- */
@@ -1802,7 +1392,7 @@ html, body, #root {
   min-height: 26px;
   border: 0;
   border-radius: 13px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-card);
   color: var(--text-dim);
   font: inherit;
   font-size: 10px;
@@ -1817,8 +1407,8 @@ html, body, #root {
 }
 
 .net-kind-chip.active {
-  background: var(--accent-bright);
-  color: #121212;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .net-field {
@@ -1846,7 +1436,7 @@ html, body, #root {
 
 .net-field-input:focus {
   outline: none;
-  border-color: var(--accent-bright);
+  border-color: var(--accent);
 }
 
 .net-scheme-toggle {
@@ -1873,8 +1463,8 @@ html, body, #root {
 }
 
 .net-scheme-option.active {
-  background: var(--accent-bright);
-  color: #121212;
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: 600;
 }
 
@@ -1887,7 +1477,7 @@ html, body, #root {
 .net-url-preview {
   padding: 8px 12px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-card);
   color: var(--text-dim);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px;
@@ -1899,8 +1489,8 @@ html, body, #root {
 .net-form-error {
   padding: 8px 12px;
   border-radius: 8px;
-  background: rgba(255, 90, 90, 0.14);
-  color: #ff9c9c;
+  background: var(--danger-bg);
+  color: var(--danger-text);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -1941,7 +1531,7 @@ html, body, #root {
   border: 0;
   border-radius: 8px;
   background: var(--accent);
-  color: #121212;
+  color: var(--on-accent);
   font: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -1950,12 +1540,11 @@ html, body, #root {
 }
 
 .net-form-save:not(:disabled):hover {
-  background: var(--accent-bright);
-  color: #121212;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .net-form-save:disabled {
-  opacity: 0.45;
   cursor: default;
 }
 
@@ -2002,7 +1591,7 @@ html, body, #root {
 }
 
 .net-browser-back:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hover);
 }
 
 .net-browser-kind {
@@ -2011,7 +1600,7 @@ html, body, #root {
   height: 14px;
   display: grid;
   place-items: center;
-  color: var(--accent-brand);
+  color: var(--accent);
 }
 
 .net-browser-kind svg {
@@ -2052,8 +1641,8 @@ html, body, #root {
   flex: none;
   width: 12px;
   height: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  border-top-color: var(--accent-bright);
+  border: 2px solid var(--track);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: net-spin 0.8s linear infinite;
 }
@@ -2095,7 +1684,7 @@ html, body, #root {
 .net-sort-button:hover,
 .net-sort-button.active {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hover);
 }
 
 .net-sort-menu {
@@ -2107,7 +1696,7 @@ html, body, #root {
   padding: 5px;
   border: 1px solid var(--bg-card-border);
   border-radius: var(--radius);
-  background: #17171c;
+  background: var(--surface);
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55);
 }
 
@@ -2129,11 +1718,11 @@ html, body, #root {
 }
 
 .net-sort-row:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hover);
 }
 
 .net-sort-arrow {
-  color: var(--accent-bright);
+  color: var(--accent);
   font-size: 11px;
 }
 
@@ -2171,7 +1760,7 @@ html, body, #root {
 }
 
 .net-browser-row:hover:not(.disabled) {
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--bg-card);
 }
 
 .net-browser-row.disabled {
@@ -2198,7 +1787,7 @@ html, body, #root {
 }
 
 .net-browser-row-icon.folder {
-  color: var(--accent-brand);
+  color: var(--accent);
 }
 
 .net-browser-row-icon.folder svg {
@@ -2245,7 +1834,7 @@ html, body, #root {
 
 .net-error-message {
   max-width: 100%;
-  color: #ff9c9c;
+  color: var(--danger-text);
   font-size: 12.5px;
   text-align: center;
   overflow-wrap: anywhere;
@@ -2266,6 +1855,6 @@ html, body, #root {
 
 .net-error-retry:hover {
   border-color: rgba(230, 255, 0, 0.45);
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--accent-bright);
+  background: var(--hover);
+  color: var(--accent);
 }

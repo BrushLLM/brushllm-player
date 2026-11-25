@@ -10,7 +10,7 @@ async function actualModule(path) {
   });
   return import(`data:text/javascript;base64,${Buffer.from(outputText).toString("base64")}`);
 }
-const { PlaybackHistoryTracker } = await actualModule("../src/library-state.ts");
+const { displayMediaTitle, PlaybackHistoryTracker } = await actualModule("../src/library-state.ts");
 const { applySnapshot, initialView, sliderValueAtKey } = await actualModule("../src/player-state.ts");
 const { listWindow } = await actualModule("../src/virtual-list.ts");
 
@@ -19,6 +19,14 @@ function playing(path, overrides = {}) {
     player: { ...initialView.player, idle: false, fileName: "same.mkv", mediaPath: path,
       mediaTitle: "Same", position: 12, duration: 90, ...overrides } };
 }
+
+test("media titles do not expose URL credentials or access parameters", () => {
+  assert.equal(displayMediaTitle("https://user:password@example.test/Film%20Night.mp4?token=secret"), "Film Night.mp4");
+  assert.equal(displayMediaTitle("rtsp://user:password@example.test/"), "example.test");
+  assert.equal(displayMediaTitle("Live concert"), "Live concert");
+  assert.equal(displayMediaTitle("  \n"), "");
+  assert.equal(displayMediaTitle("  https://user:password@example.test/Film.mp4?token=secret  "), "Film.mp4");
+});
 
 test("late path notification records once even when idle changed before filename and title", () => {
   const tracker = new PlaybackHistoryTracker();

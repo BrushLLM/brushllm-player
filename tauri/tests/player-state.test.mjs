@@ -282,12 +282,15 @@ test("invoke rejections retain backend generation and actionable message", () =>
 test("About surface exposes version, license, links, and accessible close paths", async () => {
   const appSource = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../src/index.css", import.meta.url), "utf8");
+  const sidebar = await readFile(new URL("../src/components/Sidebar.tsx", import.meta.url), "utf8");
+  const english = JSON.parse(await readFile(new URL("../src/i18n/en.json", import.meta.url), "utf8"));
   const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 
   assert.match(appSource, /getVersion/);
   assert.match(appSource, /Version \{versionLoading \? "Loading…" : appVersion \?\? "Unavailable"\}/);
   assert.doesNotMatch(appSource, new RegExp(`Version ${packageJson.version.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}`));
-  assert.match(appSource, /aria-label="About BrushLLM Player"/);
+  assert.match(sidebar, /aria-label=\{t\("about\.menu"\)\}/);
+  assert.equal(english["about.menu"], "About BrushLLM Player");
   assert.match(appSource, /role="dialog"/);
   assert.match(appSource, /aria-modal="true"/);
   assert.match(appSource, /event\.key === "Escape"/);
@@ -301,7 +304,6 @@ test("About surface exposes version, license, links, and accessible close paths"
   assert.match(appSource, /event\.key === "Tab"/);
   assert.match(styles, /\.about-overlay/);
   assert.match(styles, /\.about-dialog/);
-  assert.match(styles, /\.about-trigger/);
 });
 
 // --- Agent F: library (history/bookmarks) pure functions ---

@@ -2,134 +2,161 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
-/// The main window: video surface, a persistent control bar below it (PotPlayer
-/// style) and an optional playlist sidebar on the trailing edge.
+/// The desktop shell keeps navigation alongside the playback workspace.
 struct PlayerWindowContent: View {
     @ObservedObject var player: PlayerCore
     @ObservedObject private var settings = AppSettings.shared
+    @Environment(\.colorScheme) private var colorScheme
 
-    /// Whether the playlist sidebar is shown.
-    @State private var playlistVisible = false
-
-    /// Whether the WebDAV browser sheet is shown.
-    @State private var webDAVVisible = false
-
-    /// Whether the online-subtitle search sheet is shown.
+    @State private var section: PlayerSidebarSection = .playlist
+    @State private var narrow = false
+    @State private var expandedWhenNarrow = false
+    @State private var collapsedWhenWide = false
+    @State private var networkTab: NetworkPanel.Tab?
     @State private var subtitleSearchVisible = false
-
-    /// Static snapshot of the control bar, shown while the window is being
-    /// live-resized or fullscreen-animated (see PlayerCore.isLiveResizing):
-    /// one image layer instead of the bar's ~100 re-laying-out layers.
     @State private var barSnapshot: NSImage?
 
-    var body: some View {
-        VStack(spacing: 0) {
-            // NOTE: no .animation modifier here. A value-scoped .animation on
-            // this container still animates layout changes that originate
-            // elsewhere (window live-resize re-proposes sizes every tick),
-            // which made resizing visibly stutter — the playlist toggle is
-            // already animated via withAnimation at the call site.
-            HStack(spacing: 0) {
-                videoArea
-                if playlistVisible {
-                    PlaylistPanel(player: player)
-                        .frame(width: 264)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
-                }
-            }
+    private var viewing: Bool { player.isMiniWindow || player.isFullscreen }
 
-            if player.isLiveResizing, let snapshot = barSnapshot {
-                // Stretched like the video frame during the drag; the real
-                // bar returns (crisp, live) when the resize ends.
-                Image(nsImage: snapshot)
-                    .resizable()
-                    .frame(height: snapshot.size.height)
-            } else {
-                ControlBar(
-                    player: player,
-                    togglePlaylist: { withAnimation { playlistVisible.toggle() } },
-                    isPlaylistVisible: playlistVisible
-                )
+    var body: some View {
+        GeometryReader { geometry in
+            let narrowLayout = geometry.size.width < 800
+            let compact = narrowLayout ? !expandedWhenNarrow : collapsedWhenWide
+            HStack(spacing: 0) {
+                if !viewing {
+                    PlayerSidebar(player: player, section: section, compact: compact,
+                                  onSelect: reveal, onOpenFiles: openFiles,
+                                  onOpenNetwork: { networkTab = $0 })
+                        .id(settings.language)
+                }
+
+                VStack(spacing: 0) {
+                    if !viewing { workspaceHeader(compact: compact, narrow: narrowLayout) }
+                    videoArea(showSources: compact && !viewing)
+                        .clipShape(RoundedRectangle(cornerRadius: viewing ? 0 : 12))
+                        .padding(.horizontal, viewing ? 0 : 16)
+                        .contextMenu { videoContextMenu }
+                        .layoutPriority(1)
+                    controlBar
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .onChange(of: narrowLayout, initial: true) { _, value in
+                narrow = value
+            }
+            .onChange(of: player.isLiveResizing) { _, resizing in
+                let railWidth: CGFloat = viewing ? 0 : (compact ? 64 : 200)
+                barSnapshot = resizing ? renderBarSnapshot(width: geometry.size.width - railWidth) : nil
             }
         }
-        .background(Color.black)
-        .preferredColorScheme(.dark)
-        // The normal-mode minimum matches the control bar's intrinsic size —
-        // the mini window never drops below it, so the video area can never
-        // collapse during state transitions. Below the full bar's ideal width
-        // its secondary tools collapse via ViewThatFits.
-        .frame(minWidth: player.isMiniWindow ? 300 : 640,
-               minHeight: player.isMiniWindow ? 160 : 340)
-        .onChange(of: player.isLiveResizing) { _, resizing in
-            if resizing {
-                barSnapshot = Self.renderBarSnapshot(
-                    player: player,
-                    isPlaylistVisible: playlistVisible,
-                    width: player.liveResizeWidth
-                )
-            } else {
-                barSnapshot = nil
-            }
+        .background(viewing ? BrushLLMPlayerTheme.videoMatte : BrushLLMPlayerTheme.window)
+        .frame(minWidth: player.isMiniWindow ? 300 : 640, minHeight: player.isMiniWindow ? 160 : 340)
+        .onExitCommand {
+            if player.isFullscreen { player.toggleFullscreen() }
+            else if player.isMiniWindow { player.toggleMiniWindow() }
         }
-        .onAppear {
-            DebugLog.log("window onAppear, pending opens: \(OpenRequests.shared.pendingCount)")
-            player.applyBrandTitle()
-            player.open(OpenRequests.shared.consumeAll())
-        }
-        .task {
-            // Fallback for open requests that raced ahead of the UI (Apple Events
-            // and argv can both arrive before this view appears).
-            try? await Task.sleep(for: .milliseconds(600))
-            if player.isIdle {
-                player.open(OpenRequests.shared.consumeAll())
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .brushPlayerOpenURLs)) { _ in
-            player.open(OpenRequests.shared.consumeAll())
-        }
+        .onReceive(OpenRequests.shared.arrivals) { _ in openQueuedMedia() }
         .onReceive(NotificationCenter.default.publisher(for: .brushPlayerShowPlaylist)) { _ in
-            withAnimation { playlistVisible = true }
+            reveal(.playlist)
         }
         .onReceive(NotificationCenter.default.publisher(for: .brushPlayerShowWebDAV)) { _ in
-            webDAVVisible = true
+            networkTab = .servers
         }
         .onReceive(NotificationCenter.default.publisher(for: .brushPlayerShowSubtitleSearch)) { _ in
             subtitleSearchVisible = true
         }
-        .sheet(isPresented: $webDAVVisible) {
-            NetworkPanel { url in
-                player.openURL(url)
-            }
-        }
-        .contextMenu {
-            videoContextMenu
+        .sheet(item: $networkTab) { tab in
+            NetworkPanel(initialTab: tab, onPlay: player.openURL)
         }
     }
 
-    // MARK: - Video area
+    private func reveal(_ destination: PlayerSidebarSection) {
+        section = destination
+        if narrow { expandedWhenNarrow = true }
+        else { collapsedWhenWide = false }
+        if player.isFullscreen {
+            player.toggleFullscreen()
+        } else if player.isMiniWindow {
+            player.toggleMiniWindow()
+        }
+    }
 
-    /// Renders the control bar to a static image at the given width — the
-    /// live-resize stand-in that keeps the drag smooth.
-    private static func renderBarSnapshot(player: PlayerCore, isPlaylistVisible: Bool,
-                                          width: CGFloat) -> NSImage? {
-        let renderer = ImageRenderer(content: ControlBar(
-            player: player,
-            togglePlaylist: {},
-            isPlaylistVisible: isPlaylistVisible,
-            forSnapshot: true
-        ))
+    private func openFiles() {
+        OpenMediaPanel.present { player.open($0) }
+    }
+
+    private func openQueuedMedia() {
+        guard player.videoView?.window != nil else { return }
+        player.open(OpenRequests.shared.consumeAll())
+    }
+
+    private func workspaceHeader(compact: Bool, narrow: Bool) -> some View {
+        let title = player.mediaTitle.isEmpty ? player.fileName : player.mediaTitle
+        return HStack(spacing: 10) {
+            PlayerIconButton(icon: "sidebar.left",
+                             help: compact ? L("player.sidebar-expand", "Expand sidebar") : L("player.sidebar-collapse", "Collapse sidebar")) {
+                if narrow { expandedWhenNarrow = compact }
+                else { collapsedWhenWide = !compact }
+            }
+            Text(player.isIdle || title.isEmpty ? L("player.workspace", "Player") : title)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(BrushLLMPlayerTheme.controlText)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 4)
+            if !player.isIdle {
+                let openTitle = L("player.open-files", "Open files…")
+                Button(action: openFiles) {
+                    Label(openTitle, systemImage: "folder")
+                        .font(.system(size: 13, weight: .medium))
+                        .lineLimit(1)
+                        .padding(.horizontal, 9)
+                        .frame(height: 30)
+                        .background(BrushLLMPlayerTheme.hoverFill, in: .rect(cornerRadius: DesignRadius.row))
+                }
+                .buttonStyle(PressedDimButtonStyle())
+                .foregroundStyle(BrushLLMPlayerTheme.controlText)
+                .help(openTitle)
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 56)
+    }
+
+    @ViewBuilder
+    private var controlBar: some View {
+        if player.isLiveResizing, let barSnapshot {
+            // Do not lay out the live controls during the window animation.
+            Image(nsImage: barSnapshot)
+                .resizable()
+                .frame(height: barSnapshot.size.height)
+                .accessibilityHidden(true)
+        } else {
+            liveControlBar.id(settings.language)
+        }
+    }
+
+    private var liveControlBar: some View {
+        ControlBar(player: player, showChapters: { reveal(.chapters) })
+            .environment(\.colorScheme, viewing ? .dark : colorScheme)
+    }
+
+    private func renderBarSnapshot(width: CGFloat) -> NSImage? {
+        let renderer = ImageRenderer(content: liveControlBar)
         renderer.proposedSize = .init(width: width, height: nil)
+        renderer.scale = NSScreen.main?.backingScaleFactor ?? 1
         return renderer.nsImage
     }
 
-    private var videoArea: some View {
-        VideoViewRepresentable(player: player)
-            .background(Color.black)
+    private func videoArea(showSources: Bool) -> some View {
+        VideoViewRepresentable(player: player, onWindowAttached: openQueuedMedia)
+            .background(BrushLLMPlayerTheme.videoMatte)
             .overlay {
                 if let error = player.loadErrorMessage {
                     errorView(error)
                 } else if player.isIdle {
-                    idleView
+                    idleView(showSources: showSources)
                 }
             }
             .overlay(alignment: .top) {
@@ -159,10 +186,8 @@ struct PlayerWindowContent: View {
                 player.toggleFullscreen()
             }
             .onTapGesture {
-                player.togglePlay()
+                if !player.isIdle { player.togglePlay() }
             }
-            // On a separate branch from the window-level WebDAV sheet: two
-            // sheets on the same view branch would conflict.
             .sheet(isPresented: $subtitleSearchVisible) {
                 SubtitleSearchPanel(player: player)
             }
@@ -235,9 +260,9 @@ struct PlayerWindowContent: View {
         }
         Button(L("menu.bookmark-add", "Add Bookmark")) { player.addBookmark() }
         Divider()
-        Toggle(L("controls.playlist", "Playlist"), isOn: Binding(
-            get: { playlistVisible }, set: { _ in withAnimation { playlistVisible.toggle() } }))
-        Button(L("controls.fullscreen", "Toggle Full Screen")) {
+        Button(L("controls.playlist", "Playlist")) { reveal(.playlist) }
+        Button(player.isFullscreen ? L("player.fullscreen-exit", "Exit full screen")
+                                   : L("controls.fullscreen", "Toggle Full Screen")) {
             player.toggleFullscreen()
         }
     }
@@ -265,53 +290,61 @@ struct PlayerWindowContent: View {
 
     // MARK: - Idle & error
 
-    private var idleView: some View {
-        VStack(spacing: 12) {
-            if let logo = Bundle.main.image(forResource: "AppIcon") {
-                Image(nsImage: logo)
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: 96, height: 96)
-                    .clipShape(RoundedRectangle(cornerRadius: 22))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 22)
-                            .strokeBorder(BrushLLMPlayerTheme.controlSeparator, lineWidth: 0.5)
-                    }
-                    .shadow(color: .black.opacity(0.3), radius: 6)
-            } else {
+    private func idleView(showSources: Bool) -> some View {
+        ViewThatFits(in: .vertical) {
+            VStack(spacing: 10) {
                 Image(systemName: "play.rectangle")
-                    .font(.system(size: 52, weight: .light))
-                    .foregroundStyle(BrushLLMPlayerTheme.accent.opacity(0.7))
+                    .font(.system(size: 29, weight: .regular))
+                    .foregroundStyle(BrushLLMPlayerTheme.viewingAccent)
+                    .frame(width: 58, height: 52)
+                    .background(BrushLLMPlayerTheme.viewingSelection, in: .rect(cornerRadius: 10))
+                    .accessibilityHidden(true)
+                Text(L("player.open-hint", "Open a media file to start playing"))
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(BrushLLMPlayerTheme.viewingText)
+                    .multilineTextAlignment(.center)
+                    .accessibilityAddTraits(.isHeader)
+                Text(L("player.drag-hint", "…or drag media files into the window"))
+                    .font(.system(size: 13))
+                    .foregroundStyle(BrushLLMPlayerTheme.viewingTextSecondary)
+                    .multilineTextAlignment(.center)
+                HStack(spacing: 8) {
+                    openFilesButton
+                    if showSources {
+                        Button(L("player.sources", "Sources")) { reveal(.sources) }
+                            .buttonStyle(.bordered)
+                            .tint(BrushLLMPlayerTheme.viewingAccent)
+                    }
+                }
+                .padding(.top, 4)
             }
-            Text(L("player.open-hint", "Open a media file to start playing"))
-                .font(.callout)
-                .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
-            Text(L("player.drag-hint", "…or drag media files into the window"))
-                .font(.caption)
-                .foregroundStyle(BrushLLMPlayerTheme.controlTextHint)
-            Button(L("menu.open", "Open…")) {
-                OpenMediaPanel.present { urls in player.open(urls) }
-            }
-            .buttonStyle(AccentProminentButtonStyle())
+            openFilesButton
         }
+        .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .contentShape(.rect)
-        .onTapGesture {
-            OpenMediaPanel.present { urls in player.open(urls) }
+        .background(BrushLLMPlayerTheme.videoMatte)
+    }
+
+    private var openFilesButton: some View {
+        Button(action: openFiles) {
+            Label(L("player.open-files", "Open files…"), systemImage: "folder")
         }
+        .buttonStyle(AccentProminentButtonStyle())
     }
 
     private func errorView(_ message: String) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 40, weight: .light))
-                .foregroundStyle(BrushPalette.warning)
+                .foregroundStyle(BrushLLMPlayerTheme.warning)
             Text(L("player.load-failed", "Could not play this file"))
                 .font(.headline)
             Text(message)
                 .font(.caption)
                 .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
+                .multilineTextAlignment(.center)
                 .lineLimit(3)
+            openFilesButton
         }
         .padding(24)
         .background(BrushLLMPlayerTheme.controlMaterial, in: .rect(cornerRadius: DesignRadius.sheet))
@@ -322,6 +355,7 @@ struct PlayerWindowContent: View {
 /// AppKit bridge for the mpv-rendering `VideoView`.
 struct VideoViewRepresentable: NSViewRepresentable {
     let player: PlayerCore
+    let onWindowAttached: () -> Void
 
     func makeNSView(context: Context) -> VideoView {
         let view = VideoView(controller: player.mpv)
@@ -334,9 +368,13 @@ struct VideoViewRepresentable: NSViewRepresentable {
         view.onAspectChanged = { aspect in
             player.windowAspect = aspect
         }
-        view.onLiveResize = { resizing, width in
-            player.liveResizeWidth = width
-            player.setDragResizing(resizing)
+        view.onLiveResize = { player.setDragResizing($0) }
+        view.onWindowChanged = { [weak player, weak view] in
+            DispatchQueue.main.async {
+                guard let player, let view, player.videoView === view else { return }
+                player.attachWindow(view.window)
+                if view.window != nil { onWindowAttached() }
+            }
         }
         player.videoLayer = view.videoLayer
         player.videoView = view

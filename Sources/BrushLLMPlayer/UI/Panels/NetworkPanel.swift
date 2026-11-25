@@ -1,24 +1,21 @@
 import SwiftUI
 import AppKit
 
-/// Network panel with two tabs, decoupling direct stream playback from
-/// WebDAV media-server management:
-/// - Tab 1 (Stream): centered URL input with a play action; the low-frequency
-///   User-Agent setting is folded into a collapsed "Advanced" section.
-/// - Tab 2 (Servers): WebDAV source list, structured add form and browser.
-///
-/// Visual language: dark glass cards (white/5 fill, 12pt radius, white/10
-/// hairline border), brand-violet primary buttons, and a custom focus
-/// treatment on text fields (no system blue ring).
+/// Direct stream and media server management.
 struct NetworkPanel: View {
-    enum Tab {
-        case stream
-        case servers
+    enum Tab: String, Identifiable {
+        case stream, servers
+
+        var id: String { rawValue }
     }
 
-    @State private var tab: Tab = .stream
-
+    @State private var tab: Tab
     let onPlay: (URL) -> Void
+
+    init(initialTab: Tab = .stream, onPlay: @escaping (URL) -> Void) {
+        _tab = State(initialValue: initialTab)
+        self.onPlay = onPlay
+    }
 
     @Environment(\.dismiss) private var dismiss
 
@@ -245,7 +242,7 @@ private struct StreamTab: View {
                     .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
                     .frame(width: 64, alignment: .leading)
                 Slider(value: $settings.readaheadSeconds, in: 5...120, step: 5)
-                    .tint(BrushPalette.violet)
+                    .tint(BrushLLMPlayerTheme.accent)
                 Text("\(Int(settings.readaheadSeconds))s")
                     .font(.system(size: 11))
                     .monospacedDigit()
@@ -258,7 +255,7 @@ private struct StreamTab: View {
                     .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
                     .frame(width: 64, alignment: .leading)
                 Slider(value: $settings.bufferMB, in: 16...512, step: 16)
-                    .tint(BrushPalette.violet)
+                    .tint(BrushLLMPlayerTheme.accent)
                 Text("\(Int(settings.bufferMB))MB")
                     .font(.system(size: 11))
                     .monospacedDigit()
@@ -398,7 +395,7 @@ private struct ServersTab: View {
         HStack(spacing: 12) {
             Image(systemName: source.kind.icon)
                 .font(.system(size: 20, weight: .light))
-                .foregroundStyle(BrushPalette.violet300)
+                .foregroundStyle(BrushLLMPlayerTheme.accentText)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(source.name)
@@ -580,7 +577,7 @@ private struct BrowserView: View {
 
                 Image(systemName: source.kind.icon)
                     .font(.system(size: 12))
-                    .foregroundStyle(BrushPalette.violet300)
+                    .foregroundStyle(BrushLLMPlayerTheme.accentText)
                 Text(source.name)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(BrushLLMPlayerTheme.controlText)
@@ -697,7 +694,7 @@ private struct BrowserView: View {
                 Image(systemName: icon(for: item))
                     .font(.system(size: DesignIcon.inline))
                     .foregroundStyle(item.isDirectory
-                                     ? BrushPalette.violet300
+                                     ? BrushLLMPlayerTheme.accentText
                                      : BrushLLMPlayerTheme.controlTextSecondary)
                 Text(item.name)
                     .font(.callout)

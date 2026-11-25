@@ -2,7 +2,6 @@
 // (video-aspect-override), rotation (video-rotate) and hardware decoding
 // (hwdec). Every value goes through the set_property backend command.
 
-import { useEffect, useRef } from "react";
 import { useI18n } from "../i18n";
 
 export interface VideoSettingsMenuProps {
@@ -14,12 +13,10 @@ export interface VideoSettingsMenuProps {
   hwdec: string;
   /** Dispatches a set_property command: (name, value). */
   onSetProperty: (name: string, value: string) => void;
-  /** Called when the menu wants to close (Escape key or outside click). */
-  onClose?: () => void;
 }
 
 const ASPECT_OPTIONS: { label: string; value: string }[] = [
-  { label: "Default", value: "-1" },
+  { label: "video.aspect.fit", value: "-1" },
   { label: "4:3", value: "4:3" },
   { label: "16:9", value: "16:9" },
   { label: "2.35:1", value: "2.35:1" },
@@ -33,40 +30,13 @@ export default function VideoSettingsMenu({
   rotation,
   hwdec,
   onSetProperty,
-  onClose,
 }: VideoSettingsMenuProps) {
   const { t } = useI18n();
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  // Close on Escape and on clicks outside the popup. The listener is
-  // registered with capture so it fires even if the click lands on the
-  // trigger button that opened this menu.
-  useEffect(() => {
-    if (!onClose) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.stopPropagation();
-        onClose();
-      }
-    };
-    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-      const root = rootRef.current;
-      if (root && event.target instanceof Node && !root.contains(event.target)) {
-        onClose();
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown, true);
-    document.addEventListener("mousedown", handlePointerDown, true);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown, true);
-      document.removeEventListener("mousedown", handlePointerDown, true);
-    };
-  }, [onClose]);
 
   const hwdecEnabled = hwdec !== "no" && hwdec !== "";
 
   return (
-    <div ref={rootRef} className="vsm-menu" role="menu" aria-label={t("controls.video-settings")}>
+    <div className="vsm-menu" role="group" aria-label={t("controls.video-settings")}>
       <div className="vsm-section-title">{t("video.aspect")}</div>
       <div className="vsm-option-row" role="group" aria-label={t("video.aspect")}>
         {ASPECT_OPTIONS.map((option) => (
@@ -74,11 +44,10 @@ export default function VideoSettingsMenu({
             key={option.value}
             type="button"
             className={`vsm-option ${aspectMode === option.value ? "active" : ""}`}
-            role="menuitemradio"
-            aria-checked={aspectMode === option.value}
+            aria-pressed={aspectMode === option.value}
             onClick={() => onSetProperty("video-aspect-override", option.value)}
           >
-            {option.label}
+            {option.value === "-1" ? t(option.label) : option.label}
           </button>
         ))}
       </div>
@@ -90,8 +59,7 @@ export default function VideoSettingsMenu({
             key={value}
             type="button"
             className={`vsm-option ${rotation === value ? "active" : ""}`}
-            role="menuitemradio"
-            aria-checked={rotation === value}
+            aria-pressed={rotation === value}
             onClick={() => onSetProperty("video-rotate", String(value))}
           >
             {value === 0 ? "0°" : `${value}°`}
@@ -104,8 +72,7 @@ export default function VideoSettingsMenu({
       <button
         type="button"
         className={`vsm-toggle ${hwdecEnabled ? "active" : ""}`}
-        role="menuitemcheckbox"
-        aria-checked={hwdecEnabled}
+        aria-pressed={hwdecEnabled}
         onClick={() => onSetProperty("hwdec", hwdecEnabled ? "no" : "auto-safe")}
       >
         <span className="vsm-toggle-label">{t("video.hwdec")}</span>

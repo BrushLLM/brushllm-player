@@ -61,7 +61,7 @@ struct SubtitleSearchPanel: View {
         HStack(spacing: 8) {
             Image(systemName: "captions.bubble")
                 .font(.system(size: 12))
-                .foregroundStyle(BrushPalette.violet300)
+                .foregroundStyle(BrushLLMPlayerTheme.accentText)
             Text(L("subtitle.online", "Online Subtitles…"))
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(BrushLLMPlayerTheme.controlText)
@@ -149,7 +149,7 @@ struct SubtitleSearchPanel: View {
             VStack(spacing: 10) {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 26, weight: .light))
-                    .foregroundStyle(BrushPalette.warning)
+                    .foregroundStyle(BrushLLMPlayerTheme.warning)
                 Text(L("subtitle.online-failed", "Search failed"))
                     .font(.callout)
                     .foregroundStyle(BrushLLMPlayerTheme.controlText)
@@ -200,7 +200,7 @@ struct SubtitleSearchPanel: View {
                         if let rating = subtitle.attributes.ratings, rating > 0 {
                             Label(String(format: "%.1f", rating), systemImage: "star.fill")
                                 .font(.system(size: 10))
-                                .foregroundStyle(BrushPalette.warning)
+                                .foregroundStyle(BrushLLMPlayerTheme.warning)
                         }
                         if let count = subtitle.attributes.downloadCount {
                             Label(String(count), systemImage: "arrow.down")
@@ -221,7 +221,7 @@ struct SubtitleSearchPanel: View {
                 } else if failedDownloadID == subtitle.id {
                     Text(L("subtitle.online-download-failed", "Download failed"))
                         .font(.system(size: 11))
-                        .foregroundStyle(BrushPalette.warning)
+                        .foregroundStyle(BrushLLMPlayerTheme.warning)
                 }
             }
             .padding(.horizontal, 10)

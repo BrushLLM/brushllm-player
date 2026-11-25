@@ -219,5 +219,20 @@
   "webdav.share": "共享名稱",
   "webdav.title": "標題",
   "webdav.url": "伺服器位址",
-  "webdav.username": "使用者名稱"
+  "webdav.username": "使用者名稱",
+  "player.workspace": "播放器",
+  "player.sources": "媒體來源",
+  "player.open-files": "開啟檔案…",
+  "player.sidebar-expand": "展開側欄",
+  "player.sidebar-collapse": "收合側欄",
+  "player.options": "播放選項",
+  "player.settings": "設定",
+  "player.fullscreen-exit": "退出全螢幕",
+  "player.video-detached": "影片正在獨立視窗中播放。",
+  "player.video-native-mac": "請使用 macOS 原生應用程式觀看影片。",
+  "player.desktop-required": "請開啟 BrushLLM Player 桌面應用程式載入媒體。",
+  "panel.clear.question": "清空此清單？",
+  "panel.clear.description": "將移除此清單中的所有項目。",
+  "player.loading": "正在開啟媒體…",
+  "player.advanced-controls": "進階控制"
 }

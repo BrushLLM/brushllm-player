@@ -278,3 +278,14 @@
 "servers.error.generic" = "問題が発生しました";
 
 "controls.progress" = "再生位置";
+
+"player.workspace" = "プレーヤー";
+"player.sources" = "ソース";
+"player.open-files" = "ファイルを開く…";
+"player.sidebar-expand" = "サイドバーを展開";
+"player.sidebar-collapse" = "サイドバーを折りたたむ";
+"player.options" = "再生オプション";
+"player.settings" = "設定";
+"player.fullscreen-exit" = "フルスクリーンを終了";
+"panel.clear.question" = "このリストを消去しますか？";
+"panel.clear.description" = "このリストの項目をすべて削除します。";

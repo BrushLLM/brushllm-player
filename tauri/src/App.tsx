@@ -6,41 +6,33 @@ import { openUrl as openExternal } from "@tauri-apps/plugin-opener";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
-import { applySnapshot, CommandGate, commandError, initialView, sameMedia, trackFraction, volumeAtClick, sliderValueAtKey } from "./player-state";
+import { applySnapshot, CommandGate, commandError, initialView, sameMedia, volumeAtClick, sliderValueAtKey } from "./player-state";
 import type { StateSnapshot } from "./player-state";
 import type { LoopMode } from "./components/PlaylistPanel";
-import type { SidebarTab } from "./components/Sidebar";
+import type { SidebarSection } from "./components/Sidebar";
 import type { HistoryEntry, Bookmark } from "./library-state";
-import { PlaybackHistoryTracker } from "./library-state";
-import { useI18n } from "./i18n";
+import { displayMediaTitle, PlaybackHistoryTracker } from "./library-state";
+import { resolveSystemLanguage, useI18n } from "./i18n";
 import PlaylistPanel from "./components/PlaylistPanel";
 import ChaptersPanel from "./components/ChaptersPanel";
 import HistoryPanel from "./components/HistoryPanel";
 import BookmarksPanel from "./components/BookmarksPanel";
 import Sidebar from "./components/Sidebar";
-import TrackMenu from "./components/TrackMenu";
-import VideoSettingsMenu from "./components/VideoSettingsMenu";
-import VideoEqMenu from "./components/VideoEqMenu";
 import KeyboardHandler from "./components/KeyboardHandler";
 import SettingsPanel from "./components/SettingsPanel";
-import NetworkPanel from "./components/NetworkPanel";
+import NetworkPanel, { type NetworkTab } from "./components/NetworkPanel";
+import PlayerIcon from "./components/PlayerIcon";
+import PlaybackOptions from "./components/PlaybackOptions";
+import PlaybackTimeline from "./components/PlaybackTimeline";
+import ClearLibraryDialog from "./components/ClearLibraryDialog";
+import { useNativeVideoSurface, useViewingMode } from "./desktop-window";
 
 const GITHUB_PROJECT_URL = "https://github.com/BrushLLM/brushllm-player";
 const GITHUB_RELEASES_URL = "https://github.com/BrushLLM/brushllm-player/releases";
 
 const SUBTITLE_EXTENSIONS = new Set(["srt", "ass", "ssa", "sub", "idx", "vtt", "sup"]);
 
-function formatTime(seconds: number): string {
-  if (!isFinite(seconds) || seconds < 0) return "0:00";
-  const total = Math.floor(seconds);
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  const secs = total % 60;
-  if (hours > 0) {
-    return `${hours}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-  }
-  return `${minutes}:${String(secs).padStart(2, "0")}`;
-}
+const compactWindow = window.matchMedia("(width < 800px)");
 
 function fileExtension(path: string): string {
   const dot = path.lastIndexOf(".");
@@ -48,20 +40,19 @@ function fileExtension(path: string): string {
 }
 
 export default function App() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  useEffect(() => {
+    document.documentElement.lang = lang === "system" ? resolveSystemLanguage(navigator.languages) : lang;
+  }, [lang]);
   const [view, setView] = useState(initialView);
   const viewRef = useRef(initialView);
   const [invokeError, setInvokeError] = useState<{ generation: number; message: string } | null>(null);
-  const [scrubbing, setScrubbing] = useState(false);
-  const [scrubPosition, setScrubPosition] = useState(0);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [appVersion, setAppVersion] = useState<string | null>(null);
   const [versionLoading, setVersionLoading] = useState(true);
-  const trackRef = useRef<HTMLDivElement>(null);
   const aboutDialogRef = useRef<HTMLElement>(null);
   const aboutCloseRef = useRef<HTMLButtonElement>(null);
-  const dragCleanup = useRef<(() => void) | null>(null);
   const mounted = useRef(false);
   const commandGate = useRef(new CommandGate());
   const [libraryError, setLibraryError] = useState<string | null>(null);
@@ -72,21 +63,37 @@ export default function App() {
   }, []);
   const state = view.player;
 
-  // New surfaces: sidebar (playlist/chapters/history/bookmarks), popups, URL dialog.
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("playlist");
-  const [trackMenu, setTrackMenu] = useState<"audio" | "sub" | null>(null);
-  const [videoMenuOpen, setVideoMenuOpen] = useState(false);
-  const [eqMenuOpen, setEqMenuOpen] = useState(false);
-  const [urlOpen, setUrlOpen] = useState(false);
-  const [urlInput, setUrlInput] = useState("");
-  const [networkOpen, setNetworkOpen] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<SidebarSection>("playlist");
+  const [autoCompact, setAutoCompact] = useState(compactWindow.matches);
+  const [sidebarPreferences, setSidebarPreferences] = useState<Partial<Record<"narrow" | "wide", boolean>>>({});
+  const widthClass = autoCompact ? "narrow" : "wide";
+  const sidebarCompact = sidebarPreferences[widthClass] ?? autoCompact;
+  const setSidebarCompact = (compact: boolean) => {
+    setSidebarPreferences((previous) => ({ ...previous, [widthClass]: compact }));
+  };
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const optionsTrigger = useRef<HTMLButtonElement>(null);
+  const [networkTab, setNetworkTab] = useState<NetworkTab | null>(null);
+  const [clearRequest, setClearRequest] = useState<{ label: string; action: () => void } | null>(null);
+  const modalOpen = aboutOpen || settingsOpen || networkTab !== null || clearRequest !== null;
   // Library data (history is global; bookmarks are per-file).
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const restoredPlaylist = useRef(false);
 
   const closeAbout = useCallback(() => setAboutOpen(false), []);
+  const closeSettings = useCallback(() => setSettingsOpen(false), []);
+  const closeNetwork = useCallback(() => setNetworkTab(null), []);
+  const closeOptions = useCallback(() => {
+    setOptionsOpen(false);
+    optionsTrigger.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const sync = (event: MediaQueryListEvent) => setAutoCompact(event.matches);
+    compactWindow.addEventListener("change", sync);
+    return () => compactWindow.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     if (!aboutOpen || appVersion !== null) return;
@@ -153,8 +160,6 @@ export default function App() {
     }
 
     if (!sameMedia(next, previous) || !next.connected) {
-      dragCleanup.current?.();
-      setScrubbing(false);
       commandGate.current.invalidate();
       setInvokeError(null);
     }
@@ -169,6 +174,13 @@ export default function App() {
       setInvokeError({ generation, message: parsed.message });
     }
   }, []);
+  const reportDesktopError = useCallback((error: unknown) => {
+    showError(error, viewRef.current.generation, commandGate.current.begin());
+  }, [showError]);
+  const { mode, changeMode } = useViewingMode(state.onTop, reportDesktopError);
+  const viewing = mode !== "windowed";
+  const hasVideo = state.tracks.some(({ type, selected }) => type === "video" && selected);
+
   const runCommand = useCallback(async (command: string, args?: Record<string, unknown>) => {
     const generation = viewRef.current.generation;
     const sequence = commandGate.current.begin();
@@ -206,29 +218,30 @@ export default function App() {
       mounted.current = false;
       commandGate.current.invalidate();
       unlisten?.();
-      dragCleanup.current?.();
     };
   }, [acceptSnapshot, showError]);
 
-  // Drag & drop: subtitle files go to sub-add, media files to the playlist
-  // (IINA VideoView drag behavior: classify by extension, batch-load media).
+  const openDroppedPaths = useCallback((paths: string[]) => {
+    const subtitles = paths.filter((path) => SUBTITLE_EXTENSIONS.has(fileExtension(path)));
+    const media = paths.filter((path) => !SUBTITLE_EXTENSIONS.has(fileExtension(path)));
+    void (async () => {
+      if (media.length > 0) await runCommand("load_files", { paths: media });
+      for (const path of subtitles) await runCommand("add_subtitle", { path });
+    })();
+  }, [runCommand]);
+
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    let cancelled = false;
     if (!isTauri()) return;
+    let active = true;
+    let unlisten: (() => void) | undefined;
     void getCurrentWebview().onDragDropEvent((event) => {
-      if (event.payload.type !== "drop") return;
-      const paths = event.payload.paths;
-      const subtitles = paths.filter((path) => SUBTITLE_EXTENSIONS.has(fileExtension(path)));
-      const media = paths.filter((path) => !SUBTITLE_EXTENSIONS.has(fileExtension(path)));
-      if (media.length > 0) void runCommand("load_files", { paths: media });
-      for (const path of subtitles) void runCommand("add_subtitle", { path });
+      if (active && event.payload.type === "drop") openDroppedPaths(event.payload.paths);
     }).then((stop) => {
-      if (cancelled) stop();
-      else unlisten = stop;
-    }).catch((error) => { if (!cancelled) showError(error, viewRef.current.generation, commandGate.current.begin()); });
-    return () => { cancelled = true; unlisten?.(); };
-  }, [runCommand, showError]);
+      if (active) unlisten = stop;
+      else stop();
+    }).catch((error) => { if (active) reportDesktopError(error); });
+    return () => { active = false; unlisten?.(); };
+  }, [openDroppedPaths, reportDesktopError]);
 
   // Restore the persisted playlist once the player is ready (idle append,
   // nothing auto-plays).
@@ -241,24 +254,24 @@ export default function App() {
   // History list: refresh when the history tab becomes visible and after
   // every media change (a play was recorded).
   useEffect(() => {
-    if (!sidebarOpen || sidebarTab !== "history") return;
+    if (!isTauri() || viewing || sidebarCompact || sidebarTab !== "history") return;
     let cancelled = false;
     void historyWrites.current.then(() => invoke<HistoryEntry[]>("history_list"))
       .then((entries) => { if (!cancelled) setHistory(entries); })
       .catch((error) => { if (!cancelled) reportLibraryError(error); });
     return () => { cancelled = true; };
-  }, [sidebarOpen, sidebarTab, state.mediaPath, state.idle, view.generation, view.mediaEpoch]);
+  }, [viewing, sidebarCompact, sidebarTab, state.mediaPath, state.idle, view.generation, view.mediaEpoch]);
 
   // Bookmarks are per-file: refresh on tab open and on media change.
   useEffect(() => {
     setBookmarks([]);
-    if (!sidebarOpen || sidebarTab !== "bookmarks" || !state.mediaPath) return;
+    if (!isTauri() || viewing || sidebarCompact || sidebarTab !== "bookmarks" || !state.mediaPath) return;
     let cancelled = false;
     void invoke<Bookmark[]>("bookmark_list", { path: state.mediaPath })
       .then((list) => { if (!cancelled) setBookmarks(list); })
       .catch((error) => { if (!cancelled) reportLibraryError(error); });
     return () => { cancelled = true; };
-  }, [sidebarOpen, sidebarTab, state.mediaPath, view.generation, view.mediaEpoch]);
+  }, [viewing, sidebarCompact, sidebarTab, state.mediaPath, view.generation, view.mediaEpoch]);
 
   // Dismissable error: the invoke-side error clears on dismiss or as soon
   // as a fresh snapshot reports a healthy connection; snapshot-side errors
@@ -267,54 +280,35 @@ export default function App() {
     if (view.connected) setInvokeError(null);
   }, [view.connected]);
 
-  const rawError = invokeError && invokeError.generation >= view.generation ? invokeError.message : view.error;
+  const [dismissedFailure, setDismissedFailure] = useState<string | null>(null);
+  const failureKey = view.generation + "/" + view.mediaEpoch;
+  const loadError = failureKey === dismissedFailure ? null : view.error;
+  const rawError = invokeError && invokeError.generation >= view.generation ? invokeError.message : loadError;
   // Localize the mpv end-file error (technical English like "no audio or
   // video data played"); the raw string stays as the tooltip detail.
-  const isMpvLoadError = !libraryError && !invokeError && view.error !== null && view.error !== undefined;
+  const isMpvLoadError = !libraryError && !invokeError && loadError !== null;
   const error = libraryError || (isMpvLoadError ? t("player.load-failed") : rawError);
   const errorDetail = isMpvLoadError ? rawError : null;
-  const dismissError = () => { setLibraryError(null); setInvokeError(null); };
+  const dismissError = () => {
+    if (isMpvLoadError) setDismissedFailure(failureKey);
+    setLibraryError(null);
+    setInvokeError(null);
+  };
+  const { stageRef, output } = useNativeVideoSurface(
+    view.ready && !view.loading && !state.idle && hasVideo && !modalOpen && loadError === null,
+    reportDesktopError,
+  );
 
-  const effectivePosition = scrubbing ? scrubPosition : state.position;
-  const progress = state.duration > 0 ? Math.min(effectivePosition / state.duration, 1) : 0;
-
-  // Progress scrubbing sends one acknowledged seek at mouse-up. Geometry is
-  // bounded and a reconnect/unmount cancels the old gesture.
-  const handleTrackMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!trackRef.current || state.duration <= 0 || !view.ready || state.idle) return;
-    const rect = trackRef.current.getBoundingClientRect();
-    const fraction = trackFraction(e.clientX, rect.left, rect.width);
-    if (fraction === null) return;
-    dragCleanup.current?.();
-    setScrubbing(true);
-    setScrubPosition(fraction * state.duration);
-    const media = { generation: view.generation, mediaEpoch: view.mediaEpoch };
-    const onMouseMove = (e: MouseEvent) => {
-      const fraction = trackFraction(e.clientX, rect.left, rect.width);
-      if (fraction !== null) setScrubPosition(fraction * state.duration);
-    };
-    const cleanup = () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-      dragCleanup.current = null;
-    };
-    const onMouseUp = (e: MouseEvent) => {
-      const fraction = trackFraction(e.clientX, rect.left, rect.width);
-      setScrubbing(false);
-      cleanup();
-      if (fraction !== null && sameMedia(media, viewRef.current) && viewRef.current.connected) {
-        void runCommand("seek", { position: fraction * state.duration });
-      }
-    };
-    dragCleanup.current = cleanup;
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-  }, [state.duration, state.idle, view.ready, view.generation, view.mediaEpoch, runCommand]);
+  const { generation, mediaEpoch } = view;
+  const seekFromTimeline = useCallback((position: number) => {
+    const current = viewRef.current;
+    if (current.ready && !current.loading && !current.player.idle && sameMedia({ generation, mediaEpoch }, current)) {
+      void runCommand("seek", { position });
+    }
+  }, [generation, mediaEpoch, runCommand]);
 
   const togglePlay = () => runCommand("toggle_pause");
-  const seekRelative = (s: number) => runCommand("seek_relative", { seconds: s });
   const setVolume = (v: number) => runCommand("set_property", { name: "volume", value: String(v) });
-  const setSpeed = (s: number) => runCommand("set_property", { name: "speed", value: String(s) });
   const toggleMute = () => runCommand("set_property", { name: "mute", value: state.muted ? "no" : "yes" });
   const setProperty = (name: string, value: string) => runCommand("set_property", { name, value });
   const sendMpv = (args: (string | number)[]) => runCommand("send_command", { args });
@@ -332,14 +326,6 @@ export default function App() {
     const chapter = state.chapters[index];
     if (chapter) void runCommand("seek", { position: chapter.time });
   };
-  const selectTrack = (kind: "audio" | "sub", id: number | null) =>
-    setProperty(kind === "audio" ? "aid" : "sid", id === null ? "no" : String(id));
-
-  // A-B loop: the mpv "ab-loop" command cycles set-A -> set-B -> clear
-  // (IINA PlayerCore.abLoop three-state cycle).
-  const abLoopActive = state.abLoopA !== null || state.abLoopB !== null;
-  const toggleAbLoop = () => sendMpv(["ab-loop"]);
-
   // Always on top: dual-track like IINA isOntop — the OS window level and
   // the mpv "ontop" property stay in sync.
   const toggleOnTop = () => {
@@ -348,9 +334,23 @@ export default function App() {
     setProperty("ontop", next ? "yes" : "no");
   };
 
-  const toggleSidebar = (tab: SidebarTab) => {
-    if (sidebarOpen && sidebarTab === tab) setSidebarOpen(false);
-    else { setSidebarTab(tab); setSidebarOpen(true); }
+  const showSidebarSection = (section: SidebarSection) => {
+    setSidebarTab(section);
+    if (sidebarCompact) setSidebarCompact(false);
+  };
+  const togglePlaylistSidebar = () => {
+    if (viewing) {
+      void changeMode("windowed");
+      showSidebarSection("playlist");
+    } else if (sidebarTab === "playlist" && !sidebarCompact) {
+      setSidebarCompact(true);
+    } else {
+      showSidebarSection("playlist");
+    }
+  };
+  const openFiles = () => {
+    if (isTauri()) void runCommand("open_file_dialog");
+    else reportLibraryError(t("player.desktop-required"));
   };
 
   // Library actions.
@@ -385,473 +385,268 @@ export default function App() {
     }).catch(reportLibraryError);
   };
 
-  const submitUrl = () => {
-    const trimmed = urlInput.trim();
-    if (!trimmed) return;
-    // IINA OpenURLWindowController: default missing scheme to http://.
-    const url = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed) ? trimmed : `http://${trimmed}`;
-    setUrlOpen(false);
-    setUrlInput("");
-    void runCommand("open_url", { url });
-  };
+  const toggleFullscreen = useCallback(() => {
+    setOptionsOpen(false);
+    if (output === "detached") void runCommand("send_command", { args: ["cycle", "fullscreen"] });
+    else void changeMode(mode === "fullscreen" ? "windowed" : "fullscreen");
+  }, [output, runCommand, changeMode, mode]);
 
-  // Keyboard actions (keymap ported from IINA's default input.conf).
+  useEffect(() => {
+    if (output !== "embedded") return;
+    let active = true;
+    const subscriptions = [
+      listen("video-toggle-fullscreen", () => { if (active && !modalOpen) toggleFullscreen(); }),
+      listen<string[]>("video-files-dropped", (event) => {
+        if (active && !modalOpen) openDroppedPaths(event.payload);
+      }),
+    ];
+    for (const subscription of subscriptions) {
+      void subscription.catch((error) => { if (active) reportDesktopError(error); });
+    }
+    return () => {
+      active = false;
+      for (const subscription of subscriptions) void subscription.then((stop) => stop()).catch(() => {});
+    };
+  }, [output, modalOpen, openDroppedPaths, reportDesktopError, toggleFullscreen]);
+
+  useEffect(() => {
+    if (modalOpen || (!optionsOpen && mode === "windowed")) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      if (optionsOpen) closeOptions();
+      else void changeMode("windowed");
+    };
+    window.addEventListener("keydown", escape);
+    return () => window.removeEventListener("keydown", escape);
+  }, [changeMode, closeOptions, modalOpen, mode, optionsOpen]);
+
   const handleKeyAction = useCallback(({ command, args }: { command: string; args?: string[] }) => {
-    if (command === "toggle_pause") runCommand("toggle_pause");
-    else if (command === "seek_relative") runCommand("seek_relative", { seconds: Number(args?.[0]) });
-    else if (command === "set_property") runCommand("set_property", { name: args?.[0], value: args?.[1] });
-    else if (command === "screenshot") runCommand("screenshot");
-    else if (command === "send_command") runCommand("send_command", { args: args ?? [] });
-  }, [runCommand]);
+    if (command === "toggle_fullscreen") toggleFullscreen();
+    else if (command === "toggle_pause") void runCommand("toggle_pause");
+    else if (command === "seek_relative") void runCommand("seek_relative", { seconds: Number(args?.[0]) });
+    else if (command === "set_property") void runCommand("set_property", { name: args?.[0], value: args?.[1] });
+    else if (command === "screenshot") void runCommand("screenshot");
+    else if (command === "send_command") void runCommand("send_command", { args: args ?? [] });
+  }, [runCommand, toggleFullscreen]);
 
-  const anyMenuOpen = trackMenu !== null || videoMenuOpen || eqMenuOpen;
+  const playLabel = t(state.paused || state.idle ? "controls.play" : "controls.pause");
+  const muteLabel = t(state.muted ? "controls.unmute" : "controls.mute");
+  const sidebarLabel = t(sidebarCompact ? "player.sidebar-expand" : "player.sidebar-collapse");
+  const fullscreenLabel = t(mode === "fullscreen" ? "player.fullscreen-exit" : "controls.fullscreen");
+  const miniLabel = t(mode === "mini" ? "controls.pip-exit" : "controls.pip");
+  const mediaTitle = displayMediaTitle(state.mediaTitle) || displayMediaTitle(state.fileName) || t("player.workspace");
+  const canSeek = view.ready && !view.loading && !state.idle && state.duration > 0;
+  const playButton = (
+    <button type="button" className="play-btn" onClick={togglePlay}
+      disabled={!view.ready || state.idle} aria-label={playLabel} title={playLabel}>
+      <PlayerIcon name={state.paused || state.idle ? "play" : "pause"} />
+    </button>
+  );
 
   return (
-    <div className="app">
-      <KeyboardHandler
-        enabled={!aboutOpen && !settingsOpen && !urlOpen && !networkOpen}
-        onAction={handleKeyAction}
-        onTogglePlaylist={() => toggleSidebar("playlist")}
-      />
+    <div className="app" data-viewing={mode}>
+      <KeyboardHandler enabled={!modalOpen} onAction={handleKeyAction} onTogglePlaylist={togglePlaylistSidebar} />
 
-      <div className="video-area" onDoubleClick={() => sendMpv(["cycle", "fullscreen"])}>
-        {error && (
-          <div
-            className="player-error"
-            role="alert"
-            // Keep the banner clear of the sidebar when it is open.
-            style={{ right: sidebarOpen ? 280 : 16 }}
-            title={errorDetail ?? undefined}
-          >
-            <span className="player-error-text">{error}</span>
-            <button
-              type="button"
-              className="player-error-dismiss"
-              onClick={dismissError}
-              aria-label={t("panel.cancel")}
-              title={t("panel.cancel")}
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <line x1="6" y1="6" x2="18" y2="18" />
-                <line x1="18" y1="6" x2="6" y2="18" />
-              </svg>
-            </button>
-          </div>
-        )}
-        {!view.connected && !error && <div className="connection-status" role="status">{t("player.open-hint")}</div>}
-        {state.idle && (
-          <div className="empty-state" onClick={() => runCommand("open_file_dialog")} style={{ cursor: "pointer" }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="2" y="5" width="20" height="14" rx="2" />
-              <polygon points="10,9 16,12 10,15" fill="currentColor" />
-            </svg>
-            <div className="hint">{t("player.open-hint")}</div>
-          </div>
-        )}
-
-        <Sidebar
-          open={sidebarOpen}
-          tab={sidebarTab}
-          onTabChange={setSidebarTab}
-          onClose={() => setSidebarOpen(false)}
-        >
+      {!viewing && (
+        <Sidebar compact={sidebarCompact} section={sidebarTab} onSelect={showSidebarSection}
+          onFiles={openFiles} onStream={() => setNetworkTab("stream")} onServers={() => setNetworkTab("servers")}
+          onSettings={() => setSettingsOpen(true)} onAbout={() => setAboutOpen(true)}>
           {sidebarTab === "playlist" && (
-            <PlaylistPanel
-              visible
-              embedded
-              entries={state.playlist}
-              onPlay={playPlaylistIndex}
-              onRemove={removePlaylistIndex}
-              onClear={clearPlaylist}
-              onShuffle={shufflePlaylist}
-              loopFile={state.loopFile}
-              loopPlaylist={state.loopPlaylist}
-              onLoop={setLoopMode}
-            />
+            <PlaylistPanel entries={state.playlist} onPlay={playPlaylistIndex} onRemove={removePlaylistIndex}
+              onClear={() => setClearRequest({ label: "panel.playlist.clear", action: clearPlaylist })} onShuffle={shufflePlaylist} loopFile={state.loopFile}
+              loopPlaylist={state.loopPlaylist} onLoop={setLoopMode} />
           )}
           {sidebarTab === "chapters" && (
-            <ChaptersPanel
-              embedded
-              chapters={state.chapters}
-              currentChapter={state.currentChapter}
-              onSelect={selectChapter}
-            />
+            <ChaptersPanel chapters={state.chapters} currentChapter={state.currentChapter} onSelect={selectChapter} />
           )}
           {sidebarTab === "history" && (
-            <HistoryPanel
-              entries={history}
-              onPlay={playHistoryEntry}
-              onRemove={removeHistoryEntry}
-              onClear={clearHistory}
-            />
+            <HistoryPanel entries={history} onPlay={playHistoryEntry} onRemove={removeHistoryEntry}
+              onClear={() => setClearRequest({ label: "panel.history.clear", action: clearHistory })} />
           )}
           {sidebarTab === "bookmarks" && (
-            <BookmarksPanel
-              bookmarks={bookmarks}
-              onAdd={addBookmark}
-              onSelect={(time) => runCommand("seek", { position: time })}
-              onRemove={removeBookmark}
-              onClear={clearBookmarks}
-            />
+            <BookmarksPanel bookmarks={bookmarks} onAdd={addBookmark} onRemove={removeBookmark}
+              onClear={() => setClearRequest({ label: "panel.bookmarks.clear", action: clearBookmarks })}
+              onSelect={(time) => runCommand("seek", { position: time })} />
           )}
         </Sidebar>
-      </div>
-
-      <div className="control-bar">
-        <div className="progress-row">
-          <span className="time-label">{formatTime(effectivePosition)}</span>
-          <div
-            ref={trackRef}
-            className="progress-track"
-            role="slider"
-            tabIndex={0}
-            aria-label={t("controls.progress")}
-            aria-valuemin={0}
-            aria-valuemax={state.duration}
-            aria-valuenow={Math.min(effectivePosition, state.duration)}
-            aria-valuetext={`${formatTime(effectivePosition)} / ${formatTime(state.duration)}`}
-            aria-disabled={!view.ready || state.idle || state.duration <= 0}
-            onKeyDown={(event) => {
-              if (event.ctrlKey || event.metaKey || event.altKey || !view.ready || state.idle || state.duration <= 0) return;
-              const position = sliderValueAtKey(event.key, effectivePosition, 0, state.duration, 5);
-              if (position === null) return;
-              event.preventDefault();
-              event.stopPropagation();
-              void runCommand("seek", { position });
-            }}
-            onMouseDown={handleTrackMouseDown}
-          >
-            <div className="progress-bg">
-              <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
-            </div>
-            {state.abLoopA !== null && state.duration > 0 && (
-              <div className="ab-marker" style={{ left: `${(state.abLoopA / state.duration) * 100}%` }} title="A" />
-            )}
-            {state.abLoopB !== null && state.duration > 0 && (
-              <div className="ab-marker" style={{ left: `${(state.abLoopB / state.duration) * 100}%` }} title="B" />
-            )}
-            <div className="progress-knob" style={{ left: `${progress * 100}%` }} />
-          </div>
-          <span className="time-label dim">{formatTime(state.duration)}</span>
-        </div>
-
-        <div className="button-row">
-          <button className="tool-btn" onClick={() => runCommand("open_file_dialog")} title={t("menu.open")}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7 Q3 5 5 5 H9.5 L11.5 7 H19 Q21 7 21 9 V17 Q21 19 19 19 H5 Q3 19 3 17 Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /></svg>
-          </button>
-          <button className="tool-btn" onClick={() => sendMpv(["playlist-prev", "weak"])} disabled={state.playlistCount < 2 || !view.ready} title={t("menu.previous")}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5 V19 M19 5 L10 12 L19 19 Z" fill="currentColor" stroke="none" /></svg>
-          </button>
-          <button
-            className={`play-btn ${!state.paused ? "playing" : ""}`}
-            onClick={togglePlay}
-            disabled={state.idle || !view.ready}
-            title={state.idle || state.paused ? t("controls.play") : t("controls.pause")}
-          >
-            {state.idle || state.paused ? (
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5 L19 12 L7 19 Z" fill="currentColor" stroke="none" /></svg>
-            ) : (
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" /><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" /></svg>
-            )}
-          </button>
-          <button className="tool-btn" onClick={() => sendMpv(["playlist-next", "weak"])} disabled={state.playlistCount < 2 || !view.ready} title={t("menu.next")}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5 V19 M5 5 L14 12 L5 19 Z" fill="currentColor" stroke="none" /></svg>
-          </button>
-          <button className="tool-btn" onClick={() => runCommand("stop_playback")} disabled={state.idle || !view.ready} title={t("menu.stop")}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none" /></svg>
-          </button>
-          <button className="tool-btn" onClick={() => seekRelative(-5)} title={t("menu.step-backward")}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 A8 8 0 0 1 18.5 7.5 M18.5 7.5 L18.5 3.5 M18.5 7.5 L14.5 7.5 M4 12 A8 8 0 0 0 18.5 16.5 M18.5 16.5 L18.5 20.5 M18.5 16.5 L14.5 16.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
-          </button>
-          <button className="tool-btn" onClick={() => seekRelative(5)} title={t("menu.step-forward")}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12 A8 8 0 0 1 5.5 7.5 M5.5 7.5 L5.5 3.5 M5.5 7.5 L9.5 7.5 M20 12 A8 8 0 0 0 5.5 16.5 M5.5 16.5 L5.5 20.5 M5.5 16.5 L9.5 16.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
-          </button>
-          <button className="tool-btn" onClick={() => sendMpv(["frame-back-step"])} disabled={state.idle || !view.ready || state.paused === false} title={t("menu.frame-back-step")}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12 H16 M8 12 L11 9 M8 12 L11 15 M16 12 L13 9 M16 12 L13 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
-          </button>
-          <button className="tool-btn" onClick={() => sendMpv(["frame-step"])} disabled={state.idle || !view.ready} title={t("menu.frame-step")}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 12 H8 M16 12 L13 9 M16 12 L13 15 M8 12 L11 9 M8 12 L11 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
-          </button>
-          <button
-            className={`tool-btn ${abLoopActive ? "active" : ""}`}
-            onClick={toggleAbLoop}
-            disabled={state.idle || !view.ready}
-            title={t("menu.ab-loop")}
-          >
-            AB
-          </button>
-          <button className="tool-btn" onClick={() => runCommand("screenshot")} disabled={state.idle || !view.ready} title={t("menu.screenshot")}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 8 H8 L10 5 H14 L16 8 H20 V19 H4 Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-              <circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.6" />
-            </svg>
-          </button>
-
-          <div className="spacer" />
-
-          <span
-            className={`speed-label ${state.speed !== 1 ? "active" : ""}`}
-            onClick={() => {
-              const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
-              const idx = speeds.indexOf(state.speed);
-              const next = speeds[(idx + 1) % speeds.length];
-              setSpeed(next);
-            }}
-            title={t("controls.speed")}
-          >
-            {state.speed === 1 ? "1×" : `${state.speed}×`}
-          </span>
-
-          <span className="menu-anchor">
-            <button className="tool-btn" onClick={() => setTrackMenu(trackMenu === "audio" ? null : "audio")} disabled={!view.ready} title={t("panel.tracks.audio")}>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 13 Q4 5 12 5 Q20 5 20 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                <rect x="3" y="13" width="4" height="7" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.6" />
-                <rect x="17" y="13" width="4" height="7" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.6" />
-              </svg>
-            </button>
-            {trackMenu === "audio" && (
-              <TrackMenu kind="audio" tracks={state.tracks} currentId={state.audioTrackId}
-                onSelect={(id) => selectTrack("audio", id)} onClose={() => setTrackMenu(null)} />
-            )}
-          </span>
-          <span className="menu-anchor">
-            <button className={`tool-btn ${state.subtitleTrackId !== null ? "active" : ""}`} onClick={() => setTrackMenu(trackMenu === "sub" ? null : "sub")} disabled={!view.ready} title={t("panel.tracks.subtitle")}>
-              CC
-            </button>
-            {trackMenu === "sub" && (
-              <TrackMenu kind="sub" tracks={state.tracks} currentId={state.subtitleTrackId}
-                onSelect={(id) => selectTrack("sub", id)} onClose={() => setTrackMenu(null)} />
-            )}
-          </span>
-          <button className="tool-btn" onClick={() => runCommand("open_subtitle_dialog")} disabled={state.idle || !view.ready} title={t("menu.load-subtitle")}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
-              <path d="M6 14 H10 M13 14 H18 M6 10.5 H18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-          </button>
-
-          <span className="menu-anchor">
-            <button className={`tool-btn ${videoMenuOpen ? "active" : ""}`} onClick={() => setVideoMenuOpen(!videoMenuOpen)} title={t("controls.video-settings")}>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <rect x="3" y="6" width="18" height="12" rx="1.8" fill="none" stroke="currentColor" strokeWidth="1.6" />
-                <path d="M9 21 H15 M12 18 V21" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-            </button>
-            {videoMenuOpen && (
-              <VideoSettingsMenu
-                aspectMode={state.aspectMode}
-                rotation={state.rotation}
-                hwdec={state.hwdec}
-                onSetProperty={setProperty}
-                onClose={() => setVideoMenuOpen(false)}
-              />
-            )}
-          </span>
-          <span className="menu-anchor">
-            <button className={`tool-btn ${eqMenuOpen ? "active" : ""}`} onClick={() => setEqMenuOpen(!eqMenuOpen)} title={t("controls.equalizer")}>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 4 V20 M12 4 V20 M19 4 V20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                <circle cx="5" cy="14" r="2.2" fill="currentColor" />
-                <circle cx="12" cy="9" r="2.2" fill="currentColor" />
-                <circle cx="19" cy="16" r="2.2" fill="currentColor" />
-              </svg>
-            </button>
-            {eqMenuOpen && (
-              <VideoEqMenu
-                brightness={state.brightness}
-                contrast={state.contrast}
-                saturation={state.saturation}
-                deinterlace={state.deinterlace}
-                onSetProperty={setProperty}
-                onClose={() => setEqMenuOpen(false)}
-              />
-            )}
-          </span>
-
-          <div className="volume-control">
-            <button className="tool-btn" onClick={toggleMute} title={state.muted ? t("controls.unmute") : t("controls.mute")}>
-              {state.muted ? (
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10 H8 L13 5 V19 L8 14 H4 Z" fill="currentColor" stroke="none" /><path d="M17 9 L21 15 M21 9 L17 15" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
-              ) : (
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10 H8 L13 5 V19 L8 14 H4 Z" fill="currentColor" stroke="none" /><path d="M16.5 9 A4.5 4.5 0 0 1 16.5 15 M19 7 A8 8 0 0 1 19 17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
-              )}
-            </button>
-            <div
-              className="volume-slider"
-              role="slider"
-              tabIndex={0}
-              aria-label={t("controls.volume")}
-              aria-valuemin={0}
-              aria-valuemax={130}
-              aria-valuenow={state.volume}
-              aria-valuetext={`${Math.round(state.volume)}%`}
-              aria-disabled={!view.ready}
-              onKeyDown={(event) => {
-                if (event.ctrlKey || event.metaKey || event.altKey || !view.ready) return;
-                const volume = sliderValueAtKey(event.key, state.volume, 0, 130, 5);
-                if (volume === null) return;
-                event.preventDefault();
-                event.stopPropagation();
-                void setVolume(volume);
-              }}
-              onClick={(e) => {
-                if (!view.ready) return;
-                const volume = volumeAtClick(e);
-                if (volume !== null) void setVolume(volume);
-              }}
-            >
-              <div className="volume-fill" style={{ width: `${(state.volume / 130) * 100}%` }} />
-            </div>
-          </div>
-
-          <button className="tool-btn" onClick={() => setUrlOpen(true)} title={t("menu.open-url")}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M10 13 A5 5 0 0 0 14.2 17.2 L15.5 15.9 A3 3 0 0 1 12.1 12.5 Z" fill="currentColor" stroke="none" />
-              <path d="M13.5 10.5 A5 5 0 0 0 9.3 6.3 L8 7.6 A3 3 0 0 1 11.4 11 Z" fill="currentColor" stroke="none" />
-              <path d="M14.5 9.5 L18 6 M9.5 14.5 L6 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-          </button>
-          <button
-            className={`tool-btn ${networkOpen ? "active" : ""}`}
-            onClick={() => setNetworkOpen(true)}
-            aria-haspopup="dialog"
-            title={t("controls.network")}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" strokeWidth="1.6" />
-              <path d="M3.4 9 H20.6 M3.4 15 H20.6" stroke="currentColor" strokeWidth="1.6" />
-              <path d="M12 3.4 A13 13 0 0 0 12 20.6 A13 13 0 0 0 12 3.4 Z" fill="none" stroke="currentColor" strokeWidth="1.6" />
-            </svg>
-          </button>
-          <button
-            className={`tool-btn ${state.onTop ? "active" : ""}`}
-            onClick={toggleOnTop}
-            title={t("video.ontop")}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M14 3 L17 3 L17 6 L14 6 Z" fill="none" stroke="currentColor" strokeWidth="1.6" />
-              <path d="M15.5 4.5 H19 V8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M19 4.5 L12 11.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              <path d="M5 13 V20 H12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M9 20 H5 V16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button
-            className={`tool-btn ${sidebarOpen && sidebarTab === "playlist" ? "active" : ""}`}
-            onClick={() => toggleSidebar("playlist")}
-            title={t("controls.playlist")}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 6 H20 M4 12 H20 M4 18 H14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-          </button>
-          <button
-            className={`tool-btn ${sidebarOpen && sidebarTab === "chapters" ? "active" : ""}`}
-            onClick={() => toggleSidebar("chapters")}
-            disabled={state.chapters.length === 0 && state.idle}
-            title={t("panel.chapters")}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
-              <path d="M3 9 H21 M8 9 V20 M16 9 V20" stroke="currentColor" strokeWidth="1.6" />
-            </svg>
-          </button>
-          <button
-            className="tool-btn about-trigger"
-            onClick={() => setAboutOpen(true)}
-            aria-label="About BrushLLM Player"
-            aria-haspopup="dialog"
-            title={t("settings.about")}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <circle cx="12" cy="12" r="9" />
-              <line x1="12" y1="10.5" x2="12" y2="16" />
-              <circle cx="12" cy="7.5" r="0.7" fill="currentColor" stroke="none" />
-            </svg>
-          </button>
-          <button
-            className="tool-btn"
-            onClick={() => setSettingsOpen(true)}
-            aria-label={t("settings.general")}
-            aria-haspopup="dialog"
-            title={t("settings.general")}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <circle cx="12" cy="12" r="3.1" fill="none" stroke="currentColor" strokeWidth="1.6" />
-              <path
-                d="M12 3.6 L13.7 5.9 L16.5 5.4 L16.9 8.2 L19.4 9.5 L18.2 12 L19.4 14.5 L16.9 15.8 L16.5 18.6 L13.7 18.1 L12 20.4 L10.3 18.1 L7.5 18.6 L7.1 15.8 L4.6 14.5 L5.8 12 L4.6 9.5 L7.1 8.2 L7.5 5.4 L10.3 5.9 Z"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {urlOpen && (
-        <div
-          className="about-overlay"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setUrlOpen(false);
-          }}
-        >
-          <section
-            id="url-dialog"
-            className="about-dialog url-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="url-dialog-title"
-          >
-            <div className="about-header">
-              <h2 id="url-dialog-title">{t("menu.open-url")}</h2>
-              <button
-                className="tool-btn about-close"
-                onClick={() => setUrlOpen(false)}
-                aria-label={t("panel.cancel")}
-                title={t("panel.cancel")}
-                autoFocus
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                </svg>
-              </button>
-            </div>
-            <form
-              className="url-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                submitUrl();
-              }}
-            >
-              <input
-                className="url-input"
-                type="text"
-                value={urlInput}
-                onChange={(event) => setUrlInput(event.target.value)}
-                placeholder={t("panel.url.hint")}
-                autoFocus
-                spellCheck={false}
-              />
-              <button className="url-submit" type="submit" disabled={urlInput.trim() === ""}>
-                {t("panel.url.open")}
-              </button>
-            </form>
-          </section>
-        </div>
       )}
 
-      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+      <main className="player-workspace" aria-label={t("player.workspace")}>
+        {!viewing && (
+          <header className="workspace-header">
+            <button className="tool-btn" type="button" aria-label={sidebarLabel} title={sidebarLabel}
+              aria-expanded={!sidebarCompact} aria-controls="sidebar-content"
+              onClick={() => setSidebarCompact(!sidebarCompact)}>
+              <PlayerIcon name="sidebar" />
+            </button>
+            <h1 title={state.idle ? undefined : mediaTitle}>{state.idle ? t("player.workspace") : mediaTitle}</h1>
+            {!state.idle && (
+              <button type="button" className="workspace-open" onClick={openFiles}
+                aria-label={t("player.open-files")} title={t("player.open-files")}>
+                <PlayerIcon name="folder" />
+                <span>{t("player.open-files")}</span>
+              </button>
+            )}
+          </header>
+        )}
 
-      {networkOpen && (
-        <NetworkPanel
-          onClose={() => setNetworkOpen(false)}
-          onPlayUrl={(url) => void runCommand("open_url", { url })}
-          onEnqueued={() => toggleSidebar("playlist")}
-        />
+        {error && (
+          <div className="player-error" role="alert" title={errorDetail ?? undefined}>
+            <span className="player-error-text">{error}</span>
+            {isMpvLoadError && (
+              <button className="player-error-recover" type="button" onClick={openFiles}>{t("player.open-files")}</button>
+            )}
+            <button type="button" className="player-error-dismiss" onClick={dismissError}
+              aria-label={t("panel.cancel")} title={t("panel.cancel")}>
+              <PlayerIcon name="close" />
+            </button>
+          </div>
+        )}
+
+        <div className="video-area" ref={stageRef} onDoubleClick={(event) => {
+          if (event.target === event.currentTarget && !state.idle) toggleFullscreen();
+        }}>
+          {view.loading ? (
+            <div className="video-status" role="status">{t("player.loading")}</div>
+          ) : state.idle ? (
+            <div className="empty-state">
+              <span className="empty-screen-icon"><PlayerIcon name="screen" /></span>
+              <h2>{t("player.open-hint")}</h2>
+              <p>{t("player.drag-hint")}</p>
+              <div className="empty-actions">
+                <button type="button" className="open-primary" onClick={openFiles}>
+                  <PlayerIcon name="folder" />
+                  {t("player.open-files")}
+                </button>
+                {!viewing && sidebarCompact && (
+                  <button type="button" className="open-sources" onClick={() => showSidebarSection("sources")}>
+                    {t("player.sources")}
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : output !== "embedded" && hasVideo ? (
+            <div className="video-status" role="status">
+              <PlayerIcon name="screen" />
+              <p>{t(output === "detached" ? "player.video-detached" : "player.video-native-mac")}</p>
+            </div>
+          ) : !hasVideo && state.tracks.some(({ type }) => type === "audio") ? (
+            <div className="video-status">
+              <PlayerIcon name="volume" />
+              <p>{mediaTitle}</p>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="control-bar">
+          {viewing && playButton}
+          <PlaybackTimeline key={failureKey + "/" + mode} position={state.position} duration={state.duration}
+            abLoopA={state.abLoopA} abLoopB={state.abLoopB} canSeek={canSeek}
+            showTimeHint={!viewing} onSeek={seekFromTimeline} />
+
+          <div className="button-row">
+            {!viewing && (
+              <div className="transport-group">
+                <button className="tool-btn" type="button" onClick={() => sendMpv(["playlist-prev", "weak"])}
+                  disabled={state.playlistCount < 2 || !view.ready} aria-label={t("menu.previous")} title={t("menu.previous")}>
+                  <PlayerIcon name="previous" />
+                </button>
+                {playButton}
+                <button className="tool-btn" type="button" onClick={() => sendMpv(["playlist-next", "weak"])}
+                  disabled={state.playlistCount < 2 || !view.ready} aria-label={t("menu.next")} title={t("menu.next")}>
+                  <PlayerIcon name="next" />
+                </button>
+                <button className="tool-btn" type="button" onClick={() => runCommand("stop_playback")}
+                  disabled={state.idle || !view.ready} aria-label={t("menu.stop")} title={t("menu.stop")}>
+                  <PlayerIcon name="stop" />
+                </button>
+              </div>
+            )}
+
+            <div className="viewing-group">
+              <div className="volume-control">
+                <button className="tool-btn" type="button" onClick={toggleMute} disabled={!view.ready}
+                  aria-label={muteLabel} title={muteLabel}>
+                  <PlayerIcon name={state.muted ? "mute" : "volume"} />
+                </button>
+                {!viewing && (
+                  <div className="volume-slider" role="slider" tabIndex={view.ready ? 0 : -1}
+                    aria-label={t("controls.volume")} aria-valuemin={0} aria-valuemax={130}
+                    aria-valuenow={state.volume} aria-valuetext={Math.round(state.volume) + "%"}
+                    aria-disabled={!view.ready}
+                    onKeyDown={(event) => {
+                      if (event.ctrlKey || event.metaKey || event.altKey || !view.ready) return;
+                      const volume = sliderValueAtKey(event.key, state.volume, 0, 130, 5);
+                      if (volume === null) return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void setVolume(volume);
+                    }}
+                    onClick={(event) => {
+                      if (!view.ready) return;
+                      const volume = volumeAtClick(event);
+                      if (volume !== null) void setVolume(volume);
+                    }}>
+                    <div className="volume-track">
+                      <div className="volume-fill" style={{ width: (state.volume / 130 * 100) + "%" }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+              {!viewing && (
+                <button ref={optionsTrigger} type="button" className="tool-btn" title={t("player.options")}
+                  aria-label={t("player.options")} aria-expanded={optionsOpen}
+                  aria-controls={optionsOpen ? "playback-options" : undefined}
+                  onClick={() => setOptionsOpen(!optionsOpen)}>
+                  <PlayerIcon name="options" />
+                </button>
+              )}
+              <div className="window-actions">
+                {mode !== "fullscreen" && output !== "detached" && (
+                  <button type="button" className="tool-btn" title={miniLabel}
+                    aria-label={miniLabel} onClick={() => {
+                      setOptionsOpen(false);
+                      void changeMode(mode === "mini" ? "windowed" : "mini");
+                    }}>
+                    <PlayerIcon name={mode === "mini" ? "miniExit" : "mini"} />
+                  </button>
+                )}
+                <button type="button" className="tool-btn" title={fullscreenLabel} aria-label={fullscreenLabel}
+                  onClick={toggleFullscreen} disabled={output === "detached" && state.idle}>
+                  <PlayerIcon name={mode === "fullscreen" ? "fullscreenExit" : "fullscreen"} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        {!viewing && optionsOpen && (
+          <PlaybackOptions state={state} ready={view.ready} onCommand={runCommand} onToggleOnTop={toggleOnTop}
+            onShowChapters={() => {
+              showSidebarSection("chapters");
+              closeOptions();
+            }}
+            onClose={closeOptions} />
+        )}
+      </main>
+
+      {clearRequest && (
+        <ClearLibraryDialog label={t(clearRequest.label)} onClose={() => setClearRequest(null)}
+          onConfirm={() => {
+            setClearRequest(null);
+            clearRequest.action();
+          }} />
+      )}
+
+      {settingsOpen && <SettingsPanel onClose={closeSettings} />}
+
+      {networkTab !== null && (
+        <NetworkPanel initialTab={networkTab} onClose={closeNetwork}
+          onPlayUrl={(url) => {
+            if (isTauri()) void runCommand("open_url", { url });
+            else reportLibraryError(t("player.desktop-required"));
+          }}
+          onEnqueued={() => showSidebarSection("playlist")} />
       )}
 
       {aboutOpen && (

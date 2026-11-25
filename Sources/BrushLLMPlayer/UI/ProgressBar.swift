@@ -1,31 +1,25 @@
 import SwiftUI
 
-/// Custom video progress bar: hairline track, white fill (IINA-style),
-/// chapter tick marks, A-B loop markers, and a round knob that appears
-/// while scrubbing.
+/// Playback timeline with chapter, loop and bookmark markers.
 struct ProgressBar: View {
     let position: Double
     let duration: Double
     let chapters: [ChapterInfo]
     let abLoopA: Double?
     let abLoopB: Double?
-    /// Bookmarks of the current file, drawn as mint markers.
     var bookmarks: [Bookmark] = []
-    /// Live scrub position while dragging.
-    var onScrub: (Double) -> Void
-    /// Final seek when the drag or click ends.
-    var onScrubEnded: (Double) -> Void
-    /// Hover for the thumbnail preview: horizontal fraction (0…1) and time;
-    /// nil when the pointer leaves.
-    var onHover: (CGFloat?, Double?) -> Void = { _, _ in }
-
-    @State private var isDragging = false
-    @State private var dragValue: Double = 0
+    let canSeek: Bool
+    let showsTimeHint: Bool
+    @Binding var dragPosition: Double?
+    let onSeek: (Double) -> Void
     @State private var isHovering = false
+    @State private var hoverFraction: CGFloat?
 
     private var effectivePosition: Double {
-        isDragging ? dragValue : position
+        dragPosition ?? position
     }
+
+    private var showsKnob: Bool { canSeek && (dragPosition != nil || isHovering) }
 
     private var fraction: CGFloat {
         duration > 0 ? CGFloat(min(max(effectivePosition / duration, 0), 1)) : 0
@@ -41,13 +35,13 @@ struct ProgressBar: View {
             ZStack(alignment: .leading) {
                 // Track
                 Capsule()
-                    .fill(Color.white.opacity(0.22))
+                    .fill(BrushLLMPlayerTheme.controlSeparator)
                     .frame(width: width, height: barHeight)
                     .position(x: width / 2, y: height / 2)
 
-                // Fill — white, IINA-style
+                // Played portion of the timeline.
                 Capsule()
-                    .fill(Color.white.opacity(0.95))
+                    .fill(BrushLLMPlayerTheme.accent)
                     .frame(width: max(fraction * width, barHeight), height: barHeight)
                     .position(x: max(fraction * width, barHeight) / 2, y: height / 2)
 
@@ -56,7 +50,7 @@ struct ProgressBar: View {
                     if duration > 0 {
                         let x = CGFloat(chapter.startTime / duration) * width
                         Rectangle()
-                            .fill(Color.white.opacity(0.45))
+                            .fill(BrushLLMPlayerTheme.controlTextHint)
                             .frame(width: 1.5, height: barHeight + 4)
                             .position(x: x, y: barY + barHeight / 2)
                     }
@@ -83,58 +77,78 @@ struct ProgressBar: View {
 
                 // Knob
                 Circle()
-                    .fill(Color.white)
-                    .frame(width: isDragging || isHovering ? 12 : 0, height: isDragging || isHovering ? 12 : 0)
+                    .fill(BrushLLMPlayerTheme.accent)
+                    .frame(width: showsKnob ? 12 : 0, height: showsKnob ? 12 : 0)
                     .shadow(color: .black.opacity(0.5), radius: 2)
                     .position(x: fraction * width, y: height / 2)
-                    .animation(.easeInOut(duration: 0.12), value: isDragging || isHovering)
+                    .animation(.easeInOut(duration: 0.12), value: showsKnob)
             }
-            .contentShape(.rect)
-            .onHover { hovering in
-                isHovering = hovering
-                if !hovering { onHover(nil, nil) }
-            }
-            .onContinuousHover { phase in
-                switch phase {
-                case .active(let location):
-                    guard duration > 0, width > 0 else { return }
-                    let fraction = min(max(location.x / width, 0), 1)
-                    onHover(fraction, fraction * duration)
-                case .ended:
-                    onHover(nil, nil)
+            .frame(width: width, height: height)
+            .overlay {
+                if showsTimeHint, let hoverFraction, duration > 0 {
+                    let halfWidth: CGFloat = 32
+                    let x = min(max(hoverFraction * width, halfWidth), max(width - halfWidth, halfWidth))
+                    Text(playbackClock(Double(hoverFraction) * duration))
+                        .font(.system(size: 11, weight: .medium).monospacedDigit())
+                        .foregroundStyle(BrushLLMPlayerTheme.seekHintText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .frame(maxWidth: halfWidth * 2)
+                        .background(BrushLLMPlayerTheme.seekHintMaterial, in: .rect(cornerRadius: 5))
+                        .fixedSize()
+                        .position(x: x, y: height / 2)
+                        .accessibilityHidden(true)
                 }
             }
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { gesture in
-                        if !isDragging {
-                            isDragging = true
-                        }
-                        dragValue = value(forX: gesture.location.x, width: width)
-                        onScrub(dragValue)
-                    }
-                    .onEnded { gesture in
-                        let final = value(forX: gesture.location.x, width: width)
-                        isDragging = false
-                        dragValue = final
-                        onScrubEnded(final)
-                    }
-            )
+            .allowsHitTesting(false)
+            .overlay { seekTarget(width: width) }
         }
         .frame(height: 18)
         .accessibilityRepresentation {
             Slider(value: Binding(
                 get: { min(max(effectivePosition, 0), max(duration, 0.001)) },
-                set: { onScrubEnded($0) }
+                set: onSeek
             ), in: 0...max(duration, 0.001), step: min(5, max(duration, 0.001))) {
                 Text(L("controls.progress", "Playback position"))
             }
-            .disabled(duration <= 0)
-            .accessibilityValue("\(Int(effectivePosition)) / \(Int(max(0, duration)))")
+            .disabled(!canSeek)
+            .accessibilityValue("\(playbackClock(effectivePosition)) / \(playbackClock(duration))")
         }
     }
 
     // MARK: - Pieces
+
+    private func seekTarget(width: CGFloat) -> some View {
+        Color.clear
+            .contentShape(.rect)
+            .onHover { hovering in
+                isHovering = hovering
+                if !hovering { hoverFraction = nil }
+            }
+            .onContinuousHover { phase in
+                guard showsTimeHint, width > 0 else { return }
+                switch phase {
+                case .active(let location):
+                    hoverFraction = min(max(location.x / width, 0), 1)
+                case .ended:
+                    hoverFraction = nil
+                }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { gesture in
+                        guard canSeek else { return }
+                        dragPosition = value(forX: gesture.location.x, width: width)
+                    }
+                    .onEnded { gesture in
+                        dragPosition = nil
+                        guard canSeek else { return }
+                        onSeek(value(forX: gesture.location.x, width: width))
+                    }
+            )
+    }
 
     private func abMarker(x: CGFloat, y: CGFloat, label: String) -> some View {
         ZStack {

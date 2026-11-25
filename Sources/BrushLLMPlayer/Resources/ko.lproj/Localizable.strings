@@ -278,3 +278,14 @@
 "servers.error.generic" = "문제가 발생했습니다";
 
 "controls.progress" = "재생 위치";
+
+"player.workspace" = "플레이어";
+"player.sources" = "미디어 소스";
+"player.open-files" = "파일 열기…";
+"player.sidebar-expand" = "사이드바 펼치기";
+"player.sidebar-collapse" = "사이드바 접기";
+"player.options" = "재생 옵션";
+"player.settings" = "설정";
+"player.fullscreen-exit" = "전체 화면 종료";
+"panel.clear.question" = "이 목록을 비울까요?";
+"panel.clear.description" = "이 목록의 모든 항목을 삭제합니다.";

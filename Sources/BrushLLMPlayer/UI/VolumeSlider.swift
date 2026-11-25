@@ -23,20 +23,20 @@ struct VolumeSlider: View {
             ZStack(alignment: .leading) {
                 // Track
                 Capsule()
-                    .fill(Color.white.opacity(0.22))
+                    .fill(BrushLLMPlayerTheme.controlSeparator)
                     .frame(width: width, height: trackHeight)
                     .position(x: width / 2, y: height / 2)
 
                 // Fill — white: continuous-value chrome language, matching
                 // the progress bar (the accent is reserved for selection).
                 Capsule()
-                    .fill(Color.white.opacity(0.9))
+                    .fill(BrushLLMPlayerTheme.accent)
                     .frame(width: max(fraction * width, trackHeight), height: trackHeight)
                     .position(x: max(fraction * width, trackHeight) / 2, y: height / 2)
 
                 // Small knob
                 Circle()
-                    .fill(Color.white)
+                    .fill(BrushLLMPlayerTheme.accent)
                     .frame(width: 7, height: 7)
                     .shadow(color: .black.opacity(0.4), radius: 1.5)
                     .position(x: fraction * width, y: height / 2)

@@ -109,7 +109,7 @@ function storedLanguage(): LanguageCode {
  * Pure function: the preferred list is a parameter so tests can drive it
  * without a DOM; the no-arg form reads the browser preferences.
  */
-export function resolveSystemLanguage(preferred?: string[]): string {
+export function resolveSystemLanguage(preferred?: readonly string[]): string {
   const tags = preferred ?? (typeof navigator !== "undefined" ? navigator.languages ?? [navigator.language] : []);
   const available = new Set(Object.keys(TABLES));
   for (const tag of tags) {

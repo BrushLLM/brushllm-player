@@ -73,6 +73,7 @@ export interface StateSnapshot {
   revision: number;
   connected: boolean;
   ready: boolean;
+  loading: boolean;
   properties: Record<string, unknown>;
   endFile: { reason: string; file_error: string | null } | null;
   error: string | null;
@@ -83,11 +84,12 @@ export interface PlayerView {
   revision: number;
   connected: boolean;
   ready: boolean;
+  loading: boolean;
   player: PlayerState;
   error: string | null;
 }
 export const initialView: PlayerView = {
-  generation: 0, mediaEpoch: 0, revision: -1, connected: false, ready: false, player: initialState, error: null,
+  generation: 0, mediaEpoch: 0, revision: -1, connected: false, ready: false, loading: false, player: initialState, error: null,
 };
 
 function finite(value: unknown, fallback: number): number {
@@ -152,6 +154,7 @@ export function applySnapshot(previous: PlayerView, snapshot: StateSnapshot): Pl
   return {
     generation: snapshot.generation, mediaEpoch: snapshot.mediaEpoch, revision: snapshot.revision,
     connected: snapshot.connected, ready: snapshot.connected && snapshot.ready,
+    loading: snapshot.connected && snapshot.loading === true,
     // mpv's raw file_error (e.g. "no audio or video data played") is
     // technical English; the localized message is substituted at render
     // time in App.tsx via t("player.load-failed"), with the raw string

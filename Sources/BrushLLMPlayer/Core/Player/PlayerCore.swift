@@ -93,10 +93,6 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         didSet { applyAspectMode() }
     }
 
-    /// True while the user is scrubbing the progress bar; suppresses position
-    /// updates from mpv so the knob doesn't fight the gesture.
-    var isScrubbing = false
-
     /// Seconds since the current load started (drives the slow-load hint).
     @Published private(set) var bufferingSeconds: Int = 0
     private var bufferingTimer: Timer?
@@ -104,7 +100,9 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     /// Window aspect (width/height) fed by the video view for fill mode.
     var windowAspect: CGFloat = 16.0 / 9.0 {
         didSet {
-            if aspectMode == .fill { applyAspectMode() }
+            if aspectMode == .fill, !isLiveResizing, abs(windowAspect - oldValue) > 0.0001 {
+                applyFillAspect()
+            }
         }
     }
 
@@ -174,10 +172,6 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     /// Fullscreen transition in flight (reported by the window notifications).
     private var fullscreenAnimating = false
 
-    /// The video area's width when the animation started; sizes the
-    /// control-bar snapshot.
-    var liveResizeWidth: CGFloat = 900
-
     /// Called by `VideoView` on drag-resize start/end.
     func setDragResizing(_ resizing: Bool) {
         dragResizing = resizing
@@ -192,13 +186,14 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     /// drawing off again immediately.
     private func refreshResizingState() {
         let active = dragResizing || fullscreenAnimating
-        if isLiveResizing != active {
-            isLiveResizing = active
-        }
+        guard isLiveResizing != active else { return }
+        isLiveResizing = active
         videoLayer?.inLiveResize = active
+        if !active, aspectMode == .fill { applyFillAspect() }
     }
 
-    @Published var isMiniWindow = false {
+    @Published private(set) var isFullscreen = false
+    @Published private(set) var isMiniWindow = false {
         didSet { applyWindowLevel() }
     }
 
@@ -264,13 +259,6 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         }
     }
 
-    /// The current hover preview thumbnail (generated on demand at the
-    /// exact hovered position).
-    @Published private(set) var hoverThumbnail: NSImage?
-
-    /// Headless mpv instance for thumbnail generation (all formats).
-    private let thumbnailMPV = ThumbnailMPV()
-
     /// Bookmarks belonging to the file currently playing (drives the progress
     /// bar markers and the bookmark button's lit state).
     @Published private(set) var currentFileBookmarks: [Bookmark] = []
@@ -283,13 +271,12 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     private var currentReference: MediaReference?
     private var queueReferences: [String: MediaReference] = [:]
     private var activeEntryID: Int?
-    private var loadGeneration = UUID()
+    @Published private(set) var loadGeneration = UUID()
     private var loadTask: Task<Void, Never>?
+    private var discDurationTask: Task<Void, Never>?
     private var activeHookID: UInt64?
     private var requestedSeek: [String: Double] = [:]
-    private var activeStreamPath: String?
     private var discResources: [String: DiscImageResource] = [:]
-    private var lastPlaybackPosition: Double = 0
     private var recordingID: UUID?
     private var isShuttingDown = false
 
@@ -310,7 +297,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         self.headless = headless
         // The UI player registers the remote command handlers once at
         // startup (IINA's AppDelegate does this at launch); headless test
-        // and thumbnail players stay out of the system media feature.
+        // players stay out of the system media feature.
         self.nowPlaying = headless ? nil : NowPlayingManager.shared
         if !headless { Self.sharedForSettings = self }
         let settings = AppSettings.shared
@@ -384,6 +371,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     deinit {
         bufferingTimer?.invalidate()
         historyTimer?.invalidate()
+        discDurationTask?.cancel()
         playbackStore.flush()
         mpv.eventHandler = nil
         mpv.shutdown()
@@ -404,7 +392,6 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
             currentReference = nil
             currentPath = nil
             activeEntryID = nil
-            activeStreamPath = nil
             queueReferences.removeAll()
             requestedSeek.removeAll()
             if let time, time.isFinite { requestedSeek[media.key] = max(time, 0) }
@@ -444,9 +431,8 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         playbackStore.flush()
         stopRecording()
         cancelPendingLoad()
-        titleWatchdog?.invalidate()
+        cancelDiscDurationProbe()
         bufferingTimer?.invalidate()
-        thumbnailMPV.shutdown()
         mpv.eventHandler = nil
         mpv.shutdown()
         for resource in discResources.values { resource.release() }
@@ -456,14 +442,25 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     /// Probes each VOB's duration with AVURLAsset and overrides the total.
     /// mpv's EDL duration for concatenated VOBs is inflated because of
     /// MPEG-2 variable bitrate estimation.
-    private func probeDiscDuration(_ vobPaths: [String]) {
-        let generation = loadGeneration
-        let path = currentPath
-        Task.detached(priority: .utility) { [weak self] in
+    private func probeDiscDuration(_ disc: DiscImageResource) {
+        guard !disc.vobPaths.isEmpty, let lease = disc.retainConsumer() else { return }
+        let entryID = activeEntryID
+        let mediaPath = currentPath
+        discDurationTask?.cancel()
+        discDurationTask = Task.detached(priority: .utility) { [weak self] in
+            defer { lease.release() }
             var total: Double = 0
-            for path in vobPaths {
+            for path in disc.vobPaths {
+                guard !Task.isCancelled else { return }
                 let asset = AVURLAsset(url: URL(fileURLWithPath: path))
-                var duration = CMTimeGetSeconds((try? await asset.load(.duration)) ?? .invalid)
+                let time = try? await withTaskCancellationHandler {
+                    try Task.checkCancellation()
+                    return try await asset.load(.duration)
+                } onCancel: {
+                    asset.cancelLoading()
+                }
+                var duration = CMTimeGetSeconds(time ?? .invalid)
+                guard duration.isFinite, duration > 0 else { continue }
                 // Some VOBs report wildly inflated durations (MPEG-2 stream
                 // corruption); a single DVD VOB is at most ~1GB ≈ 1 hour.
                 if duration > 3600 {
@@ -473,17 +470,22 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
                     DebugLog.log("ISO (DVD): VOB duration \(Int(duration))s inflated, estimating \(Int(estimated))s from size")
                     duration = estimated
                 }
-                if duration.isFinite && duration > 0 {
-                    total += duration
-                }
+                total += duration
             }
-            DispatchQueue.main.async { [weak self] in
-                guard let self, self.loadGeneration == generation, self.currentPath == path,
-                      total > 0, total < self.duration else { return }
-                DebugLog.log("ISO (DVD): real duration \(Int(total))s (mpv reported \(Int(self.duration))s)")
-                self.duration = total
+            guard !Task.isCancelled, total > 0 else { return }
+            let measuredDuration = total
+            await MainActor.run { [weak self] in
+                guard let self, self.activeEntryID == entryID, self.currentPath == mediaPath,
+                      measuredDuration < self.duration else { return }
+                DebugLog.log("ISO (DVD): real duration \(Int(measuredDuration))s (mpv reported \(Int(self.duration))s)")
+                self.duration = measuredDuration
             }
         }
+    }
+
+    private func cancelDiscDurationProbe() {
+        discDurationTask?.cancel()
+        discDurationTask = nil
     }
 
     /// Opens the first file and appends the rest to the playlist.
@@ -531,17 +533,24 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     }
 
     func seek(to time: Double) {
-        guard !isIdle else { return }
+        guard !isIdle, !isShuttingDown, time.isFinite else { return }
         let clamped = duration > 0 ? min(max(time, 0), duration) : time
         mpv.command("seek", [String(format: "%.3f", clamped), "absolute+exact"])
-        // Seeks bypass the position throttle so the Now Playing scrubber
-        // lands on the new time immediately.
-        lastNowPlayingPositionUpdate = Date()
-        nowPlaying?.updatePlaybackState(player: self)
+        // Publish the next confirmed position without waiting for the throttle.
+        lastNowPlayingPositionUpdate = .distantPast
+    }
+
+    var canSeekTimeline: Bool {
+        activeEntryID != nil && !isIdle && !isBuffering && duration.isFinite && duration > 0
+    }
+
+    func seekTimeline(to time: Double, generation: UUID) {
+        guard canSeekTimeline, generation == loadGeneration else { return }
+        seek(to: time)
     }
 
     func seek(relative seconds: Double) {
-        guard !isIdle else { return }
+        guard !isIdle, !isShuttingDown, seconds.isFinite else { return }
         mpv.command("seek", [String(format: "%.3f", seconds), "relative+exact"])
     }
 
@@ -858,8 +867,31 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
 
     // MARK: - Mini window (PiP-lite) & fullscreen
 
+    private weak var playerWindow: NSWindow?
+    private var fullscreenRequest: DispatchWorkItem?
+    private var fullscreenRecovery: DispatchWorkItem?
+
+    func attachWindow(_ window: NSWindow?) {
+        guard playerWindow !== window else { return }
+        fullscreenRequest?.cancel()
+        fullscreenRequest = nil
+        fullscreenRecovery?.cancel()
+        fullscreenRecovery = nil
+        playerWindow = window
+        let fullscreen = window?.styleMask.contains(.fullScreen) == true
+        if isFullscreen != fullscreen { isFullscreen = fullscreen }
+        fullscreenAnimating = false
+        fullscreenFromMini = false
+        miniAfterFullscreen = false
+        dragResizing = window?.inLiveResize == true
+        refreshResizingState()
+        applyWindowLevel()
+    }
+
     /// The windowed (non-fullscreen, non-mini) frame to restore.
     private var lastWindowedFrame: NSRect?
+    private var miniAfterFullscreen = false
+    private var fullscreenFromMini = false
 
     /// Mini window: floating level + compact control bar + a shrunk frame.
     /// NOTE: the floating level must be dropped before any fullscreen
@@ -868,40 +900,36 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     /// by SwiftUI's window layout pass, which is what made the transitions
     /// eat clicks and stutter before.
     func toggleMiniWindow() {
-        guard let window = playerWindow() else { return }
+        guard fullscreenRequest == nil, !fullscreenAnimating, let window = playerWindow else { return }
+        if window.styleMask.contains(.fullScreen) {
+            miniAfterFullscreen = true
+            requestFullscreenToggle(window)
+            return
+        }
         if isMiniWindow {
             // Exit mini: restore on the next runloop tick — after SwiftUI's
             // layout pass for the state flip, but without a visible delay.
             isMiniWindow = false
             let restore = lastWindowedFrame
                 ?? NSRect(x: window.frame.origin.x, y: window.frame.origin.y,
-                          width: 900, height: 500)
-            DispatchQueue.main.async {
+                          width: 1080, height: 660)
+            DispatchQueue.main.async { [weak self, weak window] in
+                guard let self, let window, self.playerWindow === window, !self.isMiniWindow,
+                      !window.styleMask.contains(.fullScreen), !self.fullscreenAnimating else { return }
                 window.setFrame(restore, display: true, animate: true)
             }
         } else {
+            lastWindowedFrame = window.frame
             isMiniWindow = true
-            if window.styleMask.contains(.fullScreen) {
-                // Leave fullscreen first; shrink once its transition settles.
-                window.toggleFullScreen(nil)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
-                    self?.shrinkToMini()
-                }
-            } else {
-                lastWindowedFrame = window.frame
-                // Next runloop tick: SwiftUI's layout for the state flip
-                // lands within the same frame, so the shrink starts
-                // immediately — no visible dead time.
-                DispatchQueue.main.async { [weak self] in
-                    self?.shrinkToMini()
-                }
+            DispatchQueue.main.async { [weak self] in
+                self?.shrinkToMini()
             }
         }
     }
 
     private func shrinkToMini() {
-        guard isMiniWindow, let window = playerWindow(),
-              !window.styleMask.contains(.fullScreen) else { return }
+        guard isMiniWindow, let window = playerWindow, fullscreenRequest == nil,
+              !fullscreenAnimating, !window.styleMask.contains(.fullScreen) else { return }
         let aspect = windowAspect > 0 ? windowAspect : 16.0 / 9.0
         let width: CGFloat = 420
         let height = max(width / aspect, 180) + 44
@@ -911,28 +939,31 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         window.setFrame(frame, display: true, animate: true)
     }
 
-    /// Fullscreen toggle that drops mini mode first — the two states are
-    /// mutually exclusive. Fullscreen engages from ANY window size, so no
-    /// frame restore is needed here (one click, no stutter).
+    /// AppKit needs the ordinary window's geometry and level before entering fullscreen.
     func toggleFullscreen() {
-        guard let window = playerWindow() else {
-            DebugLog.log("toggleFullscreen: NO WINDOW FOUND")
+        guard fullscreenRequest == nil, !fullscreenAnimating, let window = playerWindow else { return }
+        if window.styleMask.contains(.fullScreen) || (!isMiniWindow && window.level == .normal) {
+            requestFullscreenToggle(window)
             return
         }
-        if !window.styleMask.contains(.fullScreen) && isMiniWindow {
-            // A floating-level window cannot enter fullscreen, and changing
-            // the level and starting the transition in the same runloop tick
-            // cancels the transition — reset the level now, toggle on the
-            // next tick. The didEnterFullScreen observer clears the state.
-            window.level = .normal
-            // The level change needs time to propagate through the window
-            // server; toggling fullscreen on the very next tick still sees
-            // a floating window and refuses.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                window.toggleFullScreen(nil)
-            }
-            return
+
+        let restore = isMiniWindow ? lastWindowedFrame : nil
+        isMiniWindow = false
+        window.level = .normal
+        let request = DispatchWorkItem { [weak self, weak window] in
+            guard let self, let window, self.playerWindow === window else { return }
+            self.fullscreenRequest = nil
+            guard !window.styleMask.contains(.fullScreen), !self.fullscreenAnimating else { return }
+            if let restore { window.setFrame(restore, display: true) }
+            self.requestFullscreenToggle(window)
         }
+        fullscreenRequest = request
+        // Allow the level change to reach the window server after leaving mini mode.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: request)
+    }
+
+    private func requestFullscreenToggle(_ window: NSWindow) {
+        beginFullscreenTransition(window)
         window.toggleFullScreen(nil)
     }
 
@@ -940,236 +971,83 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     /// leaving it) and clears mini state when fullscreen is entered by other
     /// paths (menu, double-click, system gestures).
     private func observeWindowNotifications() {
-        let nameFilter: (Notification) -> Bool = { note in
-            (note.object as? NSWindow)?.title == "BrushLLM Player"
+        let forPlaybackWindow: (Notification) -> Bool = { [weak self] note in
+            guard let window = note.object as? NSWindow else { return false }
+            return window === self?.playerWindow
         }
         NotificationCenter.default.publisher(for: NSWindow.willEnterFullScreenNotification)
-            .filter(nameFilter)
+            .filter(forPlaybackWindow)
             .sink { [weak self] note in
-                // Enter the geometry-animating state for the whole transition
-                // (snapshot + async GL drawing).
-                if let window = note.object as? NSWindow {
-                    self?.liveResizeWidth = window.frame.width
-                }
-                self?.fullscreenAnimating = true
-                self?.refreshResizingState()
-                // Only remember genuinely windowed (non-mini) frames —
-                // restoring a mini frame on exit would loop.
-                if let window = note.object as? NSWindow, self?.isMiniWindow != true {
-                    self?.lastWindowedFrame = window.frame
-                }
+                guard let self, let window = note.object as? NSWindow else { return }
+                self.fullscreenFromMini = self.isMiniWindow
+                if !self.isMiniWindow { self.lastWindowedFrame = window.frame }
+                self.beginFullscreenTransition(window)
             }
             .store(in: &cancellables)
-        // Mini state clears only AFTER the transition completes — flipping it
-        // during willEnterFullScreen cancels the transition itself.
         NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)
-            .filter(nameFilter)
-            .sink { [weak self] _ in
-                self?.isMiniWindow = false
-                self?.fullscreenAnimating = false
-                self?.refreshResizingState()
+            .filter(forPlaybackWindow)
+            .sink { [weak self] note in
+                guard let window = note.object as? NSWindow else { return }
+                self?.finishFullscreenTransition(window, fullscreen: true)
             }
             .store(in: &cancellables)
         NotificationCenter.default.publisher(for: NSWindow.willExitFullScreenNotification)
-            .filter(nameFilter)
-            .sink { [weak self] _ in
-                self?.fullscreenAnimating = true
-                self?.refreshResizingState()
+            .filter(forPlaybackWindow)
+            .sink { [weak self] note in
+                guard let window = note.object as? NSWindow else { return }
+                self?.beginFullscreenTransition(window)
             }
             .store(in: &cancellables)
         NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)
-            .filter(nameFilter)
+            .filter(forPlaybackWindow)
             .sink { [weak self] note in
-                self?.fullscreenAnimating = false
-                self?.refreshResizingState()
-                if let window = note.object as? NSWindow {
-                    self?.lastWindowedFrame = window.frame
-                }
+                guard let window = note.object as? NSWindow else { return }
+                self?.finishFullscreenTransition(window, fullscreen: false)
             }
             .store(in: &cancellables)
     }
 
-    private func playerWindow() -> NSWindow? {
-        NSApp.windows.first { $0.title == "BrushLLM Player" }
+    private func beginFullscreenTransition(_ window: NSWindow) {
+        fullscreenAnimating = true
+        refreshResizingState()
+        fullscreenRecovery?.cancel()
+        // AppKit reports a failed transition to the SwiftUI-owned delegate only.
+        // Reconcile once if a matching did-enter/did-exit notification never arrives.
+        let recovery = DispatchWorkItem { [weak self, weak window] in
+            guard let self, let window, self.playerWindow === window else { return }
+            self.finishFullscreenTransition(window, fullscreen: window.styleMask.contains(.fullScreen))
+        }
+        fullscreenRecovery = recovery
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: recovery)
     }
 
-    // MARK: - Titlebar tint
+    private func finishFullscreenTransition(_ window: NSWindow, fullscreen: Bool) {
+        let wasFullscreen = isFullscreen
+        let openMini = miniAfterFullscreen && wasFullscreen && !fullscreen
+        miniAfterFullscreen = false
+        fullscreenRecovery?.cancel()
+        fullscreenRecovery = nil
+        if isFullscreen != fullscreen { isFullscreen = fullscreen }
+        if fullscreen, isMiniWindow { isMiniWindow = false }
+        fullscreenAnimating = false
+        refreshResizingState()
+        guard !fullscreen else { return }
 
-    /// Brand purple used for the window titlebar's "BrushLLM Player" title.
-    private static let brandTitleColor = NSColor(red: 0x89/255, green: 0x3C/255, blue: 0xED/255, alpha: 1)
-    private static var titleTreeDumped = false
-    private var titleWatchdog: Timer?
-
-    /// Tints the window titlebar's "BrushLLM Player" title with the brand
-    /// purple. The standard title label has no public coloring API, so the
-    /// titlebar view tree is traversed for the text field. Runs slightly
-    /// delayed — the titlebar hierarchy materializes after the window is
-    /// on screen.
-    ///
-    /// The tint is not one-shot: the system re-styles the title label when
-    /// the SwiftUI scene re-applies the window title or the titlebar
-    /// relayouts (fullscreen transitions, appearance switches) — and a
-    /// re-applied identical title emits no `didChangeTitle` notification,
-    /// so there is no reliable event to hook. A 1-second watchdog re-checks
-    /// the color instead; the tree walk covers ~a dozen views.
-    func applyBrandTitle() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
-            guard let self, let window = self.playerWindow() else { return }
-            Self.tintTitle(in: window)
-            self.startTitleWatchdog()
+        if wasFullscreen, fullscreenFromMini, let frame = lastWindowedFrame {
+            window.setFrame(frame, display: true)
         }
-    }
-
-    private func startTitleWatchdog() {
-        guard titleWatchdog == nil else { return }
-        titleWatchdog = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            guard let self, let window = self.playerWindow() else { return }
-            Self.tintTitle(in: window)
-        }
-    }
-
-    private static func isBrandColor(_ color: NSColor?) -> Bool {
-        guard let color, let rgb = color.usingColorSpace(.deviceRGB) else { return false }
-        return abs(rgb.redComponent - 0x89/255) < 0.01
-            && abs(rgb.greenComponent - 0x3C/255) < 0.01
-            && abs(rgb.blueComponent - 0xED/255) < 0.01
-    }
-
-    private static func tintTitle(in window: NSWindow) {
-        // The traffic lights' superview is the titlebar container that also
-        // hosts the title label.
-        guard let anchor = window.standardWindowButton(.closeButton)?.superview else { return }
-        var found = false
-        func search(_ view: NSView, depth: Int) {
-            if depth > 6 { return }
-            if let field = view as? NSTextField,
-               field.stringValue == window.title, !field.isEditable {
-                if !isBrandColor(field.textColor) {
-                    field.textColor = brandTitleColor
-                    DebugLog.log("titlebar: re-tinted title (system had reset the color)")
-                }
-                found = true
-            }
-            for sub in view.subviews { search(sub, depth: depth + 1) }
-        }
-        search(anchor, depth: 0)
-        if !found && !titleTreeDumped {
-            // Fallback: dump the tree once so the structure can be adapted.
-            titleTreeDumped = true
-            DebugLog.log("titlebar: title field not found; tree:")
-            func dump(_ view: NSView, depth: Int) {
-                if depth > 5 { return }
-                DebugLog.log("  \(String(repeating: " ", count: depth))\(type(of: view)) '\(view.identifier?.rawValue ?? "-")'")
-                for sub in view.subviews { dump(sub, depth: depth + 1) }
-            }
-            dump(anchor, depth: 0)
-        }
+        if !isMiniWindow { lastWindowedFrame = window.frame }
+        fullscreenFromMini = false
+        applyWindowLevel()
+        if openMini { toggleMiniWindow() }
     }
 
     private func applyWindowLevel() {
+        // A level change can cancel an AppKit fullscreen transition.
+        guard let window = playerWindow, fullscreenRequest == nil, !fullscreenAnimating,
+              !window.styleMask.contains(.fullScreen) else { return }
         let level: NSWindow.Level = (isOnTop || isMiniWindow) ? .floating : .normal
-        for window in NSApp.windows where window.title == "BrushLLM Player" {
-            // Changing the level mid-fullscreen-transition cancels it.
-            guard !window.styleMask.contains(.fullScreen) else { continue }
-            window.level = level
-        }
-    }
-
-    // MARK: - Thumbnails
-
-    /// Generates a thumbnail at the exact hovered position (on demand).
-    /// For EDL playback, maps the position to the correct VOB file.
-    func thumbnail(at position: Double) -> NSImage? {
-        // Return the cached image if it's for the same position (±0.5s)
-        if let cached = hoverThumbnail,
-           abs(cachedPosition - position) < 1.0 {
-            return cached
-        }
-        // Trigger async generation; the preview updates when ready
-        generateHoverThumbnail(at: position)
-        // Return the previous image while the new one generates (no flicker)
-        return hoverThumbnail
-    }
-
-    private var cachedPosition: Double = -1
-    /// The latest hover position requested (generation adopts only this).
-    /// Protected by hoverLock to prevent data races between main and
-    /// background threads.
-    private var latestHoverPosition: Double = -1
-    private let hoverLock = NSLock()
-    /// Prevents concurrent generations (one at a time).
-    private var isGenerating = false
-    private var thumbnailGeneration = UUID()
-
-    /// Thread-safe read/write for latestHoverPosition.
-    private var safeLatestPosition: Double {
-        get {
-            hoverLock.lock()
-            defer { hoverLock.unlock() }
-            return latestHoverPosition
-        }
-        set {
-            hoverLock.lock()
-            defer { hoverLock.unlock() }
-            latestHoverPosition = newValue
-        }
-    }
-
-    private func generateHoverThumbnail(at position: Double) {
-        safeLatestPosition = position
-
-        // Only one generation at a time; the next hover triggers after.
-        guard !isGenerating else { return }
-        isGenerating = true
-        let generation = thumbnailGeneration
-        let path = activeStreamPath
-        let lease = currentPath.flatMap { discResources[$0]?.retainConsumer() }
-        let thumbnailPlayer = lease == nil ? thumbnailMPV : ThumbnailMPV()
-
-        DispatchQueue.global(qos: .userInteractive).async { [weak self] in
-            defer {
-                if let lease {
-                    thumbnailPlayer.shutdown()
-                    lease.release()
-                }
-            }
-            // Limit iterations to prevent infinite loops if the mouse
-            // never stops moving.
-            var iterations = 0
-            while let self, iterations < 10 {
-                iterations += 1
-                let target = self.safeLatestPosition
-                let image = thumbnailPlayer.captureFrame(at: target, path: path)
-
-                // Adopt the result on the main thread (async to avoid
-                // deadlock if main is waiting on this queue).
-                let isLatest = self.safeLatestPosition
-                DispatchQueue.main.async { [weak self] in
-                    guard let self, self.thumbnailGeneration == generation else { return }
-                    if abs(self.safeLatestPosition - target) < 0.5 {
-                        self.hoverThumbnail = image
-                        self.cachedPosition = target
-                    }
-                }
-
-                // If no newer position is pending, stop.
-                if abs(isLatest - target) < 0.5 { break }
-            }
-            DispatchQueue.main.async { [weak self] in
-                guard let self, self.thumbnailGeneration == generation else { return }
-                self.isGenerating = false
-            }
-        }
-    }
-
-    private func loadThumbnails(for path: String) {
-        // Load the file into the headless thumbnail instance so it's ready
-        // to seek and capture frames on hover.
-        thumbnailGeneration = UUID()
-        isGenerating = false
-        hoverThumbnail = nil
-        cachedPosition = -1
-        safeLatestPosition = -1
+        if window.level != level { window.level = level }
     }
 
     private func prepareLoad(_ hookID: UInt64) {
@@ -1228,7 +1106,6 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
                 if let resource { self.discResources[media.key] = resource }
                 self.currentReference = media
                 self.currentPath = media.key
-                self.activeStreamPath = target
                 self.mpv.setString("stream-open-filename", target)
             } catch {
                 guard !Task.isCancelled, !self.isShuttingDown, self.loadGeneration == generation,
@@ -1270,14 +1147,14 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         bufferingSeconds = 0
     }
 
-    private func stopHistoryUpdates() {
+    private func stopHistoryUpdates(readMPV: Bool = true) {
         historyTimer?.invalidate()
         historyTimer = nil
         if let path = currentPath {
-            let livePosition = mpv.getDouble("time-pos")
-            let savedPosition = livePosition.flatMap { $0.isFinite ? max($0, 0) : nil } ?? lastPlaybackPosition
-            lastPlaybackPosition = savedPosition
-            playbackStore.updatePosition(path: path, position: savedPosition)
+            if readMPV, let livePosition = mpv.getDouble("time-pos"), livePosition.isFinite {
+                position = max(livePosition, 0)
+            }
+            playbackStore.updatePosition(path: path, position: position)
         }
     }
 
@@ -1313,7 +1190,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
             mpv.setString("video-aspect-override", "no")
             mpv.setFlag("keepaspect", true)
         case .fill:
-            mpv.setString("video-aspect-override", String(format: "%.5f", Double(windowAspect)))
+            applyFillAspect()
             mpv.setFlag("keepaspect", true)
         case .stretch:
             mpv.setString("video-aspect-override", "no")
@@ -1322,6 +1199,10 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
             mpv.setString("video-aspect-override", aspectOverride ?? "no")
             mpv.setFlag("keepaspect", true)
         }
+    }
+
+    private func applyFillAspect() {
+        mpv.setString("video-aspect-override", String(format: "%.5f", Double(windowAspect)))
     }
 
     // MARK: - Crop & rotation
@@ -1432,16 +1313,17 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
             handlePropertyChange(name, value)
 
         case .startFile(let entryID):
-            stopHistoryUpdates()
+            stopHistoryUpdates(readMPV: false)
             stopRecording()
             cancelPendingLoad()
+            cancelDiscDurationProbe()
             activeEntryID = entryID
             currentReference = nil
             currentPath = nil
-            activeStreamPath = nil
-            lastPlaybackPosition = 0
-            isScrubbing = false
-            loadThumbnails(for: "")
+            mediaTitle = ""
+            fileName = ""
+            position = 0
+            duration = 0
             isBuffering = true
             loadErrorMessage = nil
             startBufferingTimer()
@@ -1466,12 +1348,11 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
             duration = mpv.getDouble("duration") ?? 0
             hwdecCurrent = nonEmpty(mpv.getString("hwdec-current"))
             guard let media = currentReference else { break }
-            let title = mpv.getString("media-title") ?? ""
-            mediaTitle = title.isEmpty || title.contains("brushplayer://") ? media.displayName : URLPrivacy.redact(title)
+            mediaTitle = resolvedMediaTitle(mpv.getString("media-title") ?? "", reference: media)
             fileName = media.displayName
             currentPath = media.key
-            if let disc = discResources[media.key], !disc.vobPaths.isEmpty {
-                probeDiscDuration(disc.vobPaths)
+            if let disc = discResources[media.key] {
+                probeDiscDuration(disc)
             }
             refreshTracks()
             refreshPlaylist()
@@ -1487,22 +1368,19 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
                 seek(to: resume)
             }
             startHistoryUpdates()
-            loadThumbnails(for: activeStreamPath ?? "")
             currentFileBookmarks = playbackStore.bookmarks(for: media.key)
             nowPlaying?.updateMetadata(player: self)
             DebugLog.log("fileLoaded: \(fileName), duration=\(duration), hwdec=\(hwdecCurrent ?? "nil"), audio=\(audioTracks.count), sub=\(subtitleTracks.count), playlist=\(playlist.count)")
 
         case .endFile(let entryID, let reason, let errorCode):
             guard activeEntryID == entryID else { break }
-            if let path = currentPath {
-                playbackStore.updatePosition(path: path, position: lastPlaybackPosition)
-            }
-            stopHistoryUpdates()
+            cancelDiscDurationProbe()
+            activeEntryID = nil
+            stopHistoryUpdates(readMPV: false)
             stopRecording()
             let failedReference = currentReference
             currentPath = nil
             currentReference = nil
-            activeStreamPath = nil
             isBuffering = false
             stopBufferingTimer()
             releaseUnusedDiscs()
@@ -1529,17 +1407,16 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         case "pause":
             if case .flag(let paused)? = value {
                 isPaused = paused
-                if paused { timeline.update(lastPlaybackPosition, force: true) }
+                if paused { timeline.update(position, force: true) }
                 nowPlaying?.updatePlaybackState(player: self)
             }
         case "time-pos":
             if case .double(let pos)? = value, pos.isFinite {
-                lastPlaybackPosition = max(pos, 0)
-                if !isScrubbing { position = lastPlaybackPosition }
+                position = max(pos, 0)
                 // Now Playing position: throttled (every 5s) so the property
                 // events don't spam the info center; seeks reset the
                 // timestamp so the new position lands immediately.
-                if !isScrubbing, Date().timeIntervalSince(lastNowPlayingPositionUpdate) >= 5 {
+                if Date().timeIntervalSince(lastNowPlayingPositionUpdate) >= 5 {
                     lastNowPlayingPositionUpdate = Date()
                     nowPlaying?.updatePlaybackState(player: self)
                 }
@@ -1574,22 +1451,17 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
                     mediaTitle = ""
                     fileName = ""
                     hwdecCurrent = nil
-                    hoverThumbnail = nil
                     currentFileBookmarks = []
-                    thumbnailGeneration = UUID()
-                    isGenerating = false
-                    isScrubbing = false
                     stopRecording()
                     releaseUnusedDiscs()
-                    DispatchQueue.global(qos: .utility).async { [thumbnailMPV] in thumbnailMPV.shutdown() }
                 }
             }
         case "filename":
             if let media = currentReference { fileName = media.displayName }
             else if case .string(let name)? = value { fileName = URLPrivacy.redact(name) }
         case "media-title":
-            if case .string(let title)? = value, !title.contains("brushplayer://") {
-                mediaTitle = URLPrivacy.redact(title)
+            if case .string(let title)? = value, let reference = currentReference {
+                mediaTitle = resolvedMediaTitle(title, reference: reference)
                 nowPlaying?.updateMetadata(player: self)
             }
         case "hwdec-current":
@@ -1633,6 +1505,15 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         default:
             break
         }
+    }
+
+    /// mpv may report the logical queue URL or just its trailing identifier.
+    private func resolvedMediaTitle(_ title: String, reference: MediaReference) -> String {
+        let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if title.isEmpty || title.hasPrefix("brushplayer://") || queueReferences["brushplayer://media/\(title)"] != nil {
+            return reference.displayName
+        }
+        return URLPrivacy.redact(title)
     }
 
     // MARK: - Data refresh

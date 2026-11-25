@@ -1,91 +1,77 @@
-// Unified right sidebar shell for the four library tabs
-// (playlist/chapters/history/bookmarks). Owns the .pl-sidebar container, the
-// tab strip and a trailing close button. Each tab has an icon + label; when
-// the labels don't fit the 264px sidebar (long localizations like English
-// "Bookmarks"), the CSS drops to icon-only (the web equivalent of the mac
-// app's ViewThatFits fallback). The active tab uses the lemon accent with
-// dark text, matching the mac PlaylistPanel tab pills.
-
 import type { ReactNode } from "react";
 import { useI18n } from "../i18n";
+import brandIcon from "../../../Sources/BrushLLMPlayer/Resources/Base.lproj/BrushMark.svg";
+import PlayerIcon, { type PlayerIconName } from "./PlayerIcon";
 
-export type SidebarTab = "playlist" | "chapters" | "history" | "bookmarks";
+export type SidebarSection = "sources" | "playlist" | "history" | "bookmarks" | "chapters";
 
-export interface SidebarProps {
-  open: boolean;
-  tab: SidebarTab;
-  onTabChange: (tab: SidebarTab) => void;
-  onClose: () => void;
+const destinations = [
+  { id: "sources", label: "player.sources", icon: "folder" },
+  { id: "playlist", label: "panel.playlist.title", icon: "playlist" },
+  { id: "history", label: "panel.history", icon: "history" },
+  { id: "bookmarks", label: "panel.bookmarks", icon: "bookmark" },
+] as const;
+
+interface SidebarProps {
+  compact: boolean;
+  section: SidebarSection;
+  onSelect: (section: SidebarSection) => void;
+  onFiles: () => void;
+  onStream: () => void;
+  onServers: () => void;
+  onSettings: () => void;
+  onAbout: () => void;
   children: ReactNode;
 }
 
-const TAB_ICONS: Record<SidebarTab, ReactNode> = {
-  playlist: (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 6 H20 M4 12 H20 M4 18 H14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  ),
-  chapters: (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
-      <path d="M3 9 H21 M8 9 V20 M16 9 V20" stroke="currentColor" strokeWidth="1.6" />
-    </svg>
-  ),
-  history: (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M3 12 A9 9 0 1 1 12 21 M12 7 V12 L16 15" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  ),
-  bookmarks: (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M6 3 H18 V21 L12 16 L6 21 Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-    </svg>
-  ),
-};
+function SidebarButton({ icon, title, pressed, action }: {
+  icon: PlayerIconName;
+  title: string;
+  pressed?: boolean;
+  action: () => void;
+}) {
+  return (
+    <button type="button" className="sidebar-button" aria-pressed={pressed} aria-label={title} title={title} onClick={action}>
+      <PlayerIcon name={icon} />
+      <span className="sidebar-label">{title}</span>
+    </button>
+  );
+}
 
-const TABS: { id: SidebarTab; labelKey: string }[] = [
-  { id: "playlist", labelKey: "panel.playlist.title" },
-  { id: "chapters", labelKey: "panel.chapters" },
-  { id: "history", labelKey: "panel.history" },
-  { id: "bookmarks", labelKey: "panel.bookmarks" },
-];
-
-export default function Sidebar({ open, tab, onTabChange, onClose, children }: SidebarProps) {
+export default function Sidebar({
+  compact, section, onSelect, onFiles, onStream, onServers, onSettings, onAbout, children,
+}: SidebarProps) {
   const { t } = useI18n();
-  if (!open) return null;
+  const current = section === "chapters" ? "playlist" : section;
+  const label = section === "chapters" ? "panel.chapters" : destinations.find(({ id }) => id === current)?.label;
 
   return (
-    <aside className="pl-sidebar" aria-label="Sidebar">
-      <div className="pl-tabs" role="tablist" aria-label="Sidebar sections">
-        {TABS.map(({ id, labelKey }) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            className={`pl-tab ${tab === id ? "active" : ""}`}
-            onClick={() => onTabChange(id)}
-            title={t(labelKey)}
-          >
-            <span className="pl-tab-icon">{TAB_ICONS[id]}</span>
-            <span className="pl-tab-label">{t(labelKey)}</span>
-          </button>
+    <aside className="player-sidebar" data-compact={compact}>
+      <div className="sidebar-brand">
+        <img src={brandIcon} width="32" height="32" alt="" />
+        <span>BrushLLM Player</span>
+      </div>
+      <nav className="sidebar-navigation" aria-label={t("player.workspace")}>
+        {destinations.map(({ id, label, icon }) => (
+          <SidebarButton key={id} icon={icon} title={t(label)} pressed={current === id}
+            action={() => onSelect(id)} />
         ))}
-        <button
-          type="button"
-          className="pl-tab-close"
-          onClick={onClose}
-          aria-label={t("panel.cancel")}
-          title={t("panel.cancel")}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <line x1="6" y1="6" x2="18" y2="18" />
-            <line x1="18" y1="6" x2="6" y2="18" />
-          </svg>
+      </nav>
+      <section id="sidebar-content" className="sidebar-content" hidden={compact} aria-label={label ? t(label) : undefined}>
+        {!compact && (section === "sources" ? (
+          <div className="sidebar-sources">
+            <SidebarButton title={t("player.open-files")} icon="folder" action={onFiles} />
+            <SidebarButton title={t("network.tab.url")} icon="link" action={onStream} />
+            <SidebarButton title={t("network.tab.servers")} icon="servers" action={onServers} />
+          </div>
+        ) : children)}
+      </section>
+      <div className="sidebar-footer">
+        <SidebarButton title={t("player.settings")} icon="settings" action={onSettings} />
+        <button className="tool-btn" type="button" aria-label={t("about.menu")} title={t("about.menu")} onClick={onAbout}>
+          <PlayerIcon name="info" />
         </button>
       </div>
-
-      <div className="pl-tab-content">{children}</div>
     </aside>
   );
 }

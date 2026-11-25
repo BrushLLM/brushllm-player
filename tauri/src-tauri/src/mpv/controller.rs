@@ -1,5 +1,5 @@
-//! mpv remains an independent native video window. JSON IPC is reader-first;
-//! requests are registered before writing and never wait while owning a writer.
+//! Owns the mpv subprocess and its JSON IPC. Requests are registered before
+//! writing and never wait while owning a writer.
 use super::transport::{self, Cancel, Transport};
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -23,6 +23,7 @@ const SHUTDOWN_TIMEOUT: Duration = Duration::from_millis(1500);
 const QUIT_GRACE: Duration = Duration::from_millis(150);
 const MAX_LINE: usize = 1024 * 1024;
 const QUEUE_CAPACITY: usize = 64;
+static NEXT_ENDPOINT: AtomicU64 = AtomicU64::new(0);
 const OBSERVED: [(&str, u64); 32] = [
     ("pause", 1),
     ("time-pos", 2),
@@ -77,6 +78,7 @@ pub struct StateSnapshot {
     pub revision: u64,
     pub connected: bool,
     pub ready: bool,
+    pub loading: bool,
     pub properties: BTreeMap<String, Value>,
     pub end_file: Option<EndFile>,
     pub error: Option<String>,
@@ -90,6 +92,7 @@ impl StateSnapshot {
             revision: 0,
             connected: false,
             ready: false,
+            loading: false,
             properties: BTreeMap::new(),
             end_file: None,
             error: None,
@@ -169,6 +172,7 @@ impl Shared {
             let was_connected = inner.snapshot.connected;
             inner.snapshot.connected = false;
             inner.snapshot.ready = false;
+            inner.snapshot.loading = false;
             inner.snapshot.properties.clear();
             if let Some(message) = message {
                 inner.snapshot.error = Some(message);
@@ -212,6 +216,7 @@ impl Shared {
             }
             Some("start-file") => self.update(|state| {
                 state.media_epoch += 1;
+                state.loading = true;
                 state.error = None;
                 state.end_file = None;
                 // Media-scoped state is reset; global settings (brightness,
@@ -238,6 +243,7 @@ impl Shared {
                 }
             }),
             Some("file-loaded") => self.update(|state| {
+                state.loading = false;
                 state.error = None;
                 state.end_file = None;
             }),
@@ -252,6 +258,7 @@ impl Shared {
                     .and_then(Value::as_str)
                     .map(str::to_owned);
                 self.update(|state| {
+                    state.loading = false;
                     state.error = (reason == "error").then(|| {
                         file_error
                             .clone()
@@ -330,8 +337,8 @@ impl Default for LaunchConfig {
                 // fine — the subprocess cannot acquire a window-server GPU
                 // context). The Tauri app on macOS is a control panel for
                 // developing the Windows UI; actual video display is the
-                // native macOS app's job. Windows: gpu-next is the modern
-                // default and mpv creates its own window fine there.
+                // native macOS app's job. Windows uses gpu-next with a
+                // native parent window when the desktop surface is available.
                 #[cfg(target_os = "macos")]
                 args.push("--vo=null");
                 #[cfg(not(target_os = "macos"))]
@@ -350,7 +357,9 @@ impl MpvController {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let name = format!("brushllm-{}-{generation}-{nonce:x}", std::process::id());
+        // Concurrent controllers can share a timestamp and generation.
+        let sequence = NEXT_ENDPOINT.fetch_add(1, Ordering::Relaxed);
+        let name = format!("brushllm-{}-{generation}-{nonce:x}-{sequence:x}", std::process::id());
         #[cfg(not(target_os = "windows"))]
         let endpoint_dir = {
             use std::os::unix::fs::DirBuilderExt;
@@ -801,6 +810,11 @@ impl MpvPlayer {
     pub fn set_watch_later_dir(&mut self, dir: PathBuf) {
         self.config.watch_later_dir = Some(dir);
     }
+    #[cfg(windows)]
+    pub fn set_video_window(&mut self, window_id: u32) {
+        self.config.args.push(format!("--wid={window_id}"));
+    }
+
     pub fn snapshot(&self) -> StateSnapshot {
         self.current
             .lock()

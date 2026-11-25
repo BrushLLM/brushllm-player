@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Combine
 
 @main
 struct BrushLLMPlayerApp: App {
@@ -14,10 +15,8 @@ struct BrushLLMPlayerApp: App {
             // widens/narrows it with isMiniWindow — a fixed 640 here clamped
             // the 420pt mini window to 640 and overrode the inner values.
             PlayerWindowContent(player: player)
-                .onReceive(NotificationCenter.default.publisher(for: .brushPlayerOpenURLs)) { _ in
-                    player.open(OpenRequests.shared.consumeAll())
-                }
         }
+        .defaultSize(width: 1080, height: 660)
         .commands {
             // Reading published state here makes the scene re-evaluate when
             // tracks/playlist/chapters change, rebuilding the dynamic menus.
@@ -62,14 +61,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             return FileManager.default.fileExists(atPath: argument) ? URL(fileURLWithPath: argument) : nil
         }
-        DebugLog.log("didFinishLaunching, argv: \(arguments)")
-        if !arguments.isEmpty {
-            OpenRequests.shared.add(arguments)
-        }
+        OpenRequests.shared.add(arguments)
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
-        DebugLog.log("application(open urls): \(urls)")
         OpenRequests.shared.add(urls)
     }
 
@@ -98,25 +93,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 /// arrive before the SwiftUI scene subscribes, so requests are also queued here.
 final class OpenRequests {
     static let shared = OpenRequests()
-    private var queue: [URL] = []
+    private let queue = CurrentValueSubject<[URL], Never>([])
+
+    var arrivals: AnyPublisher<[URL], Never> {
+        queue.filter { !$0.isEmpty }.eraseToAnyPublisher()
+    }
 
     func add(_ urls: [URL]) {
-        queue.append(contentsOf: urls)
-        NotificationCenter.default.post(name: .brushPlayerOpenURLs, object: nil, userInfo: ["urls": urls])
+        guard !urls.isEmpty else { return }
+        queue.send(queue.value + urls)
     }
 
     /// Returns and clears every pending file.
     func consumeAll() -> [URL] {
-        let urls = queue
-        queue.removeAll()
+        let urls = queue.value
+        if !urls.isEmpty { queue.send([]) }
         return urls
     }
-
-    var pendingCount: Int { queue.count }
-}
-
-extension Notification.Name {
-    static let brushPlayerOpenURLs = Notification.Name("dev.brushllm.player.openURLs")
 }
 
 /// Menu bar commands with Apple-standard shortcuts. `refreshToken` is read

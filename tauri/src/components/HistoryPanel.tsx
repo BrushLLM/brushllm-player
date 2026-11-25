@@ -6,7 +6,7 @@
 // no .pl-sidebar shell of its own.
 
 import type { HistoryEntry } from "../library-state";
-import { formatHistorySubtitle } from "../library-state";
+import { displayMediaTitle, formatHistorySubtitle } from "../library-state";
 import { useI18n } from "../i18n";
 
 export interface HistoryPanelProps {
@@ -32,7 +32,7 @@ export default function HistoryPanel({ entries, onPlay, onRemove, onClear }: His
                 type="button"
                 className="pl-row-main pl-lib-row"
                 onClick={() => onPlay(entry.path)}
-                title={entry.title}
+                title={displayMediaTitle(entry.title)}
               >
                 <svg className="pl-lib-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M4 12 A8 8 0 1 0 6.5 6.2" fill="none" stroke="currentColor"
@@ -43,7 +43,7 @@ export default function HistoryPanel({ entries, onPlay, onRemove, onClear }: His
                     strokeWidth="1.8" strokeLinecap="round" />
                 </svg>
                 <span className="pl-lib-text">
-                  <span className="pl-lib-title">{entry.title}</span>
+                  <span className="pl-lib-title">{displayMediaTitle(entry.title)}</span>
                   <span className="pl-lib-subtitle">
                     {formatHistorySubtitle(entry, now)}
                   </span>
@@ -53,7 +53,7 @@ export default function HistoryPanel({ entries, onPlay, onRemove, onClear }: His
                 type="button"
                 className="pl-row-delete"
                 onClick={() => onRemove(entry.path)}
-                aria-label={`${t("panel.delete")} ${entry.title}`}
+                aria-label={`${t("panel.delete")} ${displayMediaTitle(entry.title)}`}
                 title={t("panel.delete")}
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true">

@@ -1,18 +1,37 @@
 import SwiftUI
+import AppKit
+
+struct BrushBrandMark: View {
+    let size: CGFloat
+
+    private static let image = Bundle.main.url(forResource: "BrushMark", withExtension: "svg", subdirectory: "Base.lproj")
+        .flatMap { NSImage(contentsOf: $0) }
+
+    var body: some View {
+        Group {
+            if let image = Self.image {
+                Image(nsImage: image).resizable().scaledToFit()
+            } else {
+                Image(systemName: "play.rectangle").font(.system(size: size * 0.7))
+                    .foregroundStyle(BrushLLMPlayerTheme.accent)
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
 
 // MARK: - Chrome icon button
 
-/// Standard chrome icon button: one size (13pt symbol in a 28×28 hit target),
-/// hover fill, pressed dimming, a visible disabled state, and an optional
-/// active accent. Replaces the per-file inline icon buttons that had no
-/// hover or disabled treatment.
+/// Chrome icon button with hover, focus, pressed, disabled and active states.
 ///
 /// Renders identically under ImageRenderer snapshots (hover is inert
 /// offscreen), so the control bar's live-resize snapshot keeps working.
 struct PlayerIconButton: View {
     let icon: String
     var iconSize: CGFloat = DesignIcon.toolbar
-    var width: CGFloat = 28
+    var width: CGFloat = 32
+    var height: CGFloat = 32
     let help: String
     var active: Bool = false
     var disabled: Bool = false
@@ -24,12 +43,12 @@ struct PlayerIconButton: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: iconSize, weight: .medium))
-                .foregroundStyle(active ? BrushLLMPlayerTheme.accent : BrushLLMPlayerTheme.controlTextSecondary)
-                .frame(width: width, height: 28)
+                .foregroundStyle(active ? BrushLLMPlayerTheme.accentText : BrushLLMPlayerTheme.controlTextSecondary)
+                .frame(width: width, height: height)
                 .background {
-                    if isHovering && !disabled {
+                    if active || (isHovering && !disabled) {
                         RoundedRectangle(cornerRadius: DesignRadius.row)
-                            .fill(BrushLLMPlayerTheme.hoverFill)
+                            .fill(active ? BrushLLMPlayerTheme.selectionFill : BrushLLMPlayerTheme.hoverFill)
                     }
                 }
                 .opacity(disabled ? BrushLLMPlayerTheme.disabledOpacity : 1)
@@ -48,8 +67,24 @@ struct PlayerIconButton: View {
 /// Pressed feedback that dims without shifting layout bounds.
 struct PressedDimButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .opacity(configuration.isPressed ? 0.6 : 1)
+        FocusFeedback(label: configuration.label, isPressed: configuration.isPressed)
+    }
+
+    private struct FocusFeedback<Label: View>: View {
+        @Environment(\.isFocused) private var isFocused
+        let label: Label
+        let isPressed: Bool
+
+        var body: some View {
+            label
+                .opacity(isPressed ? 0.65 : 1)
+                .overlay {
+                    if isFocused {
+                        RoundedRectangle(cornerRadius: DesignRadius.row)
+                            .strokeBorder(BrushLLMPlayerTheme.accentText, lineWidth: 2)
+                    }
+                }
+        }
     }
 }
 
@@ -138,7 +173,7 @@ struct ErrorStateView: View {
         VStack(spacing: 10) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 26, weight: .light))
-                .foregroundStyle(BrushPalette.warning)
+                .foregroundStyle(BrushLLMPlayerTheme.warning)
             Text(message)
                 .font(.callout)
                 .foregroundStyle(BrushLLMPlayerTheme.controlTextSecondary)
@@ -159,7 +194,7 @@ struct ErrorStateView: View {
 /// 8pt all-caps text was below the readable minimum.
 struct KindBadge: View {
     let text: String
-    var tint: Color = BrushPalette.violet300
+    var tint: Color = BrushLLMPlayerTheme.accentText
 
     var body: some View {
         Text(text.uppercased())
@@ -168,7 +203,7 @@ struct KindBadge: View {
             .padding(.horizontal, 5)
             .padding(.vertical, 1.5)
             .background {
-                Capsule().fill(BrushPalette.violet.opacity(0.18))
+                Capsule().fill(BrushLLMPlayerTheme.selectionFill)
             }
     }
 }

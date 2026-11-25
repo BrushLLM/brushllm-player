@@ -1,19 +1,8 @@
 import SwiftUI
-
-/// BrushLLM brand palette — brand marks only (About window, protocol badges,
-/// server-kind identity). Interactive chrome never uses these; it uses
-/// `BrushLLMPlayerTheme` tokens below.
-enum BrushPalette {
-    static let violet = Color(hex: 0x893CED)
-    static let violet300 = Color(hex: 0xD3A5F5)
-    static let violet700 = Color(hex: 0x6E24D6)
-    /// Warning yellow for error triangles and failure states.
-    /// (The old name "orange" was wrong — this value is a yellow.)
-    static let warning = Color(hex: 0xF4EA2A)
-}
+import AppKit
 
 extension Color {
-    /// Creates a color from a 24-bit RGB hex value, e.g. `Color(hex: 0x893CED)`.
+    /// Creates a color from a 24-bit RGB hex value, e.g. `Color(hex: 0x20594F)`.
     init(hex: UInt32) {
         let red = Double((hex >> 16) & 0xFF) / 255
         let green = Double((hex >> 8) & 0xFF) / 255
@@ -27,7 +16,7 @@ extension Color {
 /// The only sanctioned corner radii.
 enum DesignRadius {
     /// Rows and inline controls.
-    static let row: CGFloat = 6
+    static let row: CGFloat = 8
     /// Cards and grouped inputs.
     static let card: CGFloat = 10
     /// Sheets and hero-level surfaces.
@@ -46,49 +35,49 @@ enum DesignIcon {
 
 // MARK: - Player chrome tokens
 
-/// Player chrome design tokens — one accent, one neutral hierarchy, one
-/// material ladder:
-///
-/// - **accent** (lemon) marks discrete selection, activation and primary
-///   actions. It is the product's single boldest asset; everything else
-///   stays quiet around it.
-/// - **white** marks continuous values (progress, volume fills) — the
-///   IINA convention: "how much", not "this one".
-/// - **black-opacity materials** layer the chrome over the always-black
-///   video canvas: bar 85% → panel 72% → control 55%.
-///
-/// Text contrast on the near-black materials: `controlText` ≈ 15:1,
-/// `controlTextSecondary` ≈ 7.6:1, `controlTextHint` ≈ 5:1. Never stack
-/// extra `.opacity()` on these — that is how 2.8:1 hint text happened.
+/// Semantic desktop colors shared with the Tauri client. The video matte
+/// is fixed so turning on light appearance never changes video letterboxing.
 enum BrushLLMPlayerTheme {
-    /// Lemon accent: selection, activation, primary actions.
-    static let accent = Color(hex: 0xE6FF00)
-    /// Brand violet for the Settings window surface. The system-preferences
-    /// window keeps the brand identity while the player chrome keeps lemon,
-    /// so settings controls (toggles, sliders, update banner) read as
-    /// product, not player. Violet is mid-dark: pair fills with a white
-    /// knob/label — the near-black `onAccent` would disappear on it.
-    static let settingsAccent = BrushPalette.violet
-    /// Text and icons placed ON the solid accent fill.
-    static let onAccent = Color(hex: 0x121212)
-    /// Primary text on the dark control material.
-    static let controlText = Color.white.opacity(0.92)
-    /// Secondary text — ≥4.5:1 on the panel material.
-    static let controlTextSecondary = Color.white.opacity(0.60)
-    /// Hint text — caption-sized notes only; the floor of the hierarchy.
-    static let controlTextHint = Color.white.opacity(0.48)
-    /// Background for floating controls over video.
-    static let controlMaterial = Color.black.opacity(0.55)
-    /// Background for docked side panels (playlist).
-    static let panelMaterial = Color.black.opacity(0.72)
-    /// Background for the persistent control bar.
-    static let barMaterial = Color.black.opacity(0.85)
-    /// Hairline separators on the control bar.
-    static let controlSeparator = Color.white.opacity(0.12)
-    /// Hover fill for chrome buttons and list rows.
-    static let hoverFill = Color.white.opacity(0.08)
-    /// Opacity applied to disabled chrome (icons, labels).
-    static let disabledOpacity: Double = 0.35
+    private static let teal: UInt32 = 0x20594F
+    private static let sage: UInt32 = 0xC6DED2
+    private static let viewingBackground: UInt32 = 0x171717
+    private static let viewingForeground: UInt32 = 0xF2F2F1
+    private static let viewingForegroundSecondary: UInt32 = 0xB5B7B4
+
+    static let window = adaptive(light: 0xF5F4F0, dark: viewingBackground)
+    static let rail = adaptive(light: 0xECEBE6, dark: 0x1D1D1D)
+    static let panelMaterial = adaptive(light: 0xFFFEFC, dark: 0x252525)
+    static let videoMatte = Color(hex: 0x101010)
+    static let viewingSurface = Color(hex: viewingBackground)
+    static let viewingText = Color(hex: viewingForeground)
+    static let viewingTextSecondary = Color(hex: viewingForegroundSecondary)
+    static let viewingAccent = Color(hex: sage)
+    static let viewingSelection = Color(hex: 0x2A3631)
+    static let accent = adaptive(light: teal, dark: sage)
+    static let accentText = accent
+    static let settingsAccent = accent
+    static let onAccent = adaptive(light: viewingForeground, dark: 0x17221E)
+    static let seekHintMaterial = videoMatte
+    static let seekHintText = viewingText
+    static let controlText = adaptive(light: 0x202624, dark: viewingForeground)
+    static let controlTextSecondary = adaptive(light: 0x545D58, dark: viewingForegroundSecondary)
+    static let controlTextHint = adaptive(light: 0x656D67, dark: 0xA6AAA7)
+    static let controlMaterial = panelMaterial
+    static let controlSeparator = adaptive(light: 0xD4D7D2, dark: 0x414441)
+    static let hoverFill = adaptive(light: 0xE6E7E2, dark: 0x303230)
+    static let selectionFill = adaptive(light: 0xE2EEE7, dark: 0x2A3631)
+    static let warning = adaptive(light: 0x805711, dark: 0xE8BA60)
+    static let disabledOpacity: Double = 0.42
+
+    private static func adaptive(light: UInt32, dark: UInt32) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            let hex = isDark ? dark : light
+            return NSColor(srgbRed: CGFloat((hex >> 16) & 255) / 255,
+                           green: CGFloat((hex >> 8) & 255) / 255,
+                           blue: CGFloat(hex & 255) / 255, alpha: 1)
+        })
+    }
 }
 
 // MARK: - Shared control styles
@@ -96,12 +85,9 @@ enum BrushLLMPlayerTheme {
 /// Switch-style toggle with an explicit on-state color. macOS's NSSwitch
 /// ignores SwiftUI tint modifiers (it follows the system accent color), so
 /// the capsule is drawn explicitly: accent fill when on, neutral gray when
-/// off. The knob flips to near-black on the accent fill for contrast.
+/// off. The knob uses the foreground for the active appearance.
 struct ThemedSwitchToggleStyle: ToggleStyle {
-    /// Fill color for the on-state — the lemon accent everywhere.
     var onColor: Color = BrushLLMPlayerTheme.accent
-    /// Knob color while on. Defaults to near-black for bright lemon fills;
-    /// mid-dark fills (settings violet) pair with white.
     var onKnobColor: Color = BrushLLMPlayerTheme.onAccent
 
     func makeBody(configuration: Configuration) -> some View {
@@ -110,7 +96,7 @@ struct ThemedSwitchToggleStyle: ToggleStyle {
             Spacer(minLength: 12)
             ZStack {
                 Capsule()
-                    .fill(configuration.isOn ? onColor : Color.white.opacity(0.22))
+                    .fill(configuration.isOn ? onColor : BrushLLMPlayerTheme.controlSeparator)
                 Circle()
                     .fill(configuration.isOn ? onKnobColor : Color.white)
                     .frame(width: 14, height: 14)
@@ -126,13 +112,7 @@ struct ThemedSwitchToggleStyle: ToggleStyle {
     }
 }
 
-/// Prominent action button: solid accent fill with bold near-black content.
-/// `.borderedProminent` + tint renders white text, which is unreadable on
-/// the lemon accent — this style keeps the high-contrast pairing.
-///
-/// Disabled renders as a neutral quiet capsule (white/8 fill, hint-colored
-/// label) — dimming the accent by opacity shifts its hue to a muddy olive,
-/// so the fill is swapped instead of faded.
+/// Solid accent action with a theme-specific foreground.
 struct AccentProminentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         AccentProminentButtonBody(label: configuration.label, isPressed: configuration.isPressed)
@@ -141,25 +121,32 @@ struct AccentProminentButtonStyle: ButtonStyle {
 
 private struct AccentProminentButtonBody<Label: View>: View {
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.isFocused) private var isFocused
     let label: Label
     let isPressed: Bool
 
     var body: some View {
         label
-            .font(.callout.weight(.bold))
+            .font(.callout.weight(.semibold))
             .foregroundStyle(isEnabled ? BrushLLMPlayerTheme.onAccent : BrushLLMPlayerTheme.controlTextHint)
             .padding(.horizontal, 14)
-            .padding(.vertical, 6)
+            .frame(minHeight: 34)
             .background {
                 RoundedRectangle(cornerRadius: DesignRadius.row)
-                    .fill(isEnabled ? BrushLLMPlayerTheme.accent : Color.white.opacity(0.08))
+                    .fill(isEnabled ? BrushLLMPlayerTheme.accent : BrushLLMPlayerTheme.hoverFill)
+            }
+            .overlay {
+                if isFocused {
+                    RoundedRectangle(cornerRadius: DesignRadius.card)
+                        .strokeBorder(BrushLLMPlayerTheme.accentText, lineWidth: 2)
+                        .padding(-3)
+                }
             }
             .opacity(isPressed ? 0.75 : 1)
     }
 }
 
-/// Glass card treatment for grouped inputs and list cards: white/5 fill,
-/// card radius, white/10 hairline; a focused card gets an accent edge.
+/// Grouped inputs and list rows with a focus border.
 struct GlassCard: ViewModifier {
     var focused: Bool = false
 
@@ -169,11 +156,11 @@ struct GlassCard: ViewModifier {
             .padding(.vertical, 10)
             .background {
                 RoundedRectangle(cornerRadius: DesignRadius.card)
-                    .fill(Color.white.opacity(0.05))
+                    .fill(BrushLLMPlayerTheme.window)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: DesignRadius.card)
-                    .strokeBorder(focused ? BrushLLMPlayerTheme.accent.opacity(0.75) : Color.white.opacity(0.1),
+                    .strokeBorder(focused ? BrushLLMPlayerTheme.accent : BrushLLMPlayerTheme.controlSeparator,
                                   lineWidth: 1)
             }
     }

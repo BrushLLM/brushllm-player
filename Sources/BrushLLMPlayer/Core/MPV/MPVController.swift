@@ -40,7 +40,8 @@ final class MPVController {
     /// Serializes render-context lifecycle against the GL draw path: the context
     /// is (re)created on the main thread while draws run on the GL queue.
     private let renderLock = NSLock()
-    private var renderingCGLContext: CGLContextObj?
+    // libmpv's update callback borrows this layer until the context is freed.
+    private var renderingLayer: VideoLayer?
 
     /// Receives every event on the main thread.
     var eventHandler: ((MPVEvent) -> Void)?
@@ -193,7 +194,7 @@ final class MPVController {
             freeRenderingContext(old)
             renderContext = nil
         }
-        renderingCGLContext = layer.cglContext
+        renderingLayer = nil
         CGLSetCurrentContext(layer.cglContext)
         let apiType = UnsafeMutableRawPointer(mutating: (MPV_RENDER_API_TYPE_OPENGL as NSString).utf8String)
         var glInitParams = mpv_opengl_init_params(
@@ -215,6 +216,7 @@ final class MPVController {
             }
         }
         guard let renderContext else { return }
+        renderingLayer = layer
         mpv_render_context_set_update_callback(
             renderContext,
             { ctx in
@@ -232,12 +234,12 @@ final class MPVController {
         guard let renderContext else { return }
         freeRenderingContext(renderContext)
         self.renderContext = nil
-        renderingCGLContext = nil
+        renderingLayer = nil
     }
 
     private func freeRenderingContext(_ context: OpaquePointer) {
         let previous = CGLGetCurrentContext()
-        if let gl = renderingCGLContext { CGLSetCurrentContext(gl) }
+        if let renderingLayer { CGLSetCurrentContext(renderingLayer.cglContext) }
         defer { CGLSetCurrentContext(previous) }
         mpv_render_context_set_update_callback(context, nil, nil)
         mpv_render_context_free(context)

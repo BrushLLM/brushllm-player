@@ -60,6 +60,7 @@ export default function StreamTab({ onPlay }: StreamTabProps) {
           type="text"
           value={urlText}
           onChange={(event) => setUrlText(event.target.value)}
+          aria-label={t("network.tab.url")}
           placeholder={t("panel.url.hint")}
           autoFocus
           spellCheck={false}

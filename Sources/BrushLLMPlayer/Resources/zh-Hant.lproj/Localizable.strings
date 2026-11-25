@@ -278,3 +278,14 @@
 "servers.error.generic" = "發生問題";
 
 "controls.progress" = "播放進度";
+
+"player.workspace" = "播放器";
+"player.sources" = "媒體來源";
+"player.open-files" = "開啟檔案…";
+"player.sidebar-expand" = "展開側欄";
+"player.sidebar-collapse" = "收合側欄";
+"player.options" = "播放選項";
+"player.settings" = "設定";
+"player.fullscreen-exit" = "退出全螢幕";
+"panel.clear.question" = "清空此清單？";
+"panel.clear.description" = "將移除此清單中的所有項目。";

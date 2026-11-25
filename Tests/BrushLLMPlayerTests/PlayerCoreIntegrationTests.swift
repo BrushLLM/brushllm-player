@@ -18,28 +18,39 @@ final class PlayerCoreIntegrationTests: XCTestCase {
         defer { player.shutdown() }
         player.open([first, second])
         for _ in 0..<200 {
-            if !player.isIdle, player.fileName == "first.wav", player.playlist.count == 2 { break }
+            if player.canSeekTimeline, player.fileName == "first.wav", player.playlist.count == 2 { break }
             try await Task.sleep(nanoseconds: 10_000_000)
         }
         XCTAssertNil(player.loadErrorMessage)
         XCTAssertFalse(player.isIdle)
         XCTAssertEqual(player.fileName, "first.wav")
+        XCTAssertEqual(player.mediaTitle, "first.wav")
         XCTAssertEqual(player.playlist.count, 2)
         let ids = player.playlist.map(\.id)
-        player.seek(to: 0.25)
+        let firstLoad = player.loadGeneration
+        XCTAssertTrue(player.canSeekTimeline)
+        player.seekTimeline(to: 0.25, generation: firstLoad)
         for _ in 0..<100 {
             if player.position >= 0.2 { break }
             try await Task.sleep(nanoseconds: 10_000_000)
         }
         player.playPlaylistIndex(1)
         for _ in 0..<200 {
-            if player.fileName == "second.wav", !player.isIdle { break }
+            if player.fileName == "second.wav", player.canSeekTimeline { break }
             try await Task.sleep(nanoseconds: 10_000_000)
         }
         XCTAssertEqual(player.fileName, "second.wav")
         XCTAssertEqual(player.playlist.map(\.id), ids)
         XCTAssertEqual(store.history.count, 2)
         XCTAssertGreaterThan(store.history.first { $0.path == first.path }?.position ?? 0, 0.15)
+        let secondLoad = player.loadGeneration
+        XCTAssertTrue(player.canSeekTimeline)
+        XCTAssertNotEqual(firstLoad, secondLoad)
+        player.seekTimeline(to: 0.8, generation: firstLoad)
+        try await Task.sleep(for: .milliseconds(150))
+        XCTAssertLessThan(player.position, 0.2)
+        player.seekTimeline(to: 0.6, generation: secondLoad)
+        try await waitUntil { player.position >= 0.5 }
         player.stop()
         for _ in 0..<200 {
             if player.isIdle { break }
@@ -48,11 +59,13 @@ final class PlayerCoreIntegrationTests: XCTestCase {
         XCTAssertTrue(player.isIdle)
         player.togglePlay()
         for _ in 0..<200 {
-            if !player.isIdle { break }
+            if player.canSeekTimeline { break }
             try await Task.sleep(nanoseconds: 10_000_000)
         }
         XCTAssertFalse(player.isIdle)
         XCTAssertNil(player.loadErrorMessage)
+        XCTAssertTrue(player.canSeekTimeline)
+        XCTAssertNotEqual(secondLoad, player.loadGeneration)
     }
 
     @MainActor

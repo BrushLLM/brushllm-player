@@ -70,7 +70,7 @@ export const KEYMAP: Record<string, KeyAction> = {
   L: { command: "send_command", args: ["cycle-values", "loop-file", "inf", "no"], description: "Toggle infinite looping" },
 
   // Fullscreen / stop -------------------------------------------------------
-  f: { command: "send_command", args: ["cycle", "fullscreen"], description: "Toggle fullscreen" },
+  f: { command: "toggle_fullscreen", description: "Toggle fullscreen" },
   q: { command: "send_command", args: ["quit"], description: "Quit" },
   Q: { command: "send_command", args: ["quit-watch-later"], description: "Exit and remember the playback position" },
   s: { command: "screenshot", description: "Take a screenshot of the video in its original resolution with subtitles" },

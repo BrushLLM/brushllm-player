@@ -12,7 +12,7 @@ import Libmpv
 /// thread is not allowed).
 final class VideoLayer: CAOpenGLLayer {
 
-    private unowned let controller: MPVController
+    private weak var controller: MPVController?
 
     /// Dedicated queue for GL work; `display()` runs here during playback.
     private let mpvGLQueue = DispatchQueue(label: "dev.brushllm.player.mpvgl", qos: .userInteractive)
@@ -94,7 +94,7 @@ final class VideoLayer: CAOpenGLLayer {
             forceDraw = false
             return true
         }
-        return controller.shouldRenderUpdateFrame()
+        return controller?.shouldRenderUpdateFrame() == true
     }
 
     override func draw(inCGLContext ctx: CGLContextObj, pixelFormat pf: CGLPixelFormatObj,
@@ -120,7 +120,7 @@ final class VideoLayer: CAOpenGLLayer {
                 fbo = boundFBO
             }
 
-            controller.render(fbo: boundFBO != 0 ? boundFBO : fbo,
+            controller?.render(fbo: boundFBO != 0 ? boundFBO : fbo,
                               width: viewport[2],
                               height: viewport[3],
                               depth: bufferDepth)
