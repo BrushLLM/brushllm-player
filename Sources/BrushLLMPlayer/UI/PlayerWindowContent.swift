@@ -15,6 +15,8 @@ struct PlayerWindowContent: View {
     @State private var networkTab: NetworkPanel.Tab?
     @State private var subtitleSearchVisible = false
     @State private var barSnapshot: NSImage?
+    @State private var fullscreenControlsVisible = false
+    @FocusState private var fullscreenRevealFocused: Bool
 
     private var viewing: Bool { player.isMiniWindow || player.isFullscreen }
 
@@ -28,7 +30,7 @@ struct PlayerWindowContent: View {
                                   onSelect: reveal, onOpenFiles: openFiles,
                                   onOpenNetwork: { networkTab = $0 })
                         .id(settings.language)
-                } else if player.isFullscreen {
+                } else if player.isFullscreen && fullscreenControlsVisible {
                     liveControlBar.id(settings.language)
                 }
 
@@ -42,6 +44,12 @@ struct PlayerWindowContent: View {
                     if !player.isFullscreen { controlBar }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .overlay(alignment: .leading) {
+                if player.isFullscreen && !fullscreenControlsVisible { fullscreenRevealHandle }
+            }
+            .onChange(of: player.isFullscreen) { _, fullscreen in
+                if !fullscreen { fullscreenControlsVisible = false }
             }
             .onChange(of: narrowLayout, initial: true) { _, value in
                 narrow = value
@@ -141,8 +149,37 @@ struct PlayerWindowContent: View {
     }
 
     private var liveControlBar: some View {
-        ControlBar(player: player, showChapters: { reveal(.chapters) })
+        ControlBar(player: player, showChapters: { reveal(.chapters) },
+                   hideFullscreenControls: { fullscreenControlsVisible = false })
             .environment(\.colorScheme, viewing ? .dark : colorScheme)
+    }
+
+    private var fullscreenRevealHandle: some View {
+        Button {
+            fullscreenControlsVisible = true
+        } label: {
+            Color.clear
+                .frame(width: 8)
+                .frame(maxHeight: .infinity)
+                .contentShape(.rect)
+                .overlay(alignment: .topLeading) {
+                    if fullscreenRevealFocused {
+                        Image(systemName: "chevron.right")
+                            .frame(width: 32, height: 28)
+                            .foregroundStyle(BrushLLMPlayerTheme.accentText)
+                            .background(BrushLLMPlayerTheme.selectionFill, in: .rect(cornerRadius: DesignRadius.row))
+                            .padding(8)
+                            .allowsHitTesting(false)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .focused($fullscreenRevealFocused)
+        .accessibilityLabel(L("player.options", "Playback options"))
+        .onHover { hovering in
+            if hovering { fullscreenControlsVisible = true }
+        }
+        .environment(\.colorScheme, .dark)
     }
 
     private func renderBarSnapshot(width: CGFloat) -> NSImage? {

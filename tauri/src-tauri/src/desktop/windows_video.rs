@@ -1,14 +1,22 @@
+use std::cell::Cell;
 use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 use windows::core::{w, PCWSTR};
 use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows::Win32::Graphics::Gdi::ScreenToClient;
+use windows::Win32::UI::Controls::WM_MOUSELEAVE;
+use windows::Win32::UI::Input::KeyboardAndMouse::{TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT};
 use windows::Win32::UI::Shell::{DragAcceptFiles, DragFinish, DragQueryFileW, HDROP};
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, GetParent, GetWindowLongPtrW, LoadCursorW, RegisterClassW,
-    SetWindowLongPtrW, CS_DBLCLKS, GWLP_HINSTANCE, GWLP_USERDATA, HMENU, IDC_ARROW,
-    WINDOW_EX_STYLE, WM_CONTEXTMENU, WM_DROPFILES, WM_LBUTTONDBLCLK, WM_NCDESTROY, WNDCLASSW, WS_CHILD,
+    SetWindowLongPtrW, CS_DBLCLKS, GWLP_HINSTANCE, GWLP_USERDATA, HMENU, IDC_ARROW, WINDOW_EX_STYLE,
+    WM_CONTEXTMENU, WM_DROPFILES, WM_LBUTTONDBLCLK, WM_MOUSEMOVE, WM_NCDESTROY, WNDCLASSW, WS_CHILD,
     WS_CLIPCHILDREN, WS_CLIPSIBLINGS,
 };
+
+struct VideoEvents {
+    app: AppHandle,
+    near_left_edge: Cell<bool>,
+}
 
 pub fn create(window: &WebviewWindow) -> Result<isize, String> {
     let parent = HWND(window.hwnd().map_err(|error| error.to_string())?.0);
@@ -42,7 +50,10 @@ pub fn create(window: &WebviewWindow) -> Result<isize, String> {
         .map_err(|error| error.to_string())?;
         // The parent window owns the child. The child owns the event target
         // until WM_NCDESTROY, including while mpv restarts its video output.
-        let target = Box::into_raw(Box::new(window.app_handle().clone()));
+        let target = Box::into_raw(Box::new(VideoEvents {
+            app: window.app_handle().clone(),
+            near_left_edge: Cell::new(false),
+        }));
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, target as isize);
         DragAcceptFiles(hwnd, true);
         Ok(hwnd.0 as isize)
@@ -57,17 +68,40 @@ unsafe extern "system" fn handle_message(
 ) -> LRESULT {
     // mpv disables its video child in --wid mode. Its parent receives clicks
     // and shell drops in the rectangle above the webview.
-    let target = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut AppHandle;
+    let target = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut VideoEvents;
     match message {
         WM_LBUTTONDBLCLK => {
             if let Some(target) = target.as_ref() {
-                let _ = target.emit("video-toggle-fullscreen", ());
+                let _ = target.app.emit("video-toggle-fullscreen", ());
             }
             LRESULT(0)
         }
         WM_CONTEXTMENU => {
             if let Some(target) = target.as_ref() {
-                let _ = target.emit("video-context-menu", context_menu_position(hwnd, lparam));
+                let _ = target.app.emit("video-context-menu", context_menu_position(hwnd, lparam));
+            }
+            LRESULT(0)
+        }
+        WM_MOUSEMOVE => {
+            if let Some(target) = target.as_ref() {
+                let near = (0..12).contains(&(lparam.0 as i16));
+                // Send one event on entering the edge instead of relaying mouse motion.
+                if !target.near_left_edge.replace(near) && near {
+                    let mut tracking = TRACKMOUSEEVENT {
+                        cbSize: std::mem::size_of::<TRACKMOUSEEVENT>() as u32,
+                        dwFlags: TME_LEAVE,
+                        hwndTrack: hwnd,
+                        dwHoverTime: 0,
+                    };
+                    let _ = TrackMouseEvent(&mut tracking);
+                    let _ = target.app.emit("video-left-edge", ());
+                }
+            }
+            DefWindowProcW(hwnd, message, wparam, lparam)
+        }
+        WM_MOUSELEAVE => {
+            if let Some(target) = target.as_ref() {
+                target.near_left_edge.set(false);
             }
             LRESULT(0)
         }
@@ -85,7 +119,7 @@ unsafe extern "system" fn handle_message(
             }
             DragFinish(drop);
             if let Some(target) = target.as_ref() {
-                let _ = target.emit("video-files-dropped", paths);
+                let _ = target.app.emit("video-files-dropped", paths);
             }
             LRESULT(0)
         }

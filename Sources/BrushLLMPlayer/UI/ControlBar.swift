@@ -4,8 +4,8 @@ import SwiftUI
 struct ControlBar: View {
     @ObservedObject var player: PlayerCore
     let showChapters: () -> Void
+    let hideFullscreenControls: () -> Void
     @State private var speedOpen = false
-    @State private var toolsExpanded = false
 
     var body: some View {
         Group {
@@ -44,32 +44,27 @@ struct ControlBar: View {
     private var fullscreenControls: some View {
         VStack(spacing: 10) {
             fullscreenToolsButton
-            let layout = toolsExpanded ? AnyLayout(HStackLayout(spacing: 8)) : AnyLayout(VStackLayout(spacing: 8))
-            layout {
+            HStack(spacing: 8) {
                 playPauseButton
                 fullscreenSpeedButton
                 muteButton
             }
-            .frame(maxWidth: .infinity, alignment: toolsExpanded ? .leading : .center)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            if toolsExpanded {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 10) {
-                        progress(compact: true)
-                        Divider()
-                        PlaybackTools(player: player, showChapters: showChapters, fullscreen: true)
-                    }
-                    .padding(.vertical, 4)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    progress(compact: true)
+                    Divider()
+                    PlaybackTools(player: player, showChapters: showChapters, fullscreen: true)
                 }
-            } else {
-                Spacer(minLength: 0)
+                .padding(.vertical, 4)
             }
 
             fullscreenButton
-                .frame(maxWidth: .infinity, alignment: toolsExpanded ? .leading : .center)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(8)
-        .frame(width: toolsExpanded ? 224 : 64)
+        .frame(width: 224)
         .frame(maxHeight: .infinity)
         .background(BrushLLMPlayerTheme.viewingSurface)
         .overlay(alignment: .trailing) {
@@ -78,19 +73,17 @@ struct ControlBar: View {
     }
 
     private var fullscreenToolsButton: some View {
-        Button {
-            toolsExpanded.toggle()
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: toolsExpanded ? "chevron.left" : "chevron.right")
-                if toolsExpanded { Text(L("player.options", "Playback options")).lineLimit(1) }
-            }
-            .frame(minWidth: 32, minHeight: 28)
+        let title = L("player.sidebar-collapse", "Collapse sidebar")
+        return Button(action: hideFullscreenControls) {
+            Label(L("player.options", "Playback options"), systemImage: "chevron.left")
+                .lineLimit(1)
+                .frame(minHeight: 28)
         }
         .controlSize(.small)
-        .help(L("player.options", "Playback options"))
-        .accessibilityLabel(L("player.options", "Playback options"))
-        .accessibilityAddTraits(toolsExpanded ? .isSelected : [])
+        .help(title)
+        .accessibilityLabel(title)
+        .padding(.leading, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var fullscreenSpeedButton: some View {
