@@ -2,8 +2,6 @@ name: Regression tests
 
 on:
   pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -44,7 +42,15 @@ jobs:
         working-directory: tauri/src-tauri
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tauri/package-lock.json
       - uses: dtolnay/rust-toolchain@stable
+      - name: Generate application icons
+        working-directory: tauri
+        run: npm ci && npm run icons
       - name: Install test player
         if: runner.os == 'macOS'
         run: |

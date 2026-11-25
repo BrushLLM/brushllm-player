@@ -1,10 +1,10 @@
 import SwiftUI
 import AppKit
 
-struct BrushBrandMark: View {
+struct PlayerIcon: View {
     let size: CGFloat
 
-    private static let image = Bundle.main.url(forResource: "BrushMark", withExtension: "svg", subdirectory: "Base.lproj")
+    private static let image = Bundle.main.url(forResource: "PlayerIcon", withExtension: "svg", subdirectory: "Base.lproj")
         .flatMap { NSImage(contentsOf: $0) }
 
     var body: some View {

@@ -1,136 +1,193 @@
-name: Build
+name: Build installers
 
 on:
   push:
-    # Only release tags build — main pushes never spend Actions minutes.
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        type: choice
+        default: all
+        options: [all, macos, windows-x64, windows-arm64]
+      publish:
+        description: Publish a new release from main after all three builds succeed
+        type: boolean
+        default: false
 
-# One build at a time; a newer tag cancels the stale run.
+permissions:
+  contents: read
+
 concurrency:
-  group: build-${{ github.ref }}
-  cancel-in-progress: true
+  group: player-build-${{ github.ref }}
 
 jobs:
-  build:
-    name: macOS ARM
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      number: ${{ steps.check.outputs.number }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check version and release target
+        id: check
+        env:
+          PLATFORM: ${{ inputs.platform }}
+          PUBLISH: ${{ inputs.publish }}
+        run: |
+          version=$(python3 - <<'PY'
+          import json
+          import tomllib
+          from pathlib import Path
+
+          npm = json.loads(Path("tauri/package.json").read_text())["version"]
+          tauri = json.loads(Path("tauri/src-tauri/tauri.conf.json").read_text())["version"]
+          rust = tomllib.loads(Path("tauri/src-tauri/Cargo.toml").read_text())["package"]["version"]
+          if npm != tauri or npm != rust:
+              raise SystemExit("npm, Tauri and Cargo versions must agree")
+          print(tauri)
+          PY
+          )
+          if [[ "$GITHUB_REF_TYPE" == tag && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::The tag must match the application version v$version"
+            exit 1
+          fi
+          if [[ "$PUBLISH" == true ]]; then
+            if [[ "$GITHUB_REF" != refs/heads/main || "$PLATFORM" != all ]]; then
+              echo "::error::Publishing requires main and all platforms"
+              exit 1
+            fi
+            if git ls-remote --exit-code origin "refs/tags/v$version"; then
+              echo "::error::Tag v$version already exists"
+              exit 1
+            else
+              status=$?
+              [[ "$status" == 2 ]] || exit "$status"
+            fi
+          fi
+          echo "number=$version" >> "$GITHUB_OUTPUT"
+
+  macos:
+    name: macOS arm64
+    needs: version
+    if: github.event_name == 'push' || inputs.platform == 'all' || inputs.platform == 'macos'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-
-      - name: Build app
-        # The runner's Xcode is complete, so the local toolchain shim is
-        # skipped automatically (build-app.sh checks xcode-select).
-        # One retry: SwiftPM fetches the MPVKit binary target over the
-        # network and a transient failure aborts the build.
-        run: |
-          ./scripts/build-app.sh release || (
-            echo "::warning::build failed, retrying once (likely a transient SwiftPM fetch failure)"
-            sleep 20
-            ./scripts/build-app.sh release
-          )
-
-      - name: Create dmg
-        run: |
-          set -e
-          VERSION="${GITHUB_REF_NAME#v}"
-          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="$(python3 -c 'import json; print(json.load(open("tauri/package.json"))["version"])')"  # workflow_dispatch: no tag
-          APP="build/BrushLLM Player.app"
-          DMG="build/BrushLLM.Player-$VERSION-arm64.dmg"
-          STAGING=$(mktemp -d)
-          cp -R "$APP" "$STAGING/"
-          ln -s /Applications "$STAGING/Applications"
-          hdiutil create -volname "BrushLLM Player" -srcfolder "$STAGING" -ov -format UDZO "$DMG"
-          ls -lh "$DMG"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Build the Swift application and disk image
+        run: bash scripts/package-macos.sh release --dmg
+      - uses: actions/upload-artifact@v4
         with:
           name: BrushLLM-Player-macos-arm64
           if-no-files-found: error
-          path: build/*.dmg
+          path: build/BrushLLM.Player-${{ needs.version.outputs.number }}-arm64.dmg
+
+  windows:
+    name: Windows ${{ matrix.arch }}
+    needs: version
+    if: github.event_name == 'push' || inputs.platform == 'all' || startsWith(inputs.platform, 'windows-')
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: ${{ fromJSON(inputs.platform == 'windows-x64' && '["x64"]' || inputs.platform == 'windows-arm64' && '["arm64"]' || '["x64","arm64"]') }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'windows-11-arm' || 'windows-latest' }}
+    defaults:
+      run:
+        working-directory: tauri
+    env:
+      RUST_TARGET: ${{ matrix.arch == 'arm64' && 'aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tauri/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ env.RUST_TARGET }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: tauri/src-tauri
+          key: ${{ env.RUST_TARGET }}
+      - run: npm ci
+      - name: Bundle mpv for the target architecture
+        shell: pwsh
+        run: |
+          $mpvVersion = "v0.41.0"
+          $archive = Join-Path $env:RUNNER_TEMP "mpv-$env:RUST_TARGET.zip"
+          $unpacked = Join-Path $env:RUNNER_TEMP "mpv-$env:RUST_TARGET"
+          curl.exe --fail --silent --show-error --location --retry 2 `
+            "https://github.com/mpv-player/mpv/releases/download/$mpvVersion/mpv-$mpvVersion-$env:RUST_TARGET.zip" `
+            --output "$archive"
+          if ($LASTEXITCODE -ne 0) { throw "mpv download failed" }
+          Expand-Archive -Path $archive -DestinationPath $unpacked -Force
+          $mpv = @(Get-ChildItem $unpacked -Recurse -File -Filter mpv.exe)
+          if ($mpv.Count -ne 1) { throw "Expected one mpv.exe in the archive" }
+          New-Item -ItemType Directory -Force src-tauri/bin | Out-Null
+          Copy-Item $mpv[0].FullName src-tauri/bin/
+          Get-ChildItem $unpacked -Recurse -File -Filter *.dll | Copy-Item -Destination src-tauri/bin/
+      - name: Build the NSIS installer
+        run: npm run tauri -- build --target $env:RUST_TARGET --bundles nsis -- --locked
+      - name: Stage installer
+        env:
+          VERSION: ${{ needs.version.outputs.number }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          $installers = @(Get-ChildItem "src-tauri/target/$env:RUST_TARGET/release/bundle/nsis" -File -Filter '*-setup.exe')
+          if ($installers.Count -ne 1) { throw "Expected one NSIS installer" }
+          New-Item -ItemType Directory -Force installers | Out-Null
+          Copy-Item $installers[0].FullName "installers/BrushLLM.Player-$env:VERSION-$env:ARCH.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BrushLLM-Player-windows-${{ matrix.arch }}
+          if-no-files-found: error
+          path: tauri/installers/BrushLLM.Player-${{ needs.version.outputs.number }}-${{ matrix.arch }}.exe
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build]
+    if: github.event_name == 'push' || inputs.publish
+    needs: [version, macos, windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
+          pattern: BrushLLM-Player-*
           path: artifacts
           merge-multiple: true
-
-      - name: Compose release notes
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          cat > /tmp/release-notes.md << EOF
-          An open-source cross-platform media player built on mpv — plays virtually every format, streams from WebDAV / SMB / FTP / Emby / Jellyfin, and ships a 9-language UI.
-
-          ## What's new in ${VERSION}
-
-          - **Reliable history and bookmarks** — full media paths keep same-named files separate; reopening history restores the saved position and completed media restarts from the beginning
-          - **Safer library saves** — atomic file replacement preserves existing data on failure; failed saves are visible in the interface and disk writes run in the background
-          - **Lower playback overhead** — isolated timeline updates and coalesced IPC snapshots reduce repeated interface work; large media-server folders render only the visible rows
-          - **Accessible controls** — progress and volume sliders expose adjustable values, toolbar icons have clear labels, and compact windows keep all controls reachable
-          - **Developer and platform clarity** — browser preview works without Tauri, Windows regression tests run in CI, and the README documents platform differences and legacy history limitations
-
-          ### 本次更新
-
-          - 修复历史续播和同名文件书签混淆，保存失败时保留原始数据并提示错误
-          - 优化播放进度刷新和大目录浏览，完善进度条、音量条及按钮的辅助功能支持
-          - 改善小窗口布局与浏览器预览，增加 Windows 回归测试
-
-          ## Downloads
-
-          | Your system | Download |
-          |---|---|
-          | **macOS** — Apple Silicon (M-series) | \`BrushLLM.Player-${VERSION}-arm64.dmg\` |
-          | **Windows 10/11** — x64 (Intel / AMD) | \`BrushLLM.Player-${VERSION}-x64.exe\` |
-          | **Windows 10/11** — ARM64 (Snapdragon) | \`BrushLLM.Player-${VERSION}-arm64.exe\` |
-
-          ## First run (apps are unsigned)
-
-          - **macOS — Gatekeeper**: open the \`.dmg\`, drag **BrushLLM Player** into *Applications*, then **right-click the app and choose “Open”** (a plain double-click is blocked the first time). Confirm “Open” in the dialog.
-          - **Windows — SmartScreen**: run the \`.exe\` matching your CPU; when SmartScreen shows “Windows protected your PC”, choose **“Run anyway”**. The installer opens with a language selector (9 languages) and bundles mpv — no extra downloads needed.
-
-          ## Features
-
-          - **Playback** — every mpv-supported format, hardware decoding, HDR output, A-B loop, speed control, frame stepping
-          - **Media servers** — WebDAV, SMB, FTP, Emby and Jellyfin; sortable browser and folder-to-playlist
-          - **Network streams** — HTTP(S) direct links and m3u8/HLS
-          - **Subtitles** — auto-load matching files, external loading, live styling
-          - **9-language UI** with instant switching, manual update checks
-
-          Windows includes playback controls, file/URL opening, media servers, playlists, chapters, tracks, history and per-file bookmarks. Some native macOS features are still being migrated. Windows uses a separate mpv video window; macOS downloads use the native Swift app.
-
-          Older Tauri history records containing only a filename cannot recover their original directory automatically. Open the original media again to create a complete-path record.
-
-          ## Notes
-
-          - Apps are unsigned — expect the first-run warnings described above.
-          - Licensed under GPL v3 (mpv / libmpv licensing).
-          EOF
-      - name: Update release
-        # gh CLI instead of softprops: the action's read-modify-write of the
-        # release body repeatedly failed to persist the new notes on this
-        # repo. gh release edit applies the notes file deterministically.
-        # --draft=false matters: deleting a git tag converts its releases
-        # to drafts, and gh release edit finds drafts but does not publish
-        # them unless told to.
+      - name: Publish the three installers
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.number }}
+        shell: bash
         run: |
-          set -e
-          TAG="$GITHUB_REF_NAME"
-          TITLE="BrushLLM Player $TAG"
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" \
-              --title "$TITLE" --notes-file /tmp/release-notes.md --draft=false
-            gh release upload "$TAG" artifacts/*.dmg --repo "$GITHUB_REPOSITORY" --clobber
-          else
-            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
-              --title "$TITLE" --notes-file /tmp/release-notes.md artifacts/*.dmg
+          tag="v$VERSION"
+          files=(
+            "artifacts/BrushLLM.Player-$VERSION-arm64.dmg"
+            "artifacts/BrushLLM.Player-$VERSION-x64.exe"
+            "artifacts/BrushLLM.Player-$VERSION-arm64.exe"
+          )
+          for file in "${files[@]}"; do
+            if [[ ! -s "$file" ]]; then
+              echo "::error::Missing installer $file"
+              exit 1
+            fi
+          done
+
+          if [[ "$GITHUB_REF_TYPE" != tag ]]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              --raw-field "ref=refs/tags/$tag" --raw-field "sha=$GITHUB_SHA" --silent
           fi
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name'
+          git fetch --no-tags origin "refs/tags/$tag"
+          if [[ "$(git rev-parse 'FETCH_HEAD^{commit}')" != "$(git rev-parse HEAD)" ]]; then
+            echo "::error::$tag does not point to the commit used for these installers"
+            exit 1
+          fi
+          notes=(--generate-notes)
+          if [[ -f ".github/release-notes/$tag.md" ]]; then
+            notes=(--notes-file ".github/release-notes/$tag.md")
+          fi
+          gh release create "$tag" --verify-tag "${notes[@]}" \
+            --title "BrushLLM Player $tag" "${files[@]}"
+          gh release view "$tag" --json url,assets --jq '{url, assets: [.assets[].name]}'

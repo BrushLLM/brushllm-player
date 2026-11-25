@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useI18n } from "../i18n";
-import brandIcon from "../../../Sources/BrushLLMPlayer/Resources/Base.lproj/BrushMark.svg";
+import brandIcon from "../../../Sources/BrushLLMPlayer/Resources/Base.lproj/PlayerIcon.svg";
 import PlayerIcon, { type PlayerIconName } from "./PlayerIcon";
 
 export type SidebarSection = "sources" | "playlist" | "history" | "bookmarks" | "chapters";

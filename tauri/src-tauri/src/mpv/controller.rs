@@ -755,12 +755,6 @@ impl MpvController {
                     return candidate;
                 }
             }
-            #[cfg(target_os = "macos")]
-            if let Some(resources) = exe.parent().map(|p| p.join("../Resources/bin/mpv")) {
-                if resources.exists() {
-                    return resources;
-                }
-            }
         }
         PathBuf::from(exe_name)
     }

@@ -79,7 +79,7 @@ struct PlayerSidebar: View {
 
     private var brand: some View {
         HStack(spacing: 9) {
-            BrushBrandMark(size: 32)
+            PlayerIcon(size: 32)
             if !compact {
                 Text("BrushLLM Player")
                     .font(.system(size: 14, weight: .semibold))

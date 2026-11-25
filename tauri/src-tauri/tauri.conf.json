@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "BrushLLM Player",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "identifier": "dev.brushllm.player",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run icons && npm run dev",
     "devUrl": "http://localhost:5173",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run icons && npm run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -32,15 +32,16 @@
       "nsis"
     ],
     "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
+      "generated-icons/32x32.png",
+      "generated-icons/128x128.png",
+      "generated-icons/128x128@2x.png",
+      "generated-icons/icon.ico"
     ],
     "windows": {
       "nsis": {
         "installMode": "perMachine",
+        "installerIcon": "generated-icons/icon.ico",
+        "uninstallerIcon": "generated-icons/icon.ico",
         "languages": [
           "English",
           "German",

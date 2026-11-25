@@ -8,7 +8,7 @@ struct AboutWindow: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            BrushBrandMark(size: 96)
+            PlayerIcon(size: 96)
 
             Text(L("app.name", "BrushLLM Player"))
                 .font(.title2.weight(.semibold))

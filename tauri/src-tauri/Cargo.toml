@@ -1,6 +1,6 @@
 [package]
 name = "brushllm-player"
-version = "0.0.10"
+version = "0.0.11"
 edition = "2021"
 
 [lib]
@@ -37,10 +37,6 @@ windows = { version = "0.58", features = [
     "Win32_UI_Shell",
     "Win32_Graphics_Gdi",
 ] }
-
-[target.'cfg(target_os = "macos")'.dependencies]
-objc2 = "0.5"
-objc2-app-kit = { version = "0.2", features = ["NSView", "NSWindow"] }
 
 [profile.release]
 lto = "thin"
