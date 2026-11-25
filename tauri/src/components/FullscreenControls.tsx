@@ -6,7 +6,7 @@ import PlaybackSpeedPicker from "./PlaybackSpeedPicker";
 
 interface FullscreenControlsProps {
   play: ReactNode;
-  mute: ReactNode;
+  volume: ReactNode;
   exit: ReactNode;
   timeline: ReactNode;
   tools: ReactNode;
@@ -17,7 +17,7 @@ interface FullscreenControlsProps {
 }
 
 export default function FullscreenControls({
-  play, mute, exit, timeline, tools, speed, ready, onSpeedChange, onError,
+  play, volume, exit, timeline, tools, speed, ready, onSpeedChange, onError,
 }: FullscreenControlsProps) {
   const { t } = useI18n();
   const label = t("player.options");
@@ -83,7 +83,7 @@ export default function FullscreenControls({
         {play}
         {timeline}
         <PlaybackSpeedPicker speed={speed} disabled={!ready} onChange={onSpeedChange} />
-        {mute}
+        {volume}
         {exit}
       </div>
       <div className="fullscreen-details">

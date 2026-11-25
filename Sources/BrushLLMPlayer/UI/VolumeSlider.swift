@@ -5,6 +5,7 @@ import SwiftUI
 struct VolumeSlider: View {
     @Binding var value: Double
     var range: ClosedRange<Double>
+    var onDraggingChange: (Bool) -> Void = { _ in }
 
     @State private var isDragging = false
 
@@ -57,6 +58,8 @@ struct VolumeSlider: View {
             )
         }
         .frame(height: 18)
+        .onChange(of: isDragging) { _, dragging in onDraggingChange(dragging) }
+        .onDisappear { if isDragging { onDraggingChange(false) } }
         .accessibilityRepresentation {
             Slider(value: $value, in: range, step: 5) {
                 Text(L("controls.volume", "Volume"))

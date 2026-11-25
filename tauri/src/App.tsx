@@ -498,6 +498,36 @@ export default function App() {
       <PlayerIcon name={state.muted ? "mute" : "volume"} />
     </button>
   );
+  const volumeSlider = (
+    <div className="volume-slider" role="slider" tabIndex={view.ready ? 0 : -1}
+      aria-label={t("controls.volume")} aria-valuemin={0} aria-valuemax={130}
+      aria-valuenow={state.volume} aria-valuetext={Math.round(state.volume) + "%"}
+      aria-disabled={!view.ready}
+      onKeyDown={(event) => {
+        if (event.ctrlKey || event.metaKey || event.altKey || !view.ready) return;
+        const volume = sliderValueAtKey(event.key, state.volume, 0, 130, 5);
+        if (volume === null) return;
+        event.preventDefault();
+        event.stopPropagation();
+        void setVolume(volume);
+      }}
+      onPointerDown={(event) => {
+        if (!view.ready || event.button !== 0) return;
+        event.currentTarget.focus({ preventScroll: true });
+        event.currentTarget.setPointerCapture(event.pointerId);
+        const volume = volumeAtClick(event);
+        if (volume !== null) void setVolume(volume);
+      }}
+      onPointerMove={(event) => {
+        if (!view.ready || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+        const volume = volumeAtClick(event);
+        if (volume !== null && volume !== Math.round(state.volume)) void setVolume(volume);
+      }}>
+      <div className="volume-track">
+        <div className="volume-fill" style={{ width: (state.volume / 130 * 100) + "%" }} />
+      </div>
+    </div>
+  );
   const fullscreenButton = (
     <button type="button" className="tool-btn" title={fullscreenLabel} aria-label={fullscreenLabel}
       onClick={toggleFullscreen} disabled={output === "detached" && state.idle}>
@@ -577,7 +607,8 @@ export default function App() {
         )}
 
         {fullscreen && (
-          <FullscreenControls play={playButton} mute={muteButton} exit={fullscreenButton}
+          <FullscreenControls play={playButton} volume={<div className="volume-control">{muteButton}{volumeSlider}</div>}
+            exit={fullscreenButton}
             timeline={timeline} tools={playbackOptions}
             ready={view.ready} speed={state.speed} onSpeedChange={setSpeed} onError={reportDesktopError} />
         )}
@@ -649,29 +680,7 @@ export default function App() {
             <div className="viewing-group">
               <div className="volume-control">
                 {muteButton}
-                {!viewing && (
-                  <div className="volume-slider" role="slider" tabIndex={view.ready ? 0 : -1}
-                    aria-label={t("controls.volume")} aria-valuemin={0} aria-valuemax={130}
-                    aria-valuenow={state.volume} aria-valuetext={Math.round(state.volume) + "%"}
-                    aria-disabled={!view.ready}
-                    onKeyDown={(event) => {
-                      if (event.ctrlKey || event.metaKey || event.altKey || !view.ready) return;
-                      const volume = sliderValueAtKey(event.key, state.volume, 0, 130, 5);
-                      if (volume === null) return;
-                      event.preventDefault();
-                      event.stopPropagation();
-                      void setVolume(volume);
-                    }}
-                    onClick={(event) => {
-                      if (!view.ready) return;
-                      const volume = volumeAtClick(event);
-                      if (volume !== null) void setVolume(volume);
-                    }}>
-                    <div className="volume-track">
-                      <div className="volume-fill" style={{ width: (state.volume / 130 * 100) + "%" }} />
-                    </div>
-                  </div>
-                )}
+                {!viewing && volumeSlider}
               </div>
               <div className="window-actions">
                 {output !== "detached" && (

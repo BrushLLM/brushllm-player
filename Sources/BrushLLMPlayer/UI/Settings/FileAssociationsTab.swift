@@ -5,6 +5,7 @@ struct FileAssociationsTab: View {
     @State private var confirming = false
     @State private var applying = false
     @State private var result: String?
+    @State private var failedExtensions: [String] = []
 
     var body: some View {
         Form {
@@ -22,9 +23,13 @@ struct FileAssociationsTab: View {
                 Button(L("settings.file-associations-apply", "Associate All Formats…")) {
                     confirming = true
                 }
-                .disabled(applying || MediaTypes.associationTypes.isEmpty)
+                .disabled(applying || MediaTypes.associations.isEmpty)
                 if applying { ProgressView().controlSize(.small) }
                 if let result { Text(result).font(.callout) }
+                if !failedExtensions.isEmpty {
+                    Text(failedExtensions.map { ".\($0)" }.joined(separator: ", "))
+                        .font(.callout.monospaced())
+                }
             }
         }
         .alert(L("settings.file-associations-confirm", "Set BrushLLM Player as the default?"),
@@ -43,19 +48,24 @@ struct FileAssociationsTab: View {
     private func associateFormats() async {
         applying = true
         result = nil
+        failedExtensions = []
         defer { applying = false }
         let app = Bundle.main.bundleURL
         let workspace = NSWorkspace.shared
         var failed = 0
-        for type in MediaTypes.associationTypes {
+        var failedSuffixes: [String] = []
+        for association in MediaTypes.associations {
+            let type = association.type
             if workspace.urlForApplication(toOpen: type)?.standardizedFileURL == app.standardizedFileURL { continue }
             do {
                 try await workspace.setDefaultApplication(at: app, toOpen: type)
             } catch {
                 failed += 1
+                failedSuffixes.append(contentsOf: association.extensions)
                 DebugLog.log("File association for \(type.identifier): \(error.localizedDescription)")
             }
         }
+        failedExtensions = failedSuffixes.sorted()
         result = failed == 0
             ? L("settings.file-associations-done", "BrushLLM Player is set as the default for all listed formats.")
             : String(format: L("settings.file-associations-partial", "macOS could not change %d file type(s)."), failed)

@@ -27,7 +27,7 @@ jobs:
     outputs:
       number: ${{ steps.check.outputs.number }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Check version and release target
         id: check
         env:
@@ -72,10 +72,10 @@ jobs:
     if: github.event_name == 'push' || inputs.platform == 'all' || inputs.platform == 'macos'
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build the Swift application and disk image
         run: bash scripts/package-macos.sh release --dmg
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: BrushLLM-Player-macos-arm64
           if-no-files-found: error
@@ -96,10 +96,10 @@ jobs:
     env:
       RUST_TARGET: ${{ matrix.arch == 'arm64' && 'aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version-file: tauri/.node-version
           cache: npm
           cache-dependency-path: tauri/package-lock.json
       - uses: dtolnay/rust-toolchain@stable
@@ -163,7 +163,7 @@ jobs:
 
           New-Item -ItemType Directory -Force installers | Out-Null
           Copy-Item $installers[0].FullName "installers/BrushLLM.Player-$env:VERSION-$env:ARCH.exe"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: BrushLLM-Player-windows-${{ matrix.arch }}
           if-no-files-found: error
@@ -176,8 +176,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v7
         with:
           pattern: BrushLLM-Player-*
           path: artifacts

@@ -20,7 +20,11 @@ struct PlayerWindowContent: View {
     @State private var usingFullscreenControls = false
     @FocusState private var fullscreenRevealFocused: Bool
 
-    private var viewing: Bool { player.isMiniWindow || player.isFullscreen }
+    private var viewing: Bool {
+        player.isMiniWindow || player.isFullscreen || player.isFullscreenTransitioning
+    }
+
+    private var fullscreenToolsAvailable: Bool { player.isFullscreen && !player.isFullscreenTransitioning }
 
     var body: some View {
         GeometryReader { geometry in
@@ -41,22 +45,22 @@ struct PlayerWindowContent: View {
                         .padding(.horizontal, viewing ? 0 : 16)
                         .contextMenu { videoContextMenu }
                         .onHover { hovering in
-                            if hovering && player.isFullscreen { pointerAtFullscreenControls = false }
+                            if hovering && fullscreenToolsAvailable { pointerAtFullscreenControls = false }
                         }
                         .layoutPriority(1)
-                    if !player.isFullscreen || fullscreenControlsVisible {
+                    if !player.isFullscreenTransitioning && (!player.isFullscreen || fullscreenControlsVisible) {
                         controlBar.onHover { hovering in
-                            if player.isFullscreen { pointerAtFullscreenControls = hovering }
+                            if fullscreenToolsAvailable { pointerAtFullscreenControls = hovering }
                         }
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .overlay(alignment: .bottom) {
-                if player.isFullscreen && !fullscreenControlsVisible { fullscreenRevealHandle }
+                if fullscreenToolsAvailable && !fullscreenControlsVisible { fullscreenRevealHandle }
             }
-            .onChange(of: player.isFullscreen) { _, fullscreen in
-                if !fullscreen {
+            .onChange(of: fullscreenToolsAvailable) { _, available in
+                if !available {
                     fullscreenControlsVisible = false
                     pointerAtFullscreenControls = false
                     usingFullscreenControls = false
@@ -67,7 +71,7 @@ struct PlayerWindowContent: View {
             }
             .onChange(of: player.isLiveResizing) { _, resizing in
                 let railWidth: CGFloat = viewing ? 0 : (compact ? 64 : 200)
-                barSnapshot = resizing && !player.isFullscreen
+                barSnapshot = resizing && !player.isFullscreenTransitioning
                     ? renderBarSnapshot(width: geometry.size.width - railWidth) : nil
             }
         }
@@ -171,7 +175,7 @@ struct PlayerWindowContent: View {
     }
 
     private var shouldHideFullscreenControls: Bool {
-        player.isFullscreen && fullscreenControlsVisible && !pointerAtFullscreenControls && !usingFullscreenControls
+        fullscreenToolsAvailable && fullscreenControlsVisible && !pointerAtFullscreenControls && !usingFullscreenControls
     }
 
     private func revealFullscreenControls() {
@@ -248,12 +252,12 @@ struct PlayerWindowContent: View {
                 }
             }
             .contentShape(.rect)
-            .onTapGesture(count: 2) {
-                player.toggleFullscreen()
-            }
-            .onTapGesture {
-                if !player.isIdle { player.togglePlay() }
-            }
+            .gesture(
+                TapGesture(count: 2).onEnded { player.toggleFullscreen() }
+                    .exclusively(before: TapGesture().onEnded {
+                        if !player.isIdle { player.togglePlay() }
+                    })
+            )
             .sheet(isPresented: $subtitleSearchVisible) {
                 SubtitleSearchPanel(player: player)
             }

@@ -116,7 +116,7 @@
             <key>LSItemContentTypes</key>
             <array>
                 <string>public.iso-image</string>
-                <string>dev.brushllm.disc</string>
+                <string>dev.brushllm.iso.disc</string>
             </array>
         </dict>
     </array>
@@ -169,12 +169,12 @@
         </dict>
         <dict>
             <key>UTTypeIdentifier</key>
-            <string>dev.brushllm.disc</string>
+            <string>dev.brushllm.iso.disc</string>
             <key>UTTypeDescription</key>
             <string>Disc image</string>
             <key>UTTypeConformsTo</key>
             <array>
-                <string>public.disk-image</string>
+                <string>public.iso-image</string>
             </array>
             <key>UTTypeTagSpecification</key>
             <dict>

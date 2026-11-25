@@ -49,7 +49,7 @@ bash scripts/package-macos.sh release --dmg
 swift test
 ```
 
-**Windows.** Install Node.js 22 and the [Tauri desktop prerequisites](https://v2.tauri.app/start/prerequisites/). Extract `mpv.exe` and any companion DLLs for your processor into `tauri/src-tauri/bin/`. Use the [mpv release archives](https://github.com/mpv-player/mpv/releases/tag/v0.41.0).
+**Windows.** Install Node.js 24 LTS and the [Tauri desktop prerequisites](https://v2.tauri.app/start/prerequisites/). Extract `mpv.exe` and any companion DLLs for your processor into `tauri/src-tauri/bin/`. Use the [mpv release archives](https://github.com/mpv-player/mpv/releases/tag/v0.41.0).
 
 ```sh
 cd tauri

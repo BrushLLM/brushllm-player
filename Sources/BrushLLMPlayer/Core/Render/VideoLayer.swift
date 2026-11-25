@@ -19,6 +19,9 @@ final class VideoLayer: CAOpenGLLayer {
 
     /// Serializes `display()` between the GL queue and the main thread.
     private let displayLock = NSRecursiveLock()
+    private let redrawLock = NSLock()
+    private var liveResize = false
+    private var displayQueued = false
 
     let cglContext: CGLContextObj
     private let cglPixelFormat: CGLPixelFormatObj
@@ -84,17 +87,20 @@ final class VideoLayer: CAOpenGLLayer {
                           forLayerTime t: CFTimeInterval, displayTime ts: UnsafePointer<CVTimeStamp>?) -> Bool {
         // When in live resize, skip all drawing calls on the main thread.
         // Setting isAsynchronous = true is enough to prevent jittering.
-        guard !(inLiveResize && Thread.isMainThread) else { return false }
-        if !inLiveResize {
+        let (resizing, force) = redrawLock.withLock {
+            if liveResize && Thread.isMainThread { return (true, false) }
+            let force = forceDraw
+            forceDraw = false
+            return (liveResize, force)
+        }
+        guard !(resizing && Thread.isMainThread) else { return false }
+        if !resizing {
             // Only clear the async mode once a draw is about to happen —
             // clearing it earlier can flash black when leaving fullscreen.
             isAsynchronous = false
         }
-        if forceDraw {
-            forceDraw = false
-            return true
-        }
-        return controller?.shouldRenderUpdateFrame() == true
+        let newFrame = controller?.shouldRenderUpdateFrame() == true
+        return force || newFrame
     }
 
     override func draw(inCGLContext ctx: CGLContextObj, pixelFormat pf: CGLPixelFormatObj,
@@ -168,9 +174,11 @@ final class VideoLayer: CAOpenGLLayer {
     /// smooth (drawing from our GL queue at arbitrary timings fought it
     /// and made resizing stutter). `canDraw` also skips main-thread
     /// draws during the resize.
-    var inLiveResize: Bool = false {
-        didSet {
-            if inLiveResize {
+    var inLiveResize: Bool {
+        get { redrawLock.withLock { liveResize } }
+        set {
+            redrawLock.withLock { liveResize = newValue }
+            if newValue {
                 isAsynchronous = true
             }
             update(force: true)
@@ -179,11 +187,21 @@ final class VideoLayer: CAOpenGLLayer {
 
     /// Triggers a redraw. Safe from any thread.
     func update(force: Bool = false) {
+        let needsDisplay = redrawLock.withLock {
+            forceDraw = forceDraw || force
+            // Core Animation drives the layer during a geometry transition.
+            // Keep at most one queued display when mpv drives it.
+            guard !liveResize, !displayQueued else { return false }
+            displayQueued = true
+            return true
+        }
+        guard needsDisplay else { return }
         mpvGLQueue.async { [self] in
-            if force {
-                forceDraw = true
+            let canDisplay = redrawLock.withLock {
+                displayQueued = false
+                return !liveResize
             }
-            display()
+            if canDisplay { display() }
         }
     }
 

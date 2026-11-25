@@ -498,6 +498,7 @@
   height: 24px;
   border-radius: 5px;
   cursor: pointer;
+  touch-action: none;
 }
 
 [role="slider"][aria-disabled="true"] {
@@ -711,6 +712,10 @@
   width: auto;
   max-width: 100%;
   font-variant-numeric: tabular-nums;
+}
+
+.fullscreen-transport .volume-slider {
+  width: 80px;
 }
 
 .fullscreen-transport .progress-row {

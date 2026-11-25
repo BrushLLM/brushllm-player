@@ -170,7 +170,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     /// Drag-resize active (reported by `VideoView`).
     private var dragResizing = false
     /// Fullscreen transition in flight (reported by the window notifications).
-    private var fullscreenAnimating = false
+    @Published private(set) var isFullscreenTransitioning = false
 
     /// Called by `VideoView` on drag-resize start/end.
     func setDragResizing(_ resizing: Bool) {
@@ -185,7 +185,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     /// and clear within the same runloop tick, which used to switch the async
     /// drawing off again immediately.
     private func refreshResizingState() {
-        let active = dragResizing || fullscreenAnimating
+        let active = dragResizing || isFullscreenTransitioning
         guard isLiveResizing != active else { return }
         isLiveResizing = active
         videoLayer?.inLiveResize = active
@@ -883,7 +883,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         playerWindow = window
         let fullscreen = window?.styleMask.contains(.fullScreen) == true
         if isFullscreen != fullscreen { isFullscreen = fullscreen }
-        fullscreenAnimating = false
+        isFullscreenTransitioning = false
         fullscreenFromMini = false
         miniAfterFullscreen = false
         dragResizing = window?.inLiveResize == true
@@ -903,7 +903,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     /// by SwiftUI's window layout pass, which is what made the transitions
     /// eat clicks and stutter before.
     func toggleMiniWindow() {
-        guard fullscreenRequest == nil, !fullscreenAnimating, let window = playerWindow else { return }
+        guard fullscreenRequest == nil, !isFullscreenTransitioning, let window = playerWindow else { return }
         if window.styleMask.contains(.fullScreen) {
             miniAfterFullscreen = true
             requestFullscreenToggle(window)
@@ -918,7 +918,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
                           width: 1080, height: 660)
             DispatchQueue.main.async { [weak self, weak window] in
                 guard let self, let window, self.playerWindow === window, !self.isMiniWindow,
-                      !window.styleMask.contains(.fullScreen), !self.fullscreenAnimating else { return }
+                      !window.styleMask.contains(.fullScreen), !self.isFullscreenTransitioning else { return }
                 window.setFrame(restore, display: true, animate: true)
             }
         } else {
@@ -932,7 +932,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
 
     private func shrinkToMini() {
         guard isMiniWindow, let window = playerWindow, fullscreenRequest == nil,
-              !fullscreenAnimating, !window.styleMask.contains(.fullScreen) else { return }
+              !isFullscreenTransitioning, !window.styleMask.contains(.fullScreen) else { return }
         let aspect = windowAspect > 0 ? windowAspect : 16.0 / 9.0
         let width: CGFloat = 420
         let height = max(width / aspect, 180) + 44
@@ -944,7 +944,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
 
     /// AppKit needs the ordinary window's geometry and level before entering fullscreen.
     func toggleFullscreen() {
-        guard fullscreenRequest == nil, !fullscreenAnimating, let window = playerWindow else { return }
+        guard fullscreenRequest == nil, !isFullscreenTransitioning, let window = playerWindow else { return }
         if window.styleMask.contains(.fullScreen) || (!isMiniWindow && window.level == .normal) {
             requestFullscreenToggle(window)
             return
@@ -956,7 +956,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         let request = DispatchWorkItem { [weak self, weak window] in
             guard let self, let window, self.playerWindow === window else { return }
             self.fullscreenRequest = nil
-            guard !window.styleMask.contains(.fullScreen), !self.fullscreenAnimating else { return }
+            guard !window.styleMask.contains(.fullScreen), !self.isFullscreenTransitioning else { return }
             if let restore { window.setFrame(restore, display: true) }
             self.requestFullscreenToggle(window)
         }
@@ -1011,7 +1011,8 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
     }
 
     private func beginFullscreenTransition(_ window: NSWindow) {
-        fullscreenAnimating = true
+        guard !isFullscreenTransitioning else { return }
+        isFullscreenTransitioning = true
         refreshResizingState()
         fullscreenRecovery?.cancel()
         // AppKit reports a failed transition to the SwiftUI-owned delegate only.
@@ -1032,7 +1033,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
         fullscreenRecovery = nil
         if isFullscreen != fullscreen { isFullscreen = fullscreen }
         if fullscreen, isMiniWindow { isMiniWindow = false }
-        fullscreenAnimating = false
+        isFullscreenTransitioning = false
         refreshResizingState()
         guard !fullscreen else { return }
 
@@ -1047,7 +1048,7 @@ final class PlayerCore: ObservableObject, @unchecked Sendable {
 
     private func applyWindowLevel() {
         // A level change can cancel an AppKit fullscreen transition.
-        guard let window = playerWindow, fullscreenRequest == nil, !fullscreenAnimating,
+        guard let window = playerWindow, fullscreenRequest == nil, !isFullscreenTransitioning,
               !window.styleMask.contains(.fullScreen) else { return }
         let level: NSWindow.Level = (isOnTop || isMiniWindow) ? .floating : .normal
         if window.level != level { window.level = level }

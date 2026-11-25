@@ -8,6 +8,7 @@ struct ControlBar: View {
     @State private var speedOpen = false
     @State private var toolPanelOpen = false
     @State private var scrubbing = false
+    @State private var adjustingVolume = false
 
     var body: some View {
         Group {
@@ -51,6 +52,9 @@ struct ControlBar: View {
                 progress(compact: true)
                 fullscreenSpeedButton
                 muteButton
+                VolumeSlider(value: $player.volume, range: 0...130,
+                             onDraggingChange: { adjustingVolume = $0 })
+                    .frame(width: 80)
                 fullscreenButton
             }
             Divider()
@@ -60,7 +64,7 @@ struct ControlBar: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(BrushLLMPlayerTheme.viewingSurface)
-        .onChange(of: speedOpen || toolPanelOpen || scrubbing) { _, interacting in
+        .onChange(of: speedOpen || toolPanelOpen || scrubbing || adjustingVolume) { _, interacting in
             onFullscreenInteractionChange(interacting)
         }
     }
