@@ -16,9 +16,9 @@
 
 Mac에서는 디스크 이미지를 열고 **BrushLLM Player**를 응용 프로그램 폴더로 드래그하세요. Windows에서는 프로세서에 맞는 설치 파일을 실행하세요. 두 버전 모두 mpv를 포함합니다. macOS 앱은 임시 서명되어 있으며 Windows 설치 파일은 서명되지 않았으므로 운영체제가 다운로드 확인을 요청할 수 있습니다.
 
-![macOS 어두운 모드에서 로컬 동영상을 재생하는 BrushLLM Player](../.github/assets/player-macos-dark.jpg)
+![macOS 어두운 모드에서 로컬 동영상을 재생하는 BrushLLM Player](../.github/assets/player-macos-dark.svg)
 
-[macOS 밝은 모드](../.github/assets/player-macos-light.jpg)
+[macOS 밝은 모드](../.github/assets/player-macos-light.svg)
 
 ## 미디어 재생
 

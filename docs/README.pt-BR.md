@@ -16,9 +16,9 @@ Um reprodutor de mídia para desktop com mpv, feito para seus arquivos, servidor
 
 No Mac, abra a imagem de disco e arraste **BrushLLM Player** para Aplicativos. No Windows, execute o instalador do seu processador. As duas versões incluem o mpv. O aplicativo macOS tem assinatura ad hoc e o instalador Windows não está assinado. O sistema pode pedir que você verifique o download.
 
-![BrushLLM Player reproduzindo um arquivo local no macOS com aparência escura](../.github/assets/player-macos-dark.jpg)
+![BrushLLM Player reproduzindo um arquivo local no macOS com aparência escura](../.github/assets/player-macos-dark.svg)
 
-[Aparência clara no macOS](../.github/assets/player-macos-light.jpg)
+[Aparência clara no macOS](../.github/assets/player-macos-light.svg)
 
 ## Reproduza suas mídias
 

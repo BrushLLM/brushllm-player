@@ -16,9 +16,9 @@ mpv を使ったデスクトップメディアプレーヤーです。ローカ�
 
 Mac ではディスクイメージを開き、**BrushLLM Player** を「アプリケーション」に移動します。Windows では CPU に合ったインストーラーを実行します。どちらも mpv を同梱しています。macOS 版はアドホック署名、Windows インストーラーは未署名のため、システムから確認を求められる場合があります。
 
-![macOS のダーク表示でローカル動画を再生する BrushLLM Player](../.github/assets/player-macos-dark.jpg)
+![macOS のダーク表示でローカル動画を再生する BrushLLM Player](../.github/assets/player-macos-dark.svg)
 
-[macOS のライト表示](../.github/assets/player-macos-light.jpg)
+[macOS のライト表示](../.github/assets/player-macos-light.svg)
 
 ## メディアを再生
 

@@ -16,9 +16,9 @@ Ein Desktop-Player mit mpv für lokale Dateien, Medienserver und eigene Untertit
 
 Öffne auf dem Mac das Image und ziehe **BrushLLM Player** in den Ordner „Programme“. Starte unter Windows die Installationsdatei für deinen Prozessor. Beide Versionen enthalten mpv. Die Mac-App ist ad hoc signiert, das Windows-Installationsprogramm ist unsigniert. Das System kann beim ersten Start eine Überprüfung anfordern.
 
-![BrushLLM Player spielt eine lokale Datei auf macOS im dunklen Erscheinungsbild ab](../.github/assets/player-macos-dark.jpg)
+![BrushLLM Player spielt eine lokale Datei auf macOS im dunklen Erscheinungsbild ab](../.github/assets/player-macos-dark.svg)
 
-[Helles Erscheinungsbild auf macOS](../.github/assets/player-macos-light.jpg)
+[Helles Erscheinungsbild auf macOS](../.github/assets/player-macos-light.svg)
 
 ## Medien abspielen
 

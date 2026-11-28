@@ -16,9 +16,9 @@
 
 在 Mac 上打開磁碟映像檔，將 **BrushLLM Player** 拖進「應用程式」。在 Windows 上執行符合處理器的安裝檔。兩版均內附 mpv。macOS 應用程式採用臨時簽署，Windows 安裝檔未簽署，系統可能要求確認下載。
 
-![BrushLLM Player 在 macOS 深色外觀播放本機影片](../.github/assets/player-macos-dark.jpg)
+![BrushLLM Player 在 macOS 深色外觀播放本機影片](../.github/assets/player-macos-dark.svg)
 
-[macOS 淺色外觀](../.github/assets/player-macos-light.jpg)
+[macOS 淺色外觀](../.github/assets/player-macos-light.svg)
 
 ## 播放媒體
 

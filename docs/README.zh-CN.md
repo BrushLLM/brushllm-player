@@ -16,9 +16,9 @@
 
 在 Mac 上打开磁盘映像，将 **BrushLLM Player** 拖入「应用程序」。在 Windows 上运行与处理器匹配的安装包。两版都内置 mpv。macOS 应用采用临时签名，Windows 安装包未签名，系统可能会要求检查下载。
 
-![BrushLLM Player 在 macOS 深色外观中播放本地视频](../.github/assets/player-macos-dark.jpg)
+![BrushLLM Player 在 macOS 深色外观中播放本地视频](../.github/assets/player-macos-dark.svg)
 
-[macOS 浅色外观](../.github/assets/player-macos-light.jpg)
+[macOS 浅色外观](../.github/assets/player-macos-light.svg)
 
 ## 播放媒体
 

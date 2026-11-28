@@ -23,9 +23,9 @@
 
 On Mac, open the disk image and drag **BrushLLM Player** into Applications. On Windows, run the installer for your processor. Both include mpv. The macOS app is ad hoc signed and the Windows installer is unsigned, so your system may ask you to review the download.
 
-![BrushLLM Player playing a local file on macOS in dark appearance](.github/assets/player-macos-dark.jpg)
+![BrushLLM Player playing a local file on macOS in dark appearance](.github/assets/player-macos-dark.svg)
 
-[Light appearance on macOS](.github/assets/player-macos-light.jpg)
+[Light appearance on macOS](.github/assets/player-macos-light.svg)
 
 ## Watch your media
 

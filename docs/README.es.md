@@ -16,9 +16,9 @@ Un reproductor de escritorio basado en mpv para archivos locales, servidores mul
 
 En Mac, abre la imagen de disco y arrastra **BrushLLM Player** a Aplicaciones. En Windows, ejecuta el instalador de tu procesador. Ambas versiones incluyen mpv. La aplicación de macOS lleva una firma ad hoc y el instalador de Windows no está firmado. El sistema puede pedirte que revises la descarga.
 
-![BrushLLM Player reproduce un archivo local en macOS con apariencia oscura](../.github/assets/player-macos-dark.jpg)
+![BrushLLM Player reproduce un archivo local en macOS con apariencia oscura](../.github/assets/player-macos-dark.svg)
 
-[Apariencia clara en macOS](../.github/assets/player-macos-light.jpg)
+[Apariencia clara en macOS](../.github/assets/player-macos-light.svg)
 
 ## Reproduce tus archivos
 
